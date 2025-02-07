@@ -1,6 +1,6 @@
 # Slack Formatter Plugin for Obsidian
 
-**A feature-rich plugin that converts Slack conversations into clean, Markdown-formatted callouts in Obsidian.**  
+**A plugin that converts Slack conversations into clean, Markdown-formatted callouts in Obsidian.**  
 
 - Detects user/time pairs  
 - Converts `@username` to `[[username]]` links  
@@ -47,7 +47,19 @@
 
 ## Installation
 
-### 1. From Source (Developers)
+### 1. From Release (Recommended)
+1. Download the latest release from the [releases page](https://github.com/amittell/obsidian-slack-formatter/releases/tag/v0.0.4)
+2. Extract the downloaded zip file
+3. Create a new folder: `.obsidian/plugins/obsidian-slack-formatter/` in your vault
+4. Copy both `main.js` and `manifest.json` into the new folder
+5. Open Obsidian
+6. Go to **Settings → Community Plugins**
+7. Disable Safe Mode if necessary
+8. Click "Refresh" next to "Community Plugins"
+9. Enable "Slack Formatter Plugin" in the list of installed plugins
+10. If Obsidian doesn't recognize the plugin, try restarting Obsidian
+
+### 2. From Source (Developers)
 1. Clone the repository:
    ```bash
    git clone https://github.com/amittell/obsidian-slack-formatter.git
@@ -62,14 +74,7 @@
    npm run build
    ```
 4. Copy or symlink the compiled `main.js` and `manifest.json` (and `styles.css` if present) into your Vault's `.obsidian/plugins/obsidian-slack-formatter/` folder.
-
-### 2. Manual Installation
-1. Download the latest release files (`main.js` and `manifest.json`) from this repo (or build them yourself).
-2. Place them in a new folder:  
-   ```
-   YOUR_VAULT/.obsidian/plugins/obsidian-slack-formatter/
-   ```
-3. In Obsidian, go to **Settings → Community Plugins**, disable "Safe mode" if necessary, and **enable** "Slack Formatter Plugin".
+5. Restart Obsidian and enable the plugin in Settings → Community Plugins
 
 ## Configuration
 
