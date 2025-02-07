@@ -1,8 +1,3 @@
-## README.md
-
-Below is a suggested **README.md** for your repository, incorporating all the latest features and instructions:
-
-```md
 # Slack Formatter Plugin for Obsidian
 
 **A feature-rich plugin that converts Slack conversations into clean, Markdown-formatted callouts in Obsidian.**  
@@ -23,9 +18,10 @@ Below is a suggested **README.md** for your repository, incorporating all the la
    - **Option**: Intercept normal `Cmd+V` if Slack text is detected.
 
 2. **Callout-Style Messages**  
-   Each Slack message is turned into an Obsidian [callout](https://help.obsidian.md/How+to/Use+callouts), like:
+   Each Slack message is turned into an Obsidian callout, like:
    ```md
-   > [!quote] [[Alice]] [time:: 2025-02-05 09:15 AM]
+   >[!note]+ Message from [[Alice]]
+   > **Time:** 2025-02-05 09:15 AM
    > Hello! This is a Slack message.
    ```
 
@@ -43,8 +39,8 @@ Below is a suggested **README.md** for your repository, incorporating all the la
    - Detects lines starting with ```` ``` ```` (with optional language) and preserves them as Obsidian code fences.
 
 7. **Date & Time Parsing**  
-   - Detect lines like `Feb 2, 2025` to set a “current date” for subsequent times (`10:25 AM`).  
-   - Final timestamps appear as `YYYY-MM-DD HH:mm AM/PM` in `[time:: ...]` for Dataview queries.
+   - Detect lines like `Feb 2, 2025` to set a "current date" for subsequent times (`10:25 AM`).  
+   - Final timestamps appear as `YYYY-MM-DD HH:mm AM/PM`.
 
 8. **Large Paste Protection**  
    - A **Max Lines** setting truncates extremely large Slack logs to avoid performance issues.
@@ -65,7 +61,7 @@ Below is a suggested **README.md** for your repository, incorporating all the la
    ```bash
    npm run build
    ```
-4. Copy or symlink the compiled `main.js` and `manifest.json` (and `styles.css` if present) into your Vault’s `.obsidian/plugins/obsidian-slack-formatter/` folder.
+4. Copy or symlink the compiled `main.js` and `manifest.json` (and `styles.css` if present) into your Vault's `.obsidian/plugins/obsidian-slack-formatter/` folder.
 
 ### 2. Manual Installation
 1. Download the latest release files (`main.js` and `manifest.json`) from this repo (or build them yourself).
@@ -73,7 +69,7 @@ Below is a suggested **README.md** for your repository, incorporating all the la
    ```
    YOUR_VAULT/.obsidian/plugins/obsidian-slack-formatter/
    ```
-3. In Obsidian, go to **Settings → Community Plugins**, disable “Safe mode” if necessary, and **enable** “Slack Formatter Plugin”.
+3. In Obsidian, go to **Settings → Community Plugins**, disable "Safe mode" if necessary, and **enable** "Slack Formatter Plugin".
 
 ## Configuration
 
@@ -91,7 +87,7 @@ Open **Settings → Community Plugins → Slack Formatter Plugin**. The followin
 - **Parse Slack Times & Dates**  
   - If enabled, lines like `10:25 AM` are combined with any detected date line (`Feb 2, 2025`) to produce a full date/time.  
 - **Highlight Slack Threads**  
-  - If Slack text references “View thread” or “replies,” the plugin can generate a clickable link if an archive URL is included, or note `(no link)` otherwise.  
+  - If Slack text references "View thread" or "replies," create a thread info line.
 - **Max lines to process**  
   - Prevents performance issues. E.g., if you set `20000`, any paste exceeding 20,000 lines is truncated.
 
@@ -113,7 +109,7 @@ Slack text `<@U123ABC>` → `[[Alice]]`.
   "C99988": "random"
 }
 ```
-Slack thread archives with `C01234` become “#general” in the link label.
+Slack thread archives with `C01234` become "#general" in the link label.
 
 **Emoji Map (JSON)**  
 ```json
@@ -137,24 +133,27 @@ Any `:smile:` is replaced with `😄`.
 **Raw Slack snippet:**
 ```
 February 5th, 2025
-Alice (Datadog)
+Alice
 10:25 AM
 Hey team, just deployed to staging
 Bob
 10:27 AM
 @Alice Great! Let's test it thoroughly
-View thread <https://workspace.slack.com/archives/C01234/p1675601254.000400>
+3 replies
 ```
 
 **Result in Obsidian:**
 ```md
-> [!quote] [[Alice]] [time:: 2025-02-05 10:25 AM]
+>[!note]+ Message from [[Alice]]
+> **Time:** 2025-02-05 10:25 AM
+>
 > Hey team, just deployed to staging
 
-> [!quote] [[Bob]] [time:: 2025-02-05 10:27 AM]
+>[!note]+ Message from [[Bob]]
+> **Time:** 2025-02-05 10:27 AM
+>
 > [[Alice]] Great! Let's test it thoroughly
-
-- [Thread in #general at 1675601254.000400](https://workspace.slack.com/archives/C01234/p1675601254.000400)
+> **Thread:** 3 replies
 ```
 
 ## Troubleshooting
@@ -162,9 +161,9 @@ View thread <https://workspace.slack.com/archives/C01234/p1675601254.000400>
 - **Plugin Not Loading**:  
   Restart Obsidian and ensure you have placed `main.js` and `manifest.json` in the correct folder, then enable under **Settings → Community Plugins**.  
 - **Formatting Issues**:  
-  Check Obsidian’s console (`Ctrl+Shift+I` or `Cmd+Opt+I`) for errors.  
+  Check Obsidian's console (`Ctrl+Shift+I` or `Cmd+Opt+I`) for errors.  
 - **Clipboard Permissions**:  
-  If you see an error about “Clipboard API not available,” ensure Obsidian has permission to read your clipboard.  
+  If you see an error about "Clipboard API not available," ensure Obsidian has permission to read your clipboard.  
 - **Truncated Pasting**:  
   If you pasted an extremely large Slack log, the plugin truncates after the configured **Max lines**. Increase the limit in **Settings** if needed.
 
@@ -174,15 +173,4 @@ Pull requests and feature suggestions are welcome. If you have a large Slack exp
 
 ## License
 
-[MIT](LICENSE)
-```
-
----
-
-### Notes on the Updated README
-
-- We integrated **all** the plugin’s features in a clear structure (Installation, Configuration, Usage, Examples, Troubleshooting).  
-- The example shows how a real Slack snippet transforms.  
-- We reference how to build from source and how to install manually, covering the typical Obsidian plugin workflow.
-
-With this updated code (including a user-configurable **maxLines**) and README, your Slack Formatter Plugin is now well-documented, user-friendly, and ready for advanced Slack -> Obsidian conversions! Enjoy.
+[The UnLicense](LICENSE)
