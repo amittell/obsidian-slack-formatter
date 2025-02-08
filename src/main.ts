@@ -1,6 +1,6 @@
 /**
  * Formats Slack conversations pasted into Obsidian
- * @version 0.0.5
+ * @version 0.0.6
  * Author: Alex Mittell
  */
 
@@ -132,7 +132,7 @@ export default class SlackFormatPlugin extends Plugin {
             editor.replaceSelection(formatted);
             return false;
           }
-          return;
+          return true;
         })
       );
     }
@@ -754,6 +754,7 @@ ${body}`;
   }
 }
 
+// Update the ConfirmSlackModal to be more visible
 class ConfirmSlackModal extends Modal {
   onResult: (confirmed: boolean) => void;
 
@@ -764,25 +765,54 @@ class ConfirmSlackModal extends Modal {
 
   onOpen() {
     const { contentEl } = this;
-    contentEl.createEl('h2', { text: 'Slack text detected' });
-    contentEl.createEl('p', { text: 'Convert Slack text to formatted Markdown?' });
+    
+    // Clear existing content
+    contentEl.empty();
+    
+    // Add styles to make the modal more prominent
+    this.modalEl.style.width = '400px';
+    this.modalEl.style.padding = '20px';
+    
+    // Create header
+    const header = contentEl.createEl('h2', { 
+      text: 'Slack Text Detected',
+      cls: 'slack-confirm-header'
+    });
+    header.style.marginBottom = '15px';
+    header.style.color = 'var(--text-accent)';
 
+    // Create description
+    const desc = contentEl.createEl('p', { 
+      text: 'Would you like to convert this Slack text to formatted Markdown?',
+      cls: 'slack-confirm-desc'
+    });
+    desc.style.marginBottom = '20px';
+
+    // Create button container
     const btnDiv = contentEl.createDiv('modal-button-container');
     btnDiv.style.display = 'flex';
-    btnDiv.style.justifyContent = 'space-between';
-    btnDiv.style.marginTop = '1rem';
+    btnDiv.style.justifyContent = 'flex-end';
+    btnDiv.style.gap = '10px';
 
-    const yesBtn = new ButtonComponent(btnDiv);
-    yesBtn.setButtonText('Yes').onClick(() => {
-this.onResult(true);
-      this.close();
-    });
+    // Create buttons
+    const yesBtn = new ButtonComponent(btnDiv)
+      .setButtonText('Yes, Format It')
+      .onClick(() => {
+        this.onResult(true);
+        this.close();
+      });
 
-    const noBtn = new ButtonComponent(btnDiv);
-    noBtn.setButtonText('No').onClick(() => {
-      this.onResult(false);
-      this.close();
-    });
+    const noBtn = new ButtonComponent(btnDiv)
+      .setButtonText('No, Regular Paste')
+      .onClick(() => {
+        this.onResult(false);
+        this.close();
+      });
+
+    // Style buttons
+    yesBtn.buttonEl.style.backgroundColor = 'var(--interactive-accent)';
+    yesBtn.buttonEl.style.color = 'var(--text-on-accent)';
+    noBtn.buttonEl.style.backgroundColor = 'var(--interactive-normal)';
   }
 
   onClose() {

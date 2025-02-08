@@ -1,9 +1,9 @@
 {
-  "id": "obsidian-slack-formatter",
+  "id": "slack-formatter",
   "name": "Slack Formatter Plugin",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "minAppVersion": "1.2.0",
-  "description": "Formats pasted Slack threads with proper Markdown formatting",
+  "description": "Formats pasted Slack threads with markdown formatting",
   "author": "Alex Mittell",
   "authorUrl": "https://github.com/amittell",
   "isDesktopOnly": false,
