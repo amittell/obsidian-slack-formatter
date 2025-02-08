@@ -1,6 +1,6 @@
 /**
  * Formats Slack conversations pasted into Obsidian
- * @version 0.0.4
+ * @version 0.0.5
  * Author: Alex Mittell
  */
 
@@ -83,6 +83,11 @@ export default class SlackFormatPlugin extends Plugin {
     mostActiveUser: undefined
   };
   private userMessageCounts: Record<string, number> = {};
+  private lastKnownUser: string = '';
+  private lastMessageTime: string = '';
+  private isMessageContinuation: boolean = false;
+  private inCodeBlock: boolean = false;
+  private inQuotedBlock: boolean = false;
 
   async onload() {
     console.log("Loading SlackFormatPlugin...");
@@ -156,6 +161,52 @@ export default class SlackFormatPlugin extends Plugin {
     console.log("Unloading SlackFormatPlugin...");
   }
 
+private handleMessageStart(line: string): { user: string; time: string; remainder: string } | null {
+    // Try to match a line with just a username
+    const nameOnlyMatch = line.match(/^([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)$/);
+    if (nameOnlyMatch) {
+      return {
+        user: nameOnlyMatch[1],
+        time: '', // Time will be set by the next line
+        remainder: ''
+      };
+    }
+
+    // Handle doubled usernames in DMs (e.g., "AlexAlex")
+    const doubledNameMatch = line.match(/^([A-Z][a-z]+)(?:\1)\s+(\d{1,2}:\d{2}(?:\s?[AaPp]\.?[Mm]\.?)?)/);
+    if (doubledNameMatch) {
+      const remainder = line.substr(doubledNameMatch[0].length).trim();
+      return {
+        user: doubledNameMatch[1],
+        time: doubledNameMatch[2],
+        remainder
+      };
+    }
+
+    // Handle standard message format
+    const messageStartMatch = line.match(/^([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+(\d{1,2}:\d{2}(?:\s?[AaPp]\.?[Mm]\.?)?)/);
+    if (messageStartMatch) {
+      const remainder = line.substr(messageStartMatch[0].length).trim();
+      return {
+        user: messageStartMatch[1],
+        time: messageStartMatch[2],
+        remainder
+      };
+    }
+
+    // Handle timestamp-only lines for message continuation
+    const timeOnlyMatch = line.match(/^(\d{1,2}:\d{2}(?:\s?[AaPp]\.?[Mm]\.?)?)$/);
+    if (timeOnlyMatch && this.lastKnownUser) {
+      return {
+        user: this.lastKnownUser,
+        time: timeOnlyMatch[1],
+        remainder: ''
+      };
+    }
+
+    return null;
+  }
+
   private parseSlackThreadUrl(url: string): string | null {
     const re = /archives\/([A-Z0-9]+)\/p(\d+)\.(\d+)/i;
     const m = url.match(re);
@@ -221,6 +272,36 @@ export default class SlackFormatPlugin extends Plugin {
     });
   }
 
+  private handleSlackMetadataLine(line: string): false | string | undefined {
+    const trimmed = line.trim();
+    
+    // Skip empty lines and metadata
+    if (trimmed === '' || trimmed === 'NEW' || trimmed === '1') return false;
+    
+    // Handle thread metadata
+    if (/(view thread)|(replies?)/i.test(trimmed)) {
+      const replyMatch = trimmed.match(/(\d+)\s+repl(y|ies)/i);
+      if (replyMatch) {
+        const replyCount = parseInt(replyMatch[1], 10);
+        this.threadStats.threadCount++;
+        return `**Thread:** ${replyCount} ${replyCount === 1 ? 'reply' : 'replies'}`;
+      }
+      return false;
+    }
+
+    // Skip "Last reply" or "Last Activity" lines
+    if (/(Last reply)|(Last Activity)/i.test(trimmed)) return false;
+    
+    // Handle duplicated names in DMs
+    const dmNameMatch = trimmed.match(/^([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\1\s+/);
+    if (dmNameMatch) {
+      this.lastKnownUser = dmNameMatch[1];
+      return false;
+    }
+
+    return undefined;
+  }
+
   private formatThreadInfo(replyCount: number): string {
     if (this.settings.collapseThreads && replyCount > this.settings.threadCollapseThreshold) {
       return `>\n> **Thread:** ${replyCount} replies (collapsed)`;
@@ -243,6 +324,32 @@ export default class SlackFormatPlugin extends Plugin {
   private isDuplicateMessage(message: string): boolean {
     const lastMessages = this.result.slice(-3);
     return lastMessages.some(msg => msg === message);
+  }
+
+  private isValidUsername(name: string): boolean {
+    return /^[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*$/.test(name) && 
+           !name.includes('?') &&
+           !name.includes('"') &&
+           !name.includes(':') &&
+           !name.startsWith('Message from') &&
+           !name.includes('replied to');
+  }
+
+  private isSystemMessage(line: string): boolean {
+    return line.includes('joined #') || 
+           line.includes('others joined') || 
+           line.includes('left #') || 
+           line.includes(' left.') ||
+           line.includes('replied to a thread');
+  }
+
+  private resetMessage() {
+    this.currentUser = '';
+    this.currentTime = '';
+    this.messageLines = [];
+    this.unknownUserActive = false;
+    this.threadInfo = '';
+    this.isMessageContinuation = false;
   }
 
   private formatLine(line: string): string {
@@ -275,7 +382,7 @@ export default class SlackFormatPlugin extends Plugin {
       if (this.isSlackFile(url) && this.isImageLink(url)) {
         return `![${fileName} (Slack Attachment)](${url})`;
       } else if (this.isSlackFile(url)) {
-        return `[${fileName} (Slack Attachment)](${url})`;
+return `[${fileName} (Slack Attachment)](${url})`;
       } else if (this.isImageLink(url)) {
         return `![${fileName}](${url})`;
       }
@@ -326,45 +433,9 @@ export default class SlackFormatPlugin extends Plugin {
     return output.trimEnd();
   }
 
-  private isSlackFile(url: string): boolean {
-    return url.includes('files.slack.com/');
-  }
-
-  private isImageLink(url: string): boolean {
-    return /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(url);
-  }
-
-  private isLikelySlack(clipboard: string): boolean {
-    if (/(view thread)|(replies?)/i.test(clipboard)) return true;
-    const lines = clipboard.split('\n');
-    for (let i = 0; i < lines.length - 1; i++) {
-      if (this.isTimeLine(lines[i + 1])) return true;
-    }
-    return false;
-  }
-
-  private handleSlackMetadataLine(line: string): false | string | undefined {
-    const trimmed = line.trim();
-    if (trimmed === '' || trimmed === 'NEW' || trimmed === '1') return false;
-    
-    if (/(view thread)|(replies?)/i.test(trimmed)) {
-      const replyMatch = trimmed.match(/(\d+)\s+repl(y|ies)/i);
-      if (replyMatch) {
-        const replyCount = parseInt(replyMatch[1], 10);
-        this.threadStats.threadCount++;
-        return `**Thread:** ${replyCount} ${replyCount === 1 ? 'reply' : 'replies'}`;
-      }
-      return false;
-    }
-    if (/(Last reply)|(Last Activity)/i.test(trimmed)) {
-      return false;
-    }
-    return undefined;
-  }
-
   private flushMessage() {
     if (this.currentUser && this.currentTime) {
-      // Skip messages that are only about joining/leaving
+      // Skip join/leave messages
       if (this.messageLines.every(line => 
         line.includes('joined #') || 
         line.includes('others joined') || 
@@ -373,18 +444,13 @@ export default class SlackFormatPlugin extends Plugin {
         line.trim() === 'joined.' ||
         line.trim() === 'left.'
       )) {
-        this.currentUser = '';
-        this.currentTime = '';
-        this.messageLines = [];
-        this.unknownUserActive = false;
+        this.resetMessage();
         return;
       }
 
       const lines = this.messageLines
         .map(ln => ln.trim())
-        .filter(ln => ln.length > 0 && !ln.includes('joined #') && 
-                !ln.includes('others joined') && !ln.includes('left #') && 
-                !ln.includes(' left.'));
+        .filter(ln => ln.length > 0 && !this.isSystemMessage(ln));
       
       if (lines.length > 0) {
         const formattedBody = lines
@@ -404,7 +470,9 @@ export default class SlackFormatPlugin extends Plugin {
           timeLabel = this.parseAndFormatTime(timeLabel);
         }
 
-        const userDisplay = this.currentUser === 'Unknown user' ? this.currentUser : `[[${this.currentUser}]]`;
+        // Only wrap in [[]] if it's a valid username
+        const userDisplay = this.isValidUsername(this.currentUser) ? 
+          `[[${this.currentUser}]]` : this.currentUser;
         
         let messageBlock = [
           `>[!note]+ Message from ${userDisplay}`,
@@ -413,7 +481,6 @@ export default class SlackFormatPlugin extends Plugin {
           formattedBody
         ];
         
-        // Add thread info inside the quote block if it exists
         if (this.threadInfo) {
           messageBlock.push(`> ${this.threadInfo}`);
         }
@@ -425,11 +492,16 @@ export default class SlackFormatPlugin extends Plugin {
         }
       }
     }
-    this.currentUser = '';
-    this.currentTime = '';
-    this.messageLines = [];
-    this.unknownUserActive = false;
-    this.threadInfo = '';
+    this.resetMessage();
+  }
+
+  private isLikelySlack(clipboard: string): boolean {
+    if (/(view thread)|(replies?)/i.test(clipboard)) return true;
+    const lines = clipboard.split('\n');
+    for (let i = 0; i < lines.length - 1; i++) {
+      if (this.isTimeLine(lines[i + 1])) return true;
+    }
+    return false;
   }
 
   formatSlackContent(input: string): string {
@@ -446,6 +518,11 @@ export default class SlackFormatPlugin extends Plugin {
       mostActiveUser: undefined
     };
     this.userMessageCounts = {};
+    this.lastKnownUser = '';
+    this.lastMessageTime = '';
+    this.isMessageContinuation = false;
+    this.inCodeBlock = false;
+    this.inQuotedBlock = false;
 
     let lines = input.split('\n');
     if (lines.length > this.settings.maxLines) {
@@ -453,57 +530,50 @@ export default class SlackFormatPlugin extends Plugin {
       lines = lines.slice(0, this.settings.maxLines);
     }
 
-    let inCodeBlock = false;
-    let inQuotedBlock = false;
-
-    this.currentUser = '';
-    this.currentTime = '';
-    this.messageLines = [];
-    this.unknownUserActive = false;
-
     for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
+      const line = lines[i].trim();
+      
+      if (line === '') continue;
 
-      if (line.trim() === '') continue;
-
+      // Handle code blocks
       if (this.settings.enableCodeBlocks) {
-        const trimmed = line.trim();
-        const fenceMatch = trimmed.match(/^```(\w+)?/);
+        const fenceMatch = line.match(/^```(\w+)?/);
         if (fenceMatch) {
           this.flushMessage();
-          if (!inCodeBlock) {
-            inCodeBlock = true;
+          if (!this.inCodeBlock) {
+            this.inCodeBlock = true;
             this.result.push(`\`\`\`${fenceMatch[1] || ''}`.trimEnd());
             continue;
           } else {
-            inCodeBlock = false;
+            this.inCodeBlock = false;
             this.result.push('```');
             continue;
           }
         }
-        if (inCodeBlock) {
+        if (this.inCodeBlock) {
           this.result.push(line);
           continue;
         }
       }
 
-      const tripleQuote = line.trim().match(/^>>>(.*)/);
+      const tripleQuote = line.match(/^>>>(.*)/);
       if (tripleQuote) {
         this.flushMessage();
-        if (!inQuotedBlock) {
-          inQuotedBlock = true;
+        if (!this.inQuotedBlock) {
+          this.inQuotedBlock = true;
           const after = tripleQuote[1].trim();
           if (after) this.result.push(`> ${this.formatLine(after)}`);
         } else {
-          inQuotedBlock = false;
+          this.inQuotedBlock = false;
         }
         continue;
       }
-      if (inQuotedBlock) {
+      if (this.inQuotedBlock) {
         this.result.push(`> ${this.formatLine(line)}`);
         continue;
       }
 
+      // Check for metadata lines
       const metaHandled = this.handleSlackMetadataLine(line);
       if (metaHandled === false) {
         continue;
@@ -512,55 +582,58 @@ export default class SlackFormatPlugin extends Plugin {
         continue;
       }
 
-      if (line.includes('joined #') || line.includes('others joined') || 
-          line.includes('left #') || line.includes(' left.')) {
-        continue;
-      }
-
-      const singleLineRegex = /^([\wÀ-ú'.-]+)\s+(\d{1,2}:\d{2}\s?[AaPp]\.?[Mm]\.?)(.*)/;
-      const match = line.match(singleLineRegex);
-      if (match) {
+      // Try to detect message start
+      const messageStart = this.handleMessageStart(line);
+      if (messageStart) {
         this.flushMessage();
-        this.currentUser = match[1].trim();
-        this.currentTime = match[2].trim();
-        const remainder = match[3].trim();
-        if (remainder) this.messageLines.push(remainder);
-        this.currentMessageNumber++;
+        this.currentUser = messageStart.user;
+        this.currentTime = messageStart.time;
+        this.lastKnownUser = this.currentUser;
+        this.lastMessageTime = this.currentTime;
+        
+        if (messageStart.remainder) {
+          this.messageLines.push(messageStart.remainder);
+        }
         continue;
       }
 
-      if (this.settings.enableTimestampParsing && this.isDateLine(line)) {
-        const dt = this.parseDateLine(line);
-        if (dt) this.detectedDates.push(dt);
+      // Handle timestamp-only lines
+      const timeOnlyMatch = line.match(/^(\d{1,2}:\d{2}(?:\s?[AaPp]\.?[Mm]\.?)?)\s*$/);
+      if (timeOnlyMatch) {
+        if (this.lastKnownUser && this.currentUser !== this.lastKnownUser) {
+          this.flushMessage();
+          this.currentUser = this.lastKnownUser;
+        }
+        this.currentTime = timeOnlyMatch[1];
         continue;
       }
 
-      if (this.settings.enableTimestampParsing && i + 1 < lines.length && this.isTimeLine(lines[i + 1])) {
-        this.flushMessage();
-        this.currentUser = line.replace(/\(.*?\)$/, '').trim();
-        this.currentTime = lines[i + 1].trim();
-        i++;
-        this.currentMessageNumber++;
-        continue;
-      }
-
+      // If we have a current user or are in a continuation, add the line to current message
       if (this.currentUser) {
         this.messageLines.push(line);
         continue;
       }
 
+      // If we get here and have a lastKnownUser, treat as continuation
+      if (this.lastKnownUser) {
+        this.currentUser = this.lastKnownUser;
+        this.currentTime = this.lastMessageTime;
+        this.messageLines.push(line);
+        continue;
+      }
+
+      // Fallback for unknown messages
       if (!this.unknownUserActive) {
         this.flushMessage();
         this.currentUser = 'Unknown user';
         this.currentTime = '???:??';
         this.unknownUserActive = true;
-        this.currentMessageNumber++;
       }
       this.messageLines.push(line);
     }
 
     this.flushMessage();
-    if (inCodeBlock) {
+    if (this.inCodeBlock) {
       this.result.push('```');
     }
 
@@ -582,6 +655,14 @@ export default class SlackFormatPlugin extends Plugin {
     }
 
     return this.result.join('\n\n');
+  }
+
+  private isSlackFile(url: string): boolean {
+    return url.includes('files.slack.com/');
+  }
+
+  private isImageLink(url: string): boolean {
+    return /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(url);
   }
 
   private async askSlackConversion(): Promise<boolean> {
@@ -693,7 +774,7 @@ class ConfirmSlackModal extends Modal {
 
     const yesBtn = new ButtonComponent(btnDiv);
     yesBtn.setButtonText('Yes').onClick(() => {
-      this.onResult(true);
+this.onResult(true);
       this.close();
     });
 
