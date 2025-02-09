@@ -48,9 +48,9 @@
 ## Installation
 
 ### 1. From Release (Recommended)
-1. Download the latest release from the [releases page](https://github.com/amittell/obsidian-slack-formatter/releases/tag/v0.0.4)
+1. Download the latest release from the [releases page](https://github.com/amittell/obsidian-slack-formatter/releases/tag/0.0.6)
 2. Extract the downloaded zip file
-3. Create a new folder: `.obsidian/plugins/obsidian-slack-formatter/` in your vault
+3. Create a new folder: `/PATH/TO/YOUR?VAULT/.obsidian/plugins/obsidian-slack-formatter/` in your vault
 4. Copy both `main.js` and `manifest.json` into the new folder
 5. Open Obsidian
 6. Go to **Settings → Community Plugins**
@@ -73,8 +73,12 @@
    ```bash
    npm run build
    ```
-4. Copy or symlink the compiled `main.js` and `manifest.json` (and `styles.css` if present) into your Vault's `.obsidian/plugins/obsidian-slack-formatter/` folder.
-5. Restart Obsidian and enable the plugin in Settings → Community Plugins
+4, Create a folder in your Vault's plugin directory:
+   ```bash
+   mkdir -P /PATH/TO/YOUR/VAULT/.obsidian/plugins/slack-formatter/
+   ```
+5. Copy or symlink the compiled `main.js` and `manifest.json` into your Vault's `.obsidian/plugins/slack-formatter/` folder.
+6. Restart Obsidian and enable the plugin in Settings → Community Plugins
 
 ## Configuration
 
