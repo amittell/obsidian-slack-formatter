@@ -1,6 +1,6 @@
 /**
  * Formats Slack conversations pasted into Obsidian
- * @version 0.0.6
+ * @version 0.0.7
  * Author: Alex Mittell
  */
 
@@ -89,6 +89,20 @@ export default class SlackFormatPlugin extends Plugin {
   private inCodeBlock: boolean = false;
   private inQuotedBlock: boolean = false;
 
+  // New properties to collect unattributed content
+  private initialContent: string[] = [];
+  private hasInitialContent: boolean = false;
+  private avatarImagePattern = /^!\[\]\((https:\/\/ca\.slack-edge\.com\/[^)]+)\)$/;
+  private messageStarted: boolean = false;
+  private currentAvatar: string = '';
+  private lastDateLine: string = '';
+  private inReactionBlock: boolean = false;
+  private reactionLines: string[] = [];
+
+  // New properties to track problematic URL formatting
+  private brokenLinkPattern = /^\]\(([^)]+)\)/;
+  private slackArchiveUrlPattern = /https:\/\/[^.]+\.slack\.com\/archives\/[A-Z0-9]+\/p\d+/;
+
   async onload() {
     console.log("Loading SlackFormatPlugin...");
 
@@ -161,53 +175,134 @@ export default class SlackFormatPlugin extends Plugin {
     console.log("Unloading SlackFormatPlugin...");
   }
 
+private debugLog(message: string, data?: any) {
+  console.log(`[SlackFormat] ${message}`, data || '');
+}
+
 private handleMessageStart(line: string): { user: string; time: string; remainder: string } | null {
-    // Try to match a line with just a username
-    const nameOnlyMatch = line.match(/^([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)$/);
-    if (nameOnlyMatch) {
-      return {
-        user: nameOnlyMatch[1],
-        time: '', // Time will be set by the next line
-        remainder: ''
-      };
-    }
-
-    // Handle doubled usernames in DMs (e.g., "AlexAlex")
-    const doubledNameMatch = line.match(/^([A-Z][a-z]+)(?:\1)\s+(\d{1,2}:\d{2}(?:\s?[AaPp]\.?[Mm]\.?)?)/);
-    if (doubledNameMatch) {
-      const remainder = line.substr(doubledNameMatch[0].length).trim();
-      return {
-        user: doubledNameMatch[1],
-        time: doubledNameMatch[2],
-        remainder
-      };
-    }
-
-    // Handle standard message format
-    const messageStartMatch = line.match(/^([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+(\d{1,2}:\d{2}(?:\s?[AaPp]\.?[Mm]\.?)?)/);
-    if (messageStartMatch) {
-      const remainder = line.substr(messageStartMatch[0].length).trim();
-      return {
-        user: messageStartMatch[1],
-        time: messageStartMatch[2],
-        remainder
-      };
-    }
-
-    // Handle timestamp-only lines for message continuation
-    const timeOnlyMatch = line.match(/^(\d{1,2}:\d{2}(?:\s?[AaPp]\.?[Mm]\.?)?)$/);
-    if (timeOnlyMatch && this.lastKnownUser) {
-      return {
-        user: this.lastKnownUser,
-        time: timeOnlyMatch[1],
-        remainder: ''
-      };
-    }
-
+  this.debugLog("Checking line:", line);
+  
+  // Skip image-only lines that match avatar pattern - store for the next message
+  if (this.avatarImagePattern.test(line.trim())) {
+    this.currentAvatar = line.trim();
     return null;
   }
+  
+  // Extract time pattern first - looking for format like 12:35 PM or 9:47 AM
+  const timePattern = /\[?(\d{1,2}:\d{2}\s*(?:AM|PM|am|pm))\]?/;
+  const timeMatch = line.match(timePattern);
+  
+  if (!timeMatch) return null;
+  
+  const time = timeMatch[1];
+  const timeParts = line.split(time);
+  
+  if (timeParts.length < 2) return null;
+  
+  let beforeTime = timeParts[0].trim();
+  let afterTime = timeParts.slice(1).join(time).trim();
+  
+  // Fix Slack archive URLs that might be attached to the timestamp
+  if (afterTime.startsWith('](https://') && this.slackArchiveUrlPattern.test(afterTime)) {
+    // This is a Slack archive URL - remove it from the remainder
+    const urlEndIndex = afterTime.indexOf(')', 2);
+    if (urlEndIndex > 0) {
+      afterTime = afterTime.substring(urlEndIndex + 1).trim();
+    }
+  }
+  
+  // Remove emoji from username for better parsing
+  let user = beforeTime;
+  let hasEmoji = false;
+  
+  // Check for emoji in username and strip it out
+  if (beforeTime.includes('![')) {
+    hasEmoji = true;
+    user = beforeTime.split('![')[0].trim();
+  } else if (beforeTime.includes('![:')) {
+    hasEmoji = true;
+    user = beforeTime.split('![:')[0].trim();
+  }
+  
+  // Fix doubled usernames more aggressively
+  user = this.fixDuplicatedUsername(user);
+  
+  this.debugLog(`Found message with user: ${user}, time: ${time}, emoji: ${hasEmoji}, remainder: ${afterTime}`);
+  this.messageStarted = true;
+  
+  return {
+    user: user,
+    time: time,
+    remainder: afterTime
+  };
+}
 
-  private parseSlackThreadUrl(url: string): string | null {
+// Enhanced username duplication detection and fixing
+// Handle doubled usernames specifically for "FirstName LastNameFirstName LastName" without space
+private fixDuplicatedUsername(username: string): string {
+  // Special case for "Alex MittellAlex Mittell" pattern
+  const noSpaceNamePattern = username.match(/^([A-Z][a-z]+)\s+([A-Z][a-z]+)([A-Z][a-z]+)\s+([A-Z][a-z]+)$/i);
+  if (noSpaceNamePattern) {
+    const firstName1 = noSpaceNamePattern[1].toLowerCase();
+    const lastName1 = noSpaceNamePattern[2].toLowerCase(); 
+    const firstName2 = noSpaceNamePattern[3].toLowerCase();
+    const lastName2 = noSpaceNamePattern[4].toLowerCase();
+    
+    if (firstName1 === firstName2 && lastName1 === lastName2) {
+      return `${noSpaceNamePattern[1]} ${noSpaceNamePattern[2]}`;
+    }
+  }
+  
+  // First check for exact duplication pattern (e.g. "Byron LukByron Luk")
+  const exactDupeMatch = username.match(/^([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)(\s+\1)+$/i);
+  if (exactDupeMatch) {
+    return exactDupeMatch[1];
+  }
+  
+  // Check for patterns like "FirstName LastNameFirstName LastName"
+  const combinedNameMatch = username.match(/^([A-Z][a-z]+)\s+([A-Z][a-z]+)\1\s+\2$/i);
+  if (combinedNameMatch) {
+    return `${combinedNameMatch[1]} ${combinedNameMatch[2]}`;
+  }
+  
+  // Handle Name1 Name2Name1 Name2 pattern
+  const wordBoundaryMatch = username.match(/^([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+?)([A-Z][a-z]+.*)$/i);
+  if (wordBoundaryMatch) {
+    const firstPart = wordBoundaryMatch[1];
+    const secondPart = wordBoundaryMatch[2];
+    
+    // If second part starts with a capital letter where it shouldn't
+    if (firstPart.trim().length > 0 && secondPart.trim().length > 0 
+        && secondPart.charAt(0).match(/[A-Z]/)) {
+      // Check if first part is at the start of second part
+      if (secondPart.toLowerCase().startsWith(firstPart.toLowerCase())) {
+        return firstPart;
+      }
+    }
+  }
+  
+  // Check for repeated names with spaces
+  const parts = username.split(/\s+/);
+  if (parts.length >= 4) {
+    const midpoint = Math.floor(parts.length / 2);
+    const firstHalf = parts.slice(0, midpoint).join(' ');
+    const secondHalf = parts.slice(midpoint).join(' ');
+    
+    if (firstHalf.toLowerCase() === secondHalf.toLowerCase()) {
+      return firstHalf;
+    }
+  }
+  
+  // If we couldn't match any specific pattern but the name is suspiciously long,
+  // make a best guess by taking the first two words if they look like a name
+  if (parts.length >= 4 && parts.every(p => p.charAt(0).match(/[A-Z]/))) {
+    return `${parts[0]} ${parts[1]}`;
+  }
+  
+  return username;
+}
+
+private parseSlackThreadUrl(url: string): string | null {
     const re = /archives\/([A-Z0-9]+)\/p(\d+)\.(\d+)/i;
     const m = url.match(re);
     if (m) {
@@ -225,12 +320,37 @@ private handleMessageStart(line: string): { user: string; time: string; remainde
   }
 
   private isDateLine(line: string): boolean {
-    return /\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\b/i.test(line)
-      && /\b\d{1,2},?\s*\d{4}/.test(line);
+    // Check for day names first (most reliable)
+    const dayPattern = /^(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday),\s+(?:January|February|March|April|May|June|July|August|September|October|November|December)/i;
+    
+    // If it's a clear day marker like "Friday, February 14th"
+    if (dayPattern.test(line)) {
+      this.lastDateLine = line;
+      return true;
+    }
+    
+    // Check for month names
+    const monthPattern = /\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\b/i;
+    if (!monthPattern.test(line)) return false;
+    
+    // Check for standard date format like "Feb 2, 2023"
+    const standardDatePattern = /\b\d{1,2},?\s*\d{4}\b/i;
+    
+    // Check for Slack-style date like "Feb 6th at 7:47 PM"
+    const slackDatePattern = /\b\d{1,2}(?:st|nd|rd|th)?\s+at\s+\d{1,2}:\d{2}\b/i;
+    
+    // If it's a date, store it for section headers
+    const isDate = standardDatePattern.test(line) || slackDatePattern.test(line);
+    if (isDate) {
+      this.lastDateLine = line;
+    }
+    
+    return isDate;
   }
 
   private parseDateLine(line: string): Date | null {
-    const cleaned = line.replace(/(\d+)(st|nd|rd|th)/gi, '$1');
+    // Handle both standard dates and Slack-style dates like "Feb 6th at 7:47 PM"
+    const cleaned = line.replace(/(\d+)(st|nd|rd|th)/gi, '$1').replace(/\s+at\s+/i, ' ');
     const dt = new Date(cleaned);
     if (isNaN(dt.getTime())) return null;
     return dt;
@@ -278,27 +398,51 @@ private handleMessageStart(line: string): { user: string; time: string; remainde
     // Skip empty lines and metadata
     if (trimmed === '' || trimmed === 'NEW' || trimmed === '1') return false;
     
-    // Handle thread metadata
-    if (/(view thread)|(replies?)/i.test(trimmed)) {
-      const replyMatch = trimmed.match(/(\d+)\s+repl(y|ies)/i);
-      if (replyMatch) {
-        const replyCount = parseInt(replyMatch[1], 10);
-        this.threadStats.threadCount++;
-        return `**Thread:** ${replyCount} ${replyCount === 1 ? 'reply' : 'replies'}`;
-      }
+    // Check for reaction patterns (lines with multiple emoji counts)
+    const reactionPattern = /!?\[:[\w_-]+:\]\s*\d+/;
+    if (reactionPattern.test(trimmed)) {
+      this.inReactionBlock = true;
+      this.reactionLines.push(trimmed);
       return false;
     }
-
+    
+    // Enhanced thread metadata handling
+    if (/(view thread)|(replies?)|(\d+ repl(y|ies))|(Last reply)/i.test(trimmed)) {
+        const replyMatch = trimmed.match(/(\d+)\s+repl(y|ies)/i);
+        if (replyMatch) {
+            const replyCount = parseInt(replyMatch[1], 10);
+            this.threadStats.threadCount++;
+            return `**Thread:** ${replyCount} ${replyCount === 1 ? 'reply' : 'replies'}`;
+        }
+        return false;
+    }
+    
     // Skip "Last reply" or "Last Activity" lines
     if (/(Last reply)|(Last Activity)/i.test(trimmed)) return false;
     
     // Handle duplicated names in DMs
     const dmNameMatch = trimmed.match(/^([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\1\s+/);
     if (dmNameMatch) {
-      this.lastKnownUser = dmNameMatch[1];
+        this.lastKnownUser = dmNameMatch[1];
+        return false;
+    }
+    
+    // Skip lines with just emoji reactions
+    if (/^!?\[:[\w-]+:\]\d*$/.test(trimmed)) return false;
+    
+    // Skip date lines like "Friday, February 14th" - these are handled separately
+    if (/^(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday),\s+(?:January|February|March|April|May|June|July|August|September|October|November|December)/i.test(trimmed)) {
+        return false;
+    }
+    
+    // If we haven't found a message start yet, and this isn't handled metadata,
+    // we'll collect it as initial content
+    if (!this.messageStarted) {
+      this.initialContent.push(trimmed);
+      this.hasInitialContent = true;
       return false;
     }
-
+    
     return undefined;
   }
 
@@ -350,14 +494,44 @@ private handleMessageStart(line: string): { user: string; time: string; remainde
     this.unknownUserActive = false;
     this.threadInfo = '';
     this.isMessageContinuation = false;
+    this.currentAvatar = '';
   }
 
   private formatLine(line: string): string {
     if (!line.trim()) return '';
     
+    // Handle system messages
     if (line.includes('joined #') || line.includes('others joined') || 
         line.includes('left #') || line.includes(' left.')) {
       return '';
+    }
+    
+    // Fix broken Slack archive URLs that start with ](
+    if (line.trim().match(this.brokenLinkPattern)) {
+      const urlMatch = line.match(this.brokenLinkPattern);
+      if (urlMatch && this.slackArchiveUrlPattern.test(urlMatch[1])) {
+        // This is a broken Slack archive URL - skip it
+        return '';
+      }
+    }
+    
+    // Special handling for Slack images and URLs
+    if (line.trim().match(/^!\[.*?\]\(https?:\/\/.*?\)$/)) {
+      // Direct image Markdown line - return as is
+      return line.trim();
+    }
+
+    // Handle Slack image attachments which appear as ![filename](url)
+    if (line.trim().startsWith('[') && line.includes('![') && line.includes('](')) {
+      try {
+        // Extract image URL directly
+        const urlMatch = line.match(/\]\((https?:\/\/[^)]+)\)/);
+        if (urlMatch) {
+          return `![Image attachment](${urlMatch[1]})`;
+        }
+      } catch (e) {
+        // Fallback to original line if regex fails
+      }
     }
     
     let output = this.sanitizeMarkdown(line);
@@ -365,60 +539,90 @@ private handleMessageStart(line: string): { user: string; time: string; remainde
     if (output.trimStart().startsWith('>')) {
       output = '\\' + output.trimStart();
     }
-
+    
+    // Fix URL formatting issues - match Slack's explicit link format
+    output = output.replace(/\]\(([^)]+)\)\s+\(([^)]+)\)/g, ']($1)');
+    
+    // Better handle URLs in parentheses to avoid the doubled parentheses issue
     output = output.replace(/<(https?:\/\/[^|>]+)\|([^>]+)>/g, (m, url, text) => {
       if (this.isSlackFile(url) && this.isImageLink(url)) {
-        return `![${text} (Slack Attachment)](${url})`;
+        return `![${text}](${url})`;
       } else if (this.isSlackFile(url)) {
-        return `[${text} (Slack Attachment)](${url})`;
+        return `[${text}](${url})`;
       } else if (this.isImageLink(url)) {
         return `![${text}](${url})`;
       }
       return `[${text}](${url})`;
     });
-  
+    
+    // Handle plain URLs in angle brackets <url>
     output = output.replace(/<(https?:\/\/[^>]+)>/g, (m, url) => {
       const fileName = url.split('/').pop() || url;
       if (this.isSlackFile(url) && this.isImageLink(url)) {
-        return `![${fileName} (Slack Attachment)](${url})`;
+        return `![${fileName}](${url})`;
       } else if (this.isSlackFile(url)) {
-return `[${fileName} (Slack Attachment)](${url})`;
+        return `[${fileName}](${url})`;
       } else if (this.isImageLink(url)) {
         return `![${fileName}](${url})`;
       }
       return `[${url}](${url})`;
     });
-
+    
+    // Improved Slack emoji handling - for all emoji formats
+    output = output.replace(/!?\[:([a-z0-9_+-]+):\](?:\s*\d+)?(?:\([^)]+\))?\s*/gi, (m, code) => {
+      if (this.settings.enableEmoji) {
+        return this.emojiMap[code] ? this.emojiMap[code] : `:${code}:`;
+      }
+      return `:${code}:`;
+    });
+    
+    // Handle user mentions 
     output = output.replace(/<@([A-Z0-9]+)>/gi, (m, userId) => {
       const mappedUser = this.userMap[userId];
       return mappedUser ? `[[${mappedUser}]]` : `[[${userId}]]`;
     });
-
+    
     if (this.settings.enableMentions) {
       output = output.replace(/(^|\s)@(\w[\w.-]+)/g, (m, space, uname) => {
         return `${space}[[${uname}]]`;
       });
     }
-
+    
     if (this.settings.enableEmoji) {
-      output = output.replace(/:([a-z0-9_+\-]+):/gi, (m, code) => {
+      output = output.replace(/:([a-z0-9_+-]+):/gi, (m, code) => {
         return this.emojiMap[code] ? this.emojiMap[code] : m;
       });
     }
-
-    output = output.replace(/(^|[^"!])((https?:\/\/[^\s)]+))/g, (match, prefix, url) => {
-      if (prefix.match(/\]$/)) return match;
-      const fileName = url.split('/').pop() || url;
-      if (this.isSlackFile(url) && this.isImageLink(url)) {
-        return `${prefix}![${fileName} (Slack Attachment)](${url})`;
-      } else if (this.isSlackFile(url)) {
-        return `${prefix}[${fileName} (Slack Attachment)](${url})`;
-      } else if (this.isImageLink(url)) {
-        return `${prefix}![${fileName}](${url})`;
+    
+    // Handle URLs in text - avoid double markdown
+    if (!output.includes('](http')) {
+      output = output.replace(/(?<!!)\[(.*?)\]\((https?:\/\/[^)]+)\)/g, '$1 ($2)');
+      output = output.replace(/(^|[^"!(\[])((https?:\/\/[^\s)]+))/g, (match, prefix, url) => {
+        if (prefix.match(/\]$/)) return match;
+        const fileName = url.split('/').pop() || url;
+        if (this.isSlackFile(url) && this.isImageLink(url)) {
+          return `${prefix}![${fileName}](${url})`;
+        } else if (this.isSlackFile(url)) {
+          return `${prefix}[${fileName}](${url})`;
+        } else if (this.isImageLink(url)) {
+          return `${prefix}![${fileName}](${url})`;
+        }
+        return `${prefix}[${url}](${url})`;
+      });
+    }
+    
+    // Fix combined URLs that appear as ]([url])
+    output = output.replace(/\]\(\[(https?:\/\/[^)]+)\]\((https?:\/\/[^)]+)\)\)/g, ']($1)');
+    
+    // Fix broken Slack URLs at the beginning of lines
+    if (output.startsWith('](https://') && this.slackArchiveUrlPattern.test(output)) {
+      const endIndex = output.indexOf(')', 2);
+      if (endIndex > 0) {
+        output = output.substring(endIndex + 1).trim();
       }
-      return `${prefix}[${url}](${url})`;
-    });
-
+    }
+    
+    // Handle channel mentions
     output = output.replace(/(^|\s)#(\S+)/g, (match, space, channelWord) => {
       if (/^C[A-Z0-9]+$/i.test(channelWord)) {
         const mapped = this.channelMap[channelWord] || channelWord;
@@ -426,10 +630,13 @@ return `[${fileName} (Slack Attachment)](${url})`;
       }
       return `${space}[[#${channelWord}]]`;
     });
-
+    
+    // Handle bullet points and list formatting
     output = output.replace(/^(?:•|\-\s|\d+\.)\s?/, '- ');
+    
+    // Escape > characters to avoid conflicts with blockquote syntax
     output = output.replace(/(?<!\\)>/g, '\\>');
-
+    
     return output.trimEnd();
   }
 
@@ -448,9 +655,15 @@ return `[${fileName} (Slack Attachment)](${url})`;
         return;
       }
 
+      // Filter out broken URL lines that begin with ](
       const lines = this.messageLines
         .map(ln => ln.trim())
-        .filter(ln => ln.length > 0 && !this.isSystemMessage(ln));
+        .filter(ln => {
+          if (ln.match(this.brokenLinkPattern) && this.slackArchiveUrlPattern.test(ln)) {
+            return false; // Skip broken Slack archive URLs
+          }
+          return ln.length > 0 && !this.isSystemMessage(ln);
+        });
       
       if (lines.length > 0) {
         const formattedBody = lines
@@ -476,15 +689,48 @@ return `[${fileName} (Slack Attachment)](${url})`;
         
         let messageBlock = [
           `>[!note]+ Message from ${userDisplay}`,
-          `> **Time:** ${timeLabel}`,
-          `>`,
-          formattedBody
+          `> **Time:** ${timeLabel}`
         ];
+        
+        // Add date information if we have it and should include it
+        if (this.lastDateLine && this.settings.enableTimestampParsing) {
+          messageBlock.push(`> **Date:** ${this.lastDateLine}`);
+          this.lastDateLine = ''; // Clear after using it once
+        }
+        
+        // Add a blank line before content
+        messageBlock.push(`>`);
+        
+        // Add avatar if we have one - place it at the right location
+        if (this.currentAvatar) {
+          messageBlock.push(`> ${this.currentAvatar}`);
+        }
+        
+        // Add a blank line after avatar if we have one
+        if (this.currentAvatar) {
+          messageBlock.push(`>`);
+        }
+        
+        messageBlock.push(formattedBody);
         
         if (this.threadInfo) {
           messageBlock.push(`> ${this.threadInfo}`);
         }
-
+        
+        // Add reaction lines if we have any
+        if (this.reactionLines.length > 0 && this.settings.enableEmoji) {
+          const formattedReactions = this.reactionLines
+            .map(r => this.formatLine(r))
+            .filter(r => r)
+            .join(' ');
+            
+          if (formattedReactions) {
+            messageBlock.push(`> **Reactions:** ${formattedReactions}`);
+          }
+          this.reactionLines = [];
+          this.inReactionBlock = false;
+        }
+        
         const formattedMessage = messageBlock.filter(Boolean).join('\n');
 
         if (!this.isDuplicateMessage(formattedMessage)) {
@@ -505,6 +751,8 @@ return `[${fileName} (Slack Attachment)](${url})`;
   }
 
   formatSlackContent(input: string): string {
+    this.debugLog("Starting to format slack content");
+    // Reset state variables
     this.detectedDates = [];
     this.participantSet = new Set();
     this.result = [];
@@ -523,120 +771,272 @@ return `[${fileName} (Slack Attachment)](${url})`;
     this.isMessageContinuation = false;
     this.inCodeBlock = false;
     this.inQuotedBlock = false;
+    this.initialContent = [];
+    this.hasInitialContent = false;
+    this.messageStarted = false;
+    this.currentAvatar = '';
+    this.lastDateLine = '';
+    this.inReactionBlock = false;
+    this.reactionLines = [];
 
     let lines = input.split('\n');
     if (lines.length > this.settings.maxLines) {
       new Notice(`SlackFormatPlugin: Pasted text has ${lines.length} lines, truncating to ${this.settings.maxLines}.`);
       lines = lines.slice(0, this.settings.maxLines);
     }
-
+    
+    // First pass - look for formatting issues and clean up problematic patterns
+    let preprocessed = [];
     for (let i = 0; i < lines.length; i++) {
-      const line = lines[i].trim();
+      let line = lines[i].trim();
       
-      if (line === '') continue;
-
-      // Handle code blocks
-      if (this.settings.enableCodeBlocks) {
-        const fenceMatch = line.match(/^```(\w+)?/);
-        if (fenceMatch) {
-          this.flushMessage();
-          if (!this.inCodeBlock) {
-            this.inCodeBlock = true;
-            this.result.push(`\`\`\`${fenceMatch[1] || ''}`.trimEnd());
-            continue;
-          } else {
-            this.inCodeBlock = false;
-            this.result.push('```');
-            continue;
-          }
-        }
-        if (this.inCodeBlock) {
-          this.result.push(line);
-          continue;
-        }
-      }
-
-      const tripleQuote = line.match(/^>>>(.*)/);
-      if (tripleQuote) {
-        this.flushMessage();
-        if (!this.inQuotedBlock) {
-          this.inQuotedBlock = true;
-          const after = tripleQuote[1].trim();
-          if (after) this.result.push(`> ${this.formatLine(after)}`);
-        } else {
-          this.inQuotedBlock = false;
-        }
+      // Skip empty lines
+      if (!line) {
+        preprocessed.push('');
         continue;
       }
-      if (this.inQuotedBlock) {
-        this.result.push(`> ${this.formatLine(line)}`);
+      
+      // Handle broken archive URLs before any other processing
+      if (line.match(this.brokenLinkPattern) && this.slackArchiveUrlPattern.test(line)) {
+        // Skip this line entirely - it's a broken Slack archive URL
         continue;
       }
-
-      // Check for metadata lines
-      const metaHandled = this.handleSlackMetadataLine(line);
-      if (metaHandled === false) {
-        continue;
-      } else if (typeof metaHandled === 'string') {
-        this.threadInfo = metaHandled;
+      
+      // If it's an avatar image, keep as is
+      if (this.avatarImagePattern.test(line)) {
+        preprocessed.push(line);
         continue;
       }
-
-      // Try to detect message start
-      const messageStart = this.handleMessageStart(line);
-      if (messageStart) {
-        this.flushMessage();
-        this.currentUser = messageStart.user;
-        this.currentTime = messageStart.time;
-        this.lastKnownUser = this.currentUser;
-        this.lastMessageTime = this.currentTime;
-        
-        if (messageStart.remainder) {
-          this.messageLines.push(messageStart.remainder);
-        }
-        continue;
-      }
-
-      // Handle timestamp-only lines
-      const timeOnlyMatch = line.match(/^(\d{1,2}:\d{2}(?:\s?[AaPp]\.?[Mm]\.?)?)\s*$/);
-      if (timeOnlyMatch) {
-        if (this.lastKnownUser && this.currentUser !== this.lastKnownUser) {
-          this.flushMessage();
-          this.currentUser = this.lastKnownUser;
-        }
-        this.currentTime = timeOnlyMatch[1];
-        continue;
-      }
-
-      // If we have a current user or are in a continuation, add the line to current message
-      if (this.currentUser) {
-        this.messageLines.push(line);
-        continue;
-      }
-
-      // If we get here and have a lastKnownUser, treat as continuation
-      if (this.lastKnownUser) {
-        this.currentUser = this.lastKnownUser;
-        this.currentTime = this.lastMessageTime;
-        this.messageLines.push(line);
-        continue;
-      }
-
-      // Fallback for unknown messages
-      if (!this.unknownUserActive) {
-        this.flushMessage();
-        this.currentUser = 'Unknown user';
-        this.currentTime = '???:??';
-        this.unknownUserActive = true;
-      }
-      this.messageLines.push(line);
+      
+      preprocessed.push(line);
+    }
+    
+    lines = preprocessed;
+    
+    // Debugging for problematic patterns
+    if (input.includes("![:no_entry:]")) {
+      this.debugLog("Found content with emoji in username");
     }
 
+    // Second pass - check if we can detect any messages at all
+    let messageFound = false;
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (line === '') continue;
+        
+        const messageStart = this.handleMessageStart(line);
+        if (messageStart) {
+            messageFound = true;
+            break;
+        }
+    }
+
+    // If no message structure detected, use fallback parsing
+    if (!messageFound && lines.length > 0) {
+        console.log("SlackFormatPlugin: No message structure detected, using fallback parsing");
+        // Add first message as an unknown user to ensure something gets formatted
+        this.currentUser = lines[0].match(/^[A-Z][a-z]+/) ? lines[0].split(' ')[0] : 'Unknown user';
+        this.currentTime = '???:??';
+        this.messageLines = lines;
+        this.flushMessage();
+        return this.result.join('\n\n');
+    }
+
+    // Main processing loop
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+      
+        if (line === '') continue;
+        
+        // Handle date separators as inline content rather than separate headers
+        if (this.isDateLine(line)) {
+            if (this.currentUser) {
+                this.flushMessage();
+            }
+            
+            // Store the date but don't add it directly to results
+            // We'll include it as content in the next message if needed
+            this.lastDateLine = line;
+            
+            // Parse the date to help with timestamp formatting
+            const dateObj = this.parseDateLine(line);
+            if (dateObj) {
+                this.detectedDates.push(dateObj);
+            }
+            
+            continue;
+        }
+        
+        // Handle code blocks
+        if (this.settings.enableCodeBlocks) {
+            const fenceMatch = line.match(/^```(\w+)?/);
+            if (fenceMatch) {
+                this.flushMessage();
+                if (!this.inCodeBlock) {
+                    this.inCodeBlock = true;
+                    this.result.push(`\`\`\`${fenceMatch[1] || ''}`.trimEnd());
+                    continue;
+                } else {
+                    this.inCodeBlock = false;
+                    this.result.push('```');
+                    continue;
+                }
+            }
+            if (this.inCodeBlock) {
+                this.result.push(line);
+                continue;
+            }
+        }
+        
+        const tripleQuote = line.match(/^>>>(.*)/);
+        if (tripleQuote) {
+            this.flushMessage();
+            if (!this.inQuotedBlock) {
+                this.inQuotedBlock = true;
+                const after = tripleQuote[1].trim();
+                if (after) this.result.push(`> ${this.formatLine(after)}`);
+            } else {
+                this.inQuotedBlock = false;
+            }
+            continue;
+        }
+        if (this.inQuotedBlock) {
+            this.result.push(`> ${this.formatLine(line)}`);
+            continue;
+        }
+        
+        // Check for metadata lines
+        const metaHandled = this.handleSlackMetadataLine(line);
+        if (metaHandled === false) {
+            continue;
+        } else if (typeof metaHandled === 'string') {
+            this.threadInfo = metaHandled;
+            continue;
+        }
+        
+        // Try to detect message start
+        const messageStart = this.handleMessageStart(line);
+        if (messageStart) {
+            this.flushMessage();
+            this.currentUser = messageStart.user;
+            this.currentTime = messageStart.time;
+            this.lastKnownUser = this.currentUser;
+            this.lastMessageTime = this.currentTime;
+            
+            if (messageStart.remainder) {
+                this.messageLines.push(messageStart.remainder);
+            }
+            continue;
+        }
+        
+        // Handle timestamp-only lines
+        const timeOnlyMatch = line.match(/^(\d{1,2}:\d{2}(?:\s?[AaPp]\.?[Mm]\.?)?)\s*$/);
+        if (timeOnlyMatch) {
+            if (this.lastKnownUser && this.currentUser !== this.lastKnownUser) {
+                this.flushMessage();
+                this.currentUser = this.lastKnownUser;
+            }
+            this.currentTime = timeOnlyMatch[1];
+            continue;
+        }
+        
+        // Avatar-only lines - store for next message
+        if (this.avatarImagePattern.test(line)) {
+            this.currentAvatar = line;
+            continue;
+        }
+        
+        // Skip broken Slack archive URL lines
+        if (line.match(this.brokenLinkPattern) && this.slackArchiveUrlPattern.test(line)) {
+            continue;
+        }
+        
+        // If we have a current user or are in a continuation, add the line to current message
+        if (this.currentUser) {
+            this.messageLines.push(line);
+            continue;
+        }
+        
+        // If we get here and have a lastKnownUser, treat as continuation
+        if (this.lastKnownUser) {
+            this.currentUser = this.lastKnownUser;
+            this.currentTime = this.lastMessageTime;
+            this.messageLines.push(line);
+            continue;
+        }
+        
+        // Fallback for unknown messages - add to initialContent if we haven't started messages yet
+        if (!this.messageStarted) {
+            this.initialContent.push(line);
+            this.hasInitialContent = true;
+            continue;
+        }
+        
+        // Last resort fallback
+        if (!this.unknownUserActive) {
+            this.flushMessage();
+            this.currentUser = 'Unknown user';
+            this.currentTime = '???:??';
+            this.unknownUserActive = true;
+        }
+        this.messageLines.push(line);
+    }
+    
     this.flushMessage();
     if (this.inCodeBlock) {
       this.result.push('```');
     }
-
+    
+    // Process initial unattributed content if we have any
+    if (this.hasInitialContent && this.initialContent.length > 0) {
+        // Filter out avatar images and irrelevant content
+        const filteredContent = this.initialContent
+            .filter(line => {
+                // Skip avatar-only lines in initial content
+                if (this.avatarImagePattern.test(line)) {
+                    return false;
+                }
+                // Skip broken Slack URLs
+                if (line.match(this.brokenLinkPattern) && this.slackArchiveUrlPattern.test(line)) {
+                    return false;
+                }
+                // Skip pure emoji reactions
+                if (/^!?\[:[\w-]+:\]\d*$/.test(line)) {
+                    return false;
+                }
+                // Skip thread metadata lines
+                if (/(view thread)|(replies?)|(\d+ repl(y|ies))|(Last reply)/i.test(line)) {
+                    return false;
+                }
+                return line.trim().length > 0;
+            });
+            
+        if (filteredContent.length > 0) {
+            const formattedInitialContent = filteredContent
+                .map(line => {
+                    const formatted = this.formatLine(line);
+                    return formatted ? `> ${formatted}` : '';
+                })
+                .filter(Boolean)
+                .join('\n');
+                
+            if (formattedInitialContent) {
+                // Insert at the beginning of the result
+                this.result.unshift(
+                    `>[!note]+ Message from Missing author`,
+                    `> **Time:** Unknown`,
+                    `>`,
+                    formattedInitialContent
+                );
+            }
+        }
+    }
+    
+    // If no results were generated, create a fallback message
+    if (this.result.length === 0 && lines.length > 0) {
+        this.result.push(`>[!note]+ Slack Conversation\n> **Note:** Could not parse message format\n>\n> ${lines.join('\n> ')}`);
+    }
+    
     // Update thread statistics
     this.threadStats.uniqueUsers = this.participantSet.size;
     if (this.detectedDates.length > 0) {
@@ -653,19 +1053,52 @@ return `[${fileName} (Slack Attachment)](${url})`;
         this.threadStats.mostActiveUser = user;
       }
     }
+    
+    // Post-process the results to fix date headers and link formatting
+    let finalResults = [];
+    let dateHeaderAdded = false;
+    let currentDateHeader = "";
+    
+    for (const item of this.result) {
+        // Check if this is a date header (starts with ##)
+        if (item.trim().startsWith('\n##')) {
+            currentDateHeader = item.trim().replace(/^\n##\s*/, '').replace(/\n$/, '');
+            dateHeaderAdded = false;
+            continue; // Skip adding the date header directly to results
+        }
+        
+        // If we have a date header and it hasn't been added yet, include it in the next message
+        if (currentDateHeader && !dateHeaderAdded && item.trim().startsWith('>[!note]+')) {
+            // Add a date header to the start of this callout block
+            const calloutParts = item.split('\n');
+            // Add after the first two lines (user and time)
+            calloutParts.splice(2, 0, `> **Date:** ${currentDateHeader}`);
+            finalResults.push(calloutParts.join('\n'));
+            dateHeaderAdded = true;
+        } else {
+            finalResults.push(item);
+        }
+    }
+    
+    // Clean up links - fix trailing parentheses issue
+    finalResults = finalResults.map(item => {
+        return item
+          .replace(/\]\((https?:\/\/[^)]+)\)\s+\((https?:\/\/[^)]+)\)/g, ']($1)')
+          .replace(/\]\(([^)]+)\)\s+\(([^)]+)\)/g, ']($1)');
+    });
+    
+    return finalResults.join('\n\n');
+}
 
-    return this.result.join('\n\n');
-  }
-
-  private isSlackFile(url: string): boolean {
+private isSlackFile(url: string): boolean {
     return url.includes('files.slack.com/');
-  }
+}
 
-  private isImageLink(url: string): boolean {
+private isImageLink(url: string): boolean {
     return /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(url);
-  }
+}
 
-  private async askSlackConversion(): Promise<boolean> {
+private async askSlackConversion(): Promise<boolean> {
     return new Promise((resolve) => {
       const dialog = new ConfirmSlackModal(this.app, resolve);
       dialog.open();
