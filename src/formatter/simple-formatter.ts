@@ -19,328 +19,277 @@ interface ParsedMessage {
   threadInfo?: string;
 }
 
-/**
- * SimpleFormatter class for Slack messages
- * Focuses on parsing the core structure of Slack messages by
- * detecting doubled usernames and using timestamp markers as delimiters
- */
 export class SimpleFormatter {
+  private settings: SlackFormatSettings;
+  private userMap: Record<string, string>;
+  private emojiMap: Record<string, string>;
+  private channelMap: Record<string, string>;
   private textProcessor: TextProcessor;
   private messageParser: MessageParser;
-  private settings: SlackFormatSettings;
-
+  
   constructor(
-    settings: SlackFormatSettings,
+    settings: SlackFormatSettings, 
     userMap: Record<string, string>,
     emojiMap: Record<string, string>,
     channelMap: Record<string, string>
   ) {
     this.settings = settings;
-    this.messageParser = new MessageParser();
+    this.userMap = userMap;
+    this.emojiMap = emojiMap;
+    this.channelMap = channelMap;
     this.textProcessor = new TextProcessor(userMap, emojiMap, channelMap);
+    this.messageParser = new MessageParser();
   }
-
+  
+  // Debug logging helper
+  private debug(message: string, data?: any): void {
+    console.log(`[SlackFormat:Simple] ${message}`, data || '');
+  }
+  
   /**
-   * Main formatting function to convert Slack text to Markdown
+   * Format a string of Slack content into a Markdown callout format
+   * This uses a simpler algorithm focused on timestamp detection
    */
   public formatSlackContent(input: string): string {
     if (!input) return '';
     
-    // Fix common formatting issues like emoji before parsing
-    input = this.fixFormatting(input);
+    // First apply some common fixes (emoji cleanup)
+    input = this.fixEmojiFormatting(input);
     
-    // Use timestamp-based algorithm to parse messages
-    const messages = this.parseWithTimestampBoundaries(input);
-    
-    // Format the messages to Markdown
-    return this.formatMessagesToMarkdown(messages);
-  }
-
-  /**
-   * Improved parsing that focuses on timestamp boundaries first,
-   * then processes usernames and content
-   */
-  private parseWithTimestampBoundaries(input: string): ParsedMessage[] {
+    // Split into lines and process
     const lines = input.split('\n');
+    const maxLines = this.settings.maxLines || 1000;
     
-    // First identify all timestamps to find message boundaries
-    const timestampIndices: {index: number, timestamp: string}[] = [];
+    // Process in batches if very large
+    if (lines.length > maxLines) {
+      console.warn(`SlackFormatter: Large input (${lines.length} lines) truncating to ${maxLines}`);
+      const truncatedLines = lines.slice(0, maxLines);
+      return this.processLines(truncatedLines);
+    }
     
+    return this.processLines(lines);
+  }
+  
+  /**
+   * Core processing algorithm
+   */
+  private processLines(lines: string[]): string {
+    // Initialize state
+    const messages: { 
+      author: string; 
+      timestamp: string; 
+      date?: string;
+      content: string[];
+    }[] = [];
+    
+    let currentMessage: { 
+      author: string; 
+      timestamp: string; 
+      date?: string;
+      content: string[]; 
+    } | null = null;
+    
+    // Track message boundaries based on timestamp patterns
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i].trim();
-      if (!line) continue;
       
-      // Look for timestamps in the format [HH:MM AM/PM]
-      const timestampMatch = line.match(/\[(\d{1,2}:\d{2}\s*(?:AM|PM))\]/i);
+      // Skip empty lines
+      if (!line) {
+        if (currentMessage) {
+          currentMessage.content.push('');
+        }
+        continue;
+      }
+      
+      // Check if this line starts a new message
+      const timestampMatch = this.findTimestampInLine(line);
       
       if (timestampMatch) {
-        timestampIndices.push({
-          index: i,
-          timestamp: timestampMatch[1]
-        });
-      }
-      
-      // Also check for date headers to keep track of the conversation timeline
-      if (this.isDateHeader(line)) {
-        timestampIndices.push({
-          index: i,
-          timestamp: "DATE_HEADER"
-        });
-      }
-    }
-    
-    // Now process each section between timestamps
-    const messages: ParsedMessage[] = [];
-    
-    for (let i = 0; i < timestampIndices.length; i++) {
-      const currentIndex = timestampIndices[i].index;
-      const nextIndex = i + 1 < timestampIndices.length ? 
-        timestampIndices[i + 1].index : lines.length;
-      
-      // Skip date headers
-      if (timestampIndices[i].timestamp === "DATE_HEADER") {
-        continue;
-      }
-      
-      // Extract the chunk of lines for this message
-      const messageLines = lines.slice(currentIndex, nextIndex);
-      
-      // Process the message
-      const message = this.extractMessageFromLines(messageLines, timestampIndices[i].timestamp);
-      
-      if (message) {
-        messages.push(message);
-      }
-    }
-    
-    return messages;
-  }
-
-  /**
-   * Check if a line is a date header
-   */
-  private isDateHeader(line: string): boolean {
-    // Check for common date header formats
-    const dateHeaderPatterns = [
-      /^(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday),\s+(?:January|February|March|April|May|June|July|August|September|October|November|December)/i,
-      /^(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2}(?:st|nd|rd|th)?,?\s+\d{4}/i,
-      /^(?:Today|Yesterday)/i,
-      /^(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)/i
-    ];
-    
-    return dateHeaderPatterns.some(pattern => pattern.test(line));
-  }
-
-  /**
-   * Extract message details from a group of lines
-   */
-  private extractMessageFromLines(lines: string[], timestamp: string): ParsedMessage | null {
-    if (!lines.length) return null;
-    
-    // Find the author from the first line with the timestamp
-    const firstLine = lines[0].trim();
-    
-    // Extract author name from before the timestamp
-    let author = "";
-    const beforeTimestamp = firstLine.substring(0, firstLine.indexOf('['));
-    
-    if (beforeTimestamp.trim()) {
-      // Username is before the timestamp
-      author = this.fixDoubledUsername(beforeTimestamp.trim());
-    } else {
-      // Username might be after the timestamp
-      const afterTimestamp = firstLine.substring(firstLine.indexOf(']') + 1).trim();
-      
-      if (afterTimestamp) {
-        const nameMatch = afterTimestamp.match(/^([A-Za-z][a-z]+(?:\s+[A-Za-z][a-z]+)+)/);
-        if (nameMatch) {
-          author = this.fixDoubledUsername(nameMatch[1]);
-        } else {
-          author = "Unknown User";
+        // This line contains a timestamp, likely a new message
+        
+        // If we have a current message in progress, save it
+        if (currentMessage && currentMessage.content.length > 0) {
+          messages.push(currentMessage);
         }
+        
+        // Extract author and timestamp
+        const { author, timestamp, date, remainingContent } = timestampMatch;
+        
+        // Start a new message
+        currentMessage = {
+          author,
+          timestamp,
+          date,
+          content: []
+        };
+        
+        // Add any content after the timestamp
+        if (remainingContent) {
+          currentMessage.content.push(remainingContent);
+        }
+        
+      } else if (currentMessage) {
+        // This is a continuation of the current message
+        currentMessage.content.push(line);
       } else {
-        author = "Unknown User";
+        // This is content before any message starts
+        // Try to create an initial message with no clear timestamp
+        if (!currentMessage) {
+          const firstUserMatch = line.match(/^([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)/);
+          const authorName = firstUserMatch ? 
+            this.messageParser.fixDuplicatedUsername(firstUserMatch[1]) : 'Unknown user';
+          
+          currentMessage = {
+            author: authorName,
+            timestamp: 'Unknown',
+            content: [line]
+          };
+        }
       }
     }
     
-    // Extract date information if available
-    let date: string | undefined;
-    const dateMatch = firstLine.match(/\[([A-Za-z]+\s+\d+(?:st|nd|rd|th)?)\s+at\s+\d{1,2}:\d{2}\s*(?:AM|PM)\]/i);
-    if (dateMatch) {
-      date = dateMatch[1]; // e.g., "Feb 6th"
+    // Don't forget to add the last message
+    if (currentMessage && currentMessage.content.length > 0) {
+      messages.push(currentMessage);
     }
     
-    // Process the content lines
-    const contentLines: string[] = [];
-    let reactionLines: string[] = [];
-    let threadInfo: string | undefined;
-    let inReactionBlock = false;
-    
-    // Skip the first line as it contains the author and timestamp
-    for (let i = 1; i < lines.length; i++) {
-      const line = lines[i].trim();
-      if (!line) {
-        contentLines.push('');
-        continue;
-      }
-      
-      // Check for thread info lines
-      if (/^\d+ repl(?:y|ies)$/i.test(line) || /^Last reply/i.test(line) || /^View thread/i.test(line)) {
-        threadInfo = line;
-        continue;
-      }
-      
-      // Check for reaction lines
-      if (/^(?:!?\[:[\w\-]+:\]|:[\w\-]+:)\s*\d+/.test(line)) {
-        inReactionBlock = true;
-        reactionLines.push(line);
-        continue;
-      }
-      
-      // Skip lines that contain only avatar images
-      if (/^!\[\]\(https:\/\/ca\.slack-edge\.com\/[^)]+\)$/.test(line)) {
-        continue;
-      }
-      
-      // Skip lines that are just small user avatars (typically showing reactions/replies)
-      if (/^!\[\]\(https:\/\/ca\.slack-edge\.com\/[^)]+\-\d+\)/.test(line)) {
-        continue;
-      }
-      
-      // If we're in a reaction block, continue collecting reactions
-      if (inReactionBlock && /^(?:!?\[:[\w\-]+:\]|:[\w\-]+:)/.test(line)) {
-        reactionLines.push(line);
-        continue;
-      }
-      
-      // Regular content line
-      contentLines.push(line);
-    }
-    
-    return {
-      author,
-      timestamp,
-      date,
-      lines: contentLines,
-      reactions: reactionLines.length > 0 ? reactionLines : undefined,
-      threadInfo
-    };
+    // Now format all the messages into Markdown callouts
+    return this.formatMessagesToMarkdown(messages);
   }
-
+  
+  /**
+   * Find a timestamp in a line and extract author info if possible
+   */
+  private findTimestampInLine(line: string): { 
+    author: string; 
+    timestamp: string; 
+    date?: string;
+    remainingContent?: string; 
+  } | null {
+    // Check for the most common pattern - username followed by bracketed timestamp
+    // Example: "Alex Mittell [2:45 PM]" or "Alex Mittell [Feb 7th at 2:45 PM]"
+    const nameWithTimestamp = line.match(/^([A-Za-z0-9][\w\s]+?)\s+\[(?:(?:[A-Za-z]+\s+\d+(?:st|nd|rd|th)?\s+at\s+)?(\d{1,2}:\d{2}\s*(?:AM|PM|am|pm)))\]/i);
+    if (nameWithTimestamp) {
+      const authorName = this.messageParser.fixDuplicatedUsername(nameWithTimestamp[1]);
+      const timestamp = nameWithTimestamp[2];
+      
+      // Extract optional date info
+      const dateMatch = line.match(/\[([A-Za-z]+\s+\d+(?:st|nd|rd|th)?)\s+at/i);
+      const date = dateMatch ? dateMatch[1] : undefined;
+      
+      // Get the remainder of the line after the timestamp
+      const closeBracketPos = line.indexOf(']');
+      const remainder = closeBracketPos > 0 ? line.substring(closeBracketPos + 1).trim() : '';
+      
+      return {
+        author: authorName,
+        timestamp,
+        date,
+        remainingContent: remainder
+      };
+    }
+    
+    // Check for the bracketed timestamp first pattern - "[2:45 PM] Username"
+    const timestampWithName = line.match(/^\[(\d{1,2}:\d{2}\s*(?:AM|PM|am|pm))\]\s*([A-Za-z0-9][\w\s]+?)(?::|$)/i);
+    if (timestampWithName) {
+      const authorName = this.messageParser.fixDuplicatedUsername(timestampWithName[2]);
+      const timestamp = timestampWithName[1];
+      
+      // Get content after the username and colon if present
+      const colonPos = line.indexOf(':', line.indexOf(timestampWithName[2]));
+      const remainder = colonPos > 0 ? line.substring(colonPos + 1).trim() : '';
+      
+      return {
+        author: authorName,
+        timestamp,
+        remainingContent: remainder
+      };
+    }
+    
+    // Check for timestamp only pattern
+    const timestampOnly = line.match(/^\[(\d{1,2}:\d{2}\s*(?:AM|PM|am|pm))\](.*)$/i);
+    if (timestampOnly) {
+      const timestamp = timestampOnly[1];
+      const remainder = timestampOnly[2].trim();
+      
+      return {
+        author: 'Unknown', // No author identified
+        timestamp,
+        remainingContent: remainder
+      };
+    }
+    
+    return null;
+  }
+  
+  /**
+   * Format the extracted messages into markdown callout format
+   */
+  private formatMessagesToMarkdown(messages: { 
+    author: string; 
+    timestamp: string; 
+    date?: string;
+    content: string[]; 
+  }[]): string {
+    const formatted: string[] = [];
+    
+    for (const message of messages) {
+      // Skip empty messages
+      if (message.content.length === 0) continue;
+      
+      // Format the author name
+      const userDisplay = this.messageParser.isValidUsername(message.author) ? 
+        `[[${message.author}]]` : message.author;
+      
+      // Create the callout header
+      let callout = `>[!note]+ Message from ${userDisplay}`;
+      formatted.push(callout);
+      
+      // Add timestamp and date
+      formatted.push(`> **Time:** ${message.timestamp}`);
+      if (message.date) {
+        formatted.push(`> **Date:** ${message.date}`);
+      }
+      formatted.push('>');
+      
+      // Process content
+      const processedContent = message.content
+        .map(line => {
+          if (!line) return '>';
+          
+          // Apply emoji fixes
+          const fixedLine = this.fixEmojiFormatting(line);
+          // Format the line with the text processor
+          const formattedLine = this.textProcessor.formatLine(
+            fixedLine, 
+            this.settings.enableMentions, 
+            this.settings.enableEmoji
+          );
+          
+          return `> ${formattedLine}`;
+        })
+        .join('\n');
+      
+      formatted.push(processedContent);
+      formatted.push('');  // Add blank line between messages
+    }
+    
+    return formatted.join('\n');
+  }
+  
   /**
    * Specialized method for fixing doubled usernames
    * Enhanced algorithm focusing on common doubled username patterns in Slack
    */
   private fixDoubledUsername(username: string): string {
-    if (!username) return username;
-    
-    // NEW PATTERN: Look for usernames followed by emoji indicators
-    // Like "Byron LukByron Luk![:no_entry:]"
-    const emojiMatch = username.match(/^([A-Za-z]+\s+[A-Za-z]+)([A-Za-z]+\s+[A-Za-z]+)!?\[:/i);
-    if (emojiMatch) {
-      // Extract the username part before the emoji indicator
-      return this.fixBasicDoubledUsername(emojiMatch[1] + emojiMatch[2]);
-    }
-    
-    // Pattern for exact duplication with emoji: "Clement MiaoClement Miao![:no_entry:]"
-    const exactEmojiMatch = username.match(/^([A-Za-z]+\s+[A-Za-z]+)([A-Za-z]+\s+[A-Za-z]+)!?\[:/i);
-    if (exactEmojiMatch) {
-      const name1 = exactEmojiMatch[1].toLowerCase().replace(/\s+/g, '');
-      const name2 = exactEmojiMatch[2].toLowerCase().replace(/\s+/g, '');
-      if (name1 === name2) {
-        return exactEmojiMatch[1];
-      }
-    }
-    
-    // Handle cases with no emoji
-    return this.fixBasicDoubledUsername(username);
+    return this.messageParser.fixDuplicatedUsername(username);
   }
   
   /**
-   * Core duplicate username detection and fixing
+   * Fix common emoji formatting issues in text
+   * This is a pre-processing step before normal parsing
    */
-  private fixBasicDoubledUsername(username: string): string {
-    if (!username) return username;
-    
-    // Check for exact doubled username pattern (e.g., "John SmithJohn Smith")
-    // For users with two-part names
-    const exactDupePattern = /^([A-Za-z]+\s+[A-Za-z]+)([A-Za-z]+\s+[A-Za-z]+)$/i;
-    const exactDupeMatch = username.match(exactDupePattern);
-    if (exactDupeMatch) {
-      // Compare the two parts by removing spaces and converting to lowercase
-      const name1 = exactDupeMatch[1].toLowerCase().replace(/\s+/g, '');
-      const name2 = exactDupeMatch[2].toLowerCase().replace(/\s+/g, '');
-      
-      // If they're the same, return just the first occurrence
-      if (name1 === name2) {
-        return exactDupeMatch[1];
-      }
-      
-      // If they're not exactly the same but very similar (possible missing space)
-      if (name1.includes(name2) || name2.includes(name1)) {
-        return exactDupeMatch[1].length > exactDupeMatch[2].length ? 
-          exactDupeMatch[1] : exactDupeMatch[2];
-      }
-    }
-    
-    // Handle case: "First LastFirst Last" (missing space between)
-    const noSpaceMatch = username.match(/^([A-Za-z]+)\s+([A-Za-z]+)([A-Za-z]+)\s+([A-Za-z]+)$/i);
-    if (noSpaceMatch) {
-      const firstName1 = noSpaceMatch[1].toLowerCase();
-      const lastName1 = noSpaceMatch[2].toLowerCase();
-      const firstName2 = noSpaceMatch[3].toLowerCase();
-      const lastName2 = noSpaceMatch[4].toLowerCase();
-      
-      if (firstName1 === firstName2 && lastName1 === lastName2) {
-        return `${noSpaceMatch[1]} ${noSpaceMatch[2]}`;
-      }
-    }
-    
-    // Look for two-part names (e.g., "First Last")
-    const namePattern = /([A-Z][a-z]+\s+[A-Z][a-z]+)/;
-    const nameMatch = username.match(namePattern);
-    if (nameMatch) {
-      return nameMatch[1];
-    }
-    
-    // Fallback to original username if no pattern matches
-    return username;
-  }
-
-  /**
-   * Format parsed messages into Markdown
-   */
-  private formatMessagesToMarkdown(messages: ParsedMessage[]): string {
-    if (messages.length === 0) return '';
-    
-    return messages.map(message => {
-      // Format the username - add wiki link if it's a valid username
-      const userDisplay = this.messageParser.isValidUsername(message.author) ? 
-        `[[${message.author}]]` : message.author;
-      
-      // Format the message with the text processor
-      return this.textProcessor.formatMessage(
-        userDisplay,
-        message.timestamp,
-        message.date || '',
-        '',  // No avatar handling in simple formatter
-        message.lines,
-        message.threadInfo || '',
-        message.reactions || null,
-        {
-          enableTimestampParsing: this.settings.enableTimestampParsing,
-          enableEmoji: this.settings.enableEmoji,
-          enableMentions: this.settings.enableMentions
-        },
-        (timeStr) => this.normalizeTimeFormat(timeStr)
-      );
-    }).join('\n\n');
-  }
-
-  /**
-   * Fix common formatting issues in text
-   */
-  private fixFormatting(text: string): string {
+  public fixEmojiFormatting(text: string): string {
     if (!text) return text;
     
     // Fix various emoji formats
@@ -353,44 +302,5 @@ export class SimpleFormatter {
       .replace(/\[:([a-z0-9_\-\+]+):\]/g, ':$1:')
       // Fix emoji with URL pattern: :emoji-name:(url) -> :emoji-name:
       .replace(/:([a-z0-9_\-\+]+):\(https?:\/\/[^)]+\)/gi, ':$1:');
-  }
-
-  /**
-   * Normalize time format for consistent display
-   */
-  private normalizeTimeFormat(timeStr: string): string {
-    if (!timeStr) return timeStr;
-    
-    // First check if we have a valid time format with AM/PM
-    const timePattern = /^(\d{1,2}):(\d{2})\s*(am|pm|AM|PM)?$/i;
-    const match = timeStr.match(timePattern);
-    
-    if (match) {
-      const hour = parseInt(match[1], 10);
-      const minute = match[2];
-      let ampm = match[3];
-      
-      // If no AM/PM specified but hour is 0-11, assume AM; if 12-23, convert to 12-hour format PM
-      if (!ampm) {
-        if (hour >= 12) {
-          // Convert 24-hour to 12-hour format
-          const hour12 = hour === 12 ? 12 : hour - 12;
-          ampm = 'PM';
-          return `${hour12}:${minute} ${ampm}`;
-        } else if (hour === 0) {
-          // Special case for midnight
-          return `12:${minute} AM`;
-        } else {
-          // Assume AM for morning hours without AM/PM
-          return `${hour}:${minute} AM`;
-        }
-      } else {
-        // Ensure consistent capitalization for AM/PM
-        ampm = ampm.toUpperCase();
-        return `${hour}:${minute} ${ampm}`;
-      }
-    }
-    
-    return timeStr;
   }
 }

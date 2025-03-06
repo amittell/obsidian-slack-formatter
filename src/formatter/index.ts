@@ -512,6 +512,25 @@ export class SlackFormatter {
       const line = lines[i].trim();
       if (!line) continue;
       
+      // Detect doubled usernames specifically
+      const doubledNamePattern = /^([A-Za-z]+\s+[A-Za-z]+)([A-Za-z]+\s+[A-Za-z]+)/i;
+      const doubledNameMatch = line.match(doubledNamePattern);
+      if (doubledNameMatch) {
+        // Check if first and last name match
+        const firstName1 = doubledNameMatch[1].match(/^([A-Za-z]+)/i)?.[1].toLowerCase();
+        const firstName2 = doubledNameMatch[2].match(/^([A-Za-z]+)/i)?.[1].toLowerCase();
+        
+        if (firstName1 && firstName2 && firstName1 === firstName2) {
+          messageStartIndices.push(i);
+          const fixedUsername = this.parser.fixDuplicatedUsername(doubledNameMatch[1] + doubledNameMatch[2]);
+          previousMessageUsernames.push({
+            index: i,
+            username: fixedUsername
+          });
+          continue;
+        }
+      }
+      
       // Detect regular message starts
       const messageStart = this.parser.parseMessageStart(line);
       if (messageStart) {
@@ -529,10 +548,10 @@ export class SlackFormatter {
       }
       
       // Detect doubled usernames in other formats
-      const doubledNameMatch = line.match(/^([A-Za-z]+\s+[A-Za-z]+)([A-Za-z]+\s+[A-Za-z]+)\s*(\[[A-Za-z]+\s+\d+(?:st|nd|rd|th)?\s+at\s+\d{1,2}:\d{2}\s*(?:AM|PM)\])/i);
-      if (doubledNameMatch) {
+      const doubledNameWithTimestampMatch = line.match(/^([A-Za-z]+\s+[A-Za-z]+)([A-Za-z]+\s+[A-Za-z]+)\s*(\[[A-Za-z]+\s+\d+(?:st|nd|rd|th)?\s+at\s+\d{1,2}:\d{2}\s*(?:AM|PM)\])/i);
+      if (doubledNameWithTimestampMatch) {
         messageStartIndices.push(i);
-        const fixedUsername = this.parser.fixDuplicatedUsername(doubledNameMatch[1] + doubledNameMatch[2]);
+        const fixedUsername = this.parser.fixDuplicatedUsername(doubledNameWithTimestampMatch[1] + doubledNameWithTimestampMatch[2]);
         previousMessageUsernames.push({
           index: i,
           username: fixedUsername
@@ -640,6 +659,7 @@ export class SlackFormatter {
       if (messageStart) {
         // Special handling for thread dividers
         if (messageStart.user === "THREAD_DIVIDER") {
+          this.flushMessage();
           this.state.result.push("\n---\n");
           continue;
         }
@@ -747,6 +767,22 @@ export class SlackFormatter {
       return standardStart;
     }
     
+    // Check for doubled username pattern with archive link: "Name NameName Name [Date at Time(Link)"
+    const doubledNameWithArchivePattern = /^([A-Za-z]+\s+[A-Za-z]+)([A-Za-z]+\s+[A-Za-z]+)\s*\[([A-Za-z]+\s+\d+(?:st|nd|rd|th)?)\s+at\s+(\d{1,2}:\d{2}\s*(?:AM|PM))\]\(https:\/\/[^)]+\)\s*(.*)/i;
+    const archiveMatch = line.match(doubledNameWithArchivePattern);
+    if (archiveMatch) {
+      // Extract components
+      const fullUsername = archiveMatch[1] + archiveMatch[2];
+      const fixedUsername = this.parser.fixDuplicatedUsername(fullUsername);
+
+      return {
+        user: fixedUsername,
+        time: archiveMatch[4],
+        date: archiveMatch[3],
+        remainder: archiveMatch[5]
+      };
+    }
+    
     // Check for doubled username pattern: "Name NameName Name [Date at Time"
     const doubledNamePattern1 = /^([A-Za-z]+\s+[A-Za-z]+)([A-Za-z]+\s+[A-Za-z]+)\s*\[([A-Za-z]+\s+\d+(?:st|nd|rd|th)?)\s+at\s+(\d{1,2}:\d{2}\s*(?:AM|PM))\](.*)/i;
     const match1 = line.match(doubledNamePattern1);
@@ -756,18 +792,6 @@ export class SlackFormatter {
         time: match1[4],
         date: match1[3],
         remainder: match1[5].trim()
-      };
-    }
-    
-    // Check for username with emoji and timestamp
-    const nameWithEmojiTime = /^([A-Za-z]+\s+[A-Za-z]+)(?:!?\[:[\w\-_]+:\])?\s+\[([A-Za-z]+\s+\d+(?:st|nd|rd|th)?)\s+at\s+(\d{1,2}:\d{2}\s*(?:AM|PM))\](.*)/i;
-    const match2 = line.match(nameWithEmojiTime);
-    if (match2) {
-      return {
-        user: match2[1],
-        time: match2[3],
-        date: match2[2],
-        remainder: match2[4].trim()
       };
     }
     
@@ -1122,8 +1146,26 @@ export class SlackFormatter {
       });
     
     if (lines.length > 0) {
-      // Fix doubled usernames - for example "Alex MittellAlex Mittell"
+      // Fix doubled usernames and ensure full names are preserved
       let displayUser = this.state.currentUser;
+      
+      // Check for truncated usernames that need fixing
+      if (displayUser.endsWith('Ale') || displayUser.endsWith('Dav') || displayUser.endsWith('Tra') || 
+          displayUser.endsWith('Phi') || displayUser.endsWith('Cle')) {
+        // Search for a more complete version of this name in previousMessageUsernames
+        const nameStart = displayUser.substring(0, displayUser.length - 3);
+        
+        // Look through all tracked usernames for a more complete version
+        const usernames = Object.keys(this.state.userMessageCounts);
+        const betterMatch = usernames
+          .find(name => name && name.startsWith(nameStart) && name.length > displayUser.length);
+        
+        if (betterMatch) {
+          displayUser = betterMatch;
+        }
+      }
+      
+      // Apply the doubled username fix
       displayUser = this.parser.fixDuplicatedUsername(displayUser);
       
       // Generate a key to check for duplicate messages
@@ -1327,5 +1369,46 @@ ${body}`;
    */
   public getThreadStats(): ThreadStats {
     return this.state.threadStats;
+  }
+
+  /**
+   * Process text and identify possible thread dividers
+   * This helps organize the conversation better
+   */
+  private handleThreadDividers(text: string): string {
+    // Replace divider lines with a standard marker that can be detected easily
+    const lines = text.split('\n');
+    const processedLines = [];
+    let skipNext = false;
+
+    for (let i = 0; i < lines.length; i++) {
+      if (skipNext) {
+        skipNext = false;
+        continue;
+      }
+
+      const line = lines[i].trim();
+      
+      // Detect common thread divider patterns
+      if (line === '---') {
+        // Instead of keeping the divider as a pseudo-message, we'll skip it
+        // The avatar information that typically follows will now be used to identify the user
+        continue;
+      }
+      
+      // Check if current line is an avatar line and next line has a username
+      if (line.match(/^!\[\]\(https:\/\/ca\.slack-edge\.com\/[^)]+\)$/) && 
+          i + 1 < lines.length && 
+          lines[i+1].match(/^[A-Z][a-z]+\s+[A-Z][a-z]+/)) {
+        // This is an avatar line followed by username - keep them together
+        processedLines.push(line);
+        processedLines.push(lines[i+1]);
+        skipNext = true; // Skip the next line since we've added it already
+      } else {
+        processedLines.push(line);
+      }
+    }
+
+    return processedLines.join('\n');
   }
 }

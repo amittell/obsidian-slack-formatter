@@ -40,37 +40,36 @@ export class MessageParser {
       const line = lines[i].trim();
       if (!line) continue;
       
-      // Pattern for duplicated username with date, time and Slack archive link
-      // Improved to fully match "Alex MittellAlex Mittell" pattern without truncation
-      const firstMsgPattern = /^([A-Za-z]+\s+[A-Za-z]+)(?:[A-Za-z]+\s+[A-Za-z]+)?\s+\[([A-Za-z]+\s+\d+(?:st|nd|rd|th)?) at (\d{1,2}:\d{2}\s*(?:AM|PM))](?:\([^)]+\))?\s*(.*)$/i;
+      // Improved pattern for doubled usernames with better capture groups to ensure full name extraction
+      const firstMsgPattern = /^([A-Za-z]+)\s+([A-Za-z]+)(?:[A-Za-z]+)?\s+(?:[A-Za-z]+)?\s*\[([A-Za-z]+\s+\d+(?:st|nd|rd|th)?) at (\d{1,2}:\d{2}\s*(?:AM|PM))](?:\([^)]+\))?\s*(.*)$/i;
       const match = line.match(firstMsgPattern);
       
       if (match) {
-        // More robust username handling to prevent truncation
-        let userName = match[1];
-        
-        // Special handling for doubled usernames to ensure we get the full name
-        if (line.includes(userName + userName) || 
-            line.match(new RegExp(`${userName}\\s*${userName}`, 'i'))) {
-          // This is definitely a doubled username case
-          userName = this.fixDuplicatedUsername(line.substring(0, line.indexOf('[')).trim());
-        } else {
-          // Handle normal cases but check for truncation
-          userName = this.fixDuplicatedUsername(match[1]);
-          
-          // Additional check - if name appears to be truncated (ends abruptly)
-          // try to extract a better version from the whole line
-          const potentialFullName = line.substring(0, line.indexOf('['));
-          if (potentialFullName && potentialFullName.trim().length > userName.length) {
-            userName = this.fixDuplicatedUsername(potentialFullName.trim());
-          }
-        }
+        // Extract the first name and last name directly from the regex
+        const firstName = match[1];
+        const lastName = match[2];
+        const combinedName = `${firstName} ${lastName}`;
         
         return {
-          user: userName,
-          date: match[2],
-          time: match[3],
-          remainder: match[4],
+          user: combinedName,
+          date: match[3],
+          time: match[4],
+          remainder: match[5],
+          lineCount: 1
+        };
+      }
+      
+      // If the first pattern doesn't match, try the alternative pattern
+      const exactNamePattern = /^([A-Za-z]+\s+[A-Za-z]+)(?:[A-Za-z]+\s+[A-Za-z]+)?\s+\[([A-Za-z]+\s+\d+(?:st|nd|rd|th)?) at (\d{1,2}:\d{2}\s*(?:AM|PM))](?:\([^)]+\))?\s*(.*)$/i;
+      const exactMatch = line.match(exactNamePattern);
+      
+      if (exactMatch) {
+        // Just use the first captured name
+        return {
+          user: exactMatch[1],
+          date: exactMatch[2],
+          time: exactMatch[3],
+          remainder: exactMatch[4],
           lineCount: 1
         };
       }
@@ -113,6 +112,36 @@ export class MessageParser {
       };
     }
     
+    // Handle avatar image followed by username pattern (common in thread replies)
+    if (line.match(/^!\[\]\(https:\/\/ca\.slack-edge\.com\/[^)]+\)\s+/)) {
+      const avatarUserPattern = /^!\[\]\(https:\/\/ca\.slack-edge\.com\/[^)]+\)\s+([A-Za-z]+\s+[A-Za-z]+)/i;
+      const avatarMatch = line.match(avatarUserPattern);
+      
+      if (avatarMatch) {
+        // Found avatar with username pattern
+        const userName = this.fixDuplicatedUsername(avatarMatch[1]);
+        
+        // Try to find timestamp in the same line
+        const timeMatch = line.match(/\[([A-Za-z]+\s+\d+(?:st|nd|rd|th)?) at (\d{1,2}:\d{2}\s*(?:AM|PM))]/i);
+        
+        if (timeMatch) {
+          return {
+            user: userName,
+            time: timeMatch[2],
+            date: timeMatch[1],
+            remainder: line.substring(line.indexOf(timeMatch[0]) + timeMatch[0].length).trim()
+          };
+        } else {
+          // No timestamp in this line, treat as continuation but with username
+          return {
+            user: userName,
+            time: "Unknown",
+            remainder: line.substring(line.indexOf(avatarMatch[1]) + avatarMatch[1].length).trim()
+          };
+        }
+      }
+    }
+    
     // IMPROVED: Handle specific pattern with date, time and username but no clear user ownership
     // This pattern often appears in thread replies: [Date at Time]
     const threadDateTimePattern = /^\[([A-Za-z]+\s+\d+(?:st|nd|rd|th)?) at (\d{1,2}:\d{2}\s*(?:AM|PM))]/i;
@@ -134,7 +163,7 @@ export class MessageParser {
       } else {
         // No clear username - look for previous context
         return {
-          user: "Thread message", // Will be resolved later with context
+          user: "Thread Participant", // Was "Thread message" - improving name
           time: threadDateMatch[2],
           remainder: afterTimestamp,
           date: threadDateMatch[1]
@@ -296,7 +325,8 @@ export class MessageParser {
       // If nothing looks like a clear username, use placeholder and store the content
       return {
         // Instead of "Time-only message", use context-aware label
-        user: afterTime ? "Chat message" : "Timestamp marker",
+        // IMPROVED: Use "Thread Participant" instead of "Timestamp marker" for better identification
+        user: afterTime ? "Thread Participant" : "Timestamp marker",
         time: bracketMatch[1].trim(),
         remainder: afterTime
       };
@@ -359,9 +389,9 @@ export class MessageParser {
       
       return {
         user: username,
-        time: time,
-        remainder: remainder,
-        date: date
+        time,
+        remainder,
+        date
       };
     }
 
@@ -474,7 +504,7 @@ export class MessageParser {
     if (dateTimeMatch) {
       // Found a date+time format like [Feb 6th at 7:47 PM]
       return {
-        user: 'Thread participant',  // We don't have a clear username
+        user: 'Thread Participant',  // We don't have a clear username
         time: dateTimeMatch[2],
         remainder: line.substring(line.indexOf(']') + 1).trim(),
         date: dateTimeMatch[1].trim()
@@ -486,7 +516,7 @@ export class MessageParser {
     const threadMatch = line.match(threadContinuationPattern);
     if (threadMatch) {
       return {
-        user: 'Thread participant',  // These lines often don't show a username
+        user: 'Thread Participant',  // These lines often don't show a username
         time: threadMatch[2],
         remainder: line.substring(line.indexOf(threadMatch[2]) + threadMatch[2].length).trim(),
         date: threadMatch[1]
@@ -502,7 +532,7 @@ export class MessageParser {
       const fullTime = amPmMatch ? `${amPmMatch[1]} ${amPmMatch[2]}` : timeValue;
       
       return {
-        user: 'Thread participant',
+        user: 'Thread Participant',
         time: fullTime,
         remainder: line.substring(line.indexOf(']') + 1).trim()
       };
@@ -588,7 +618,46 @@ export class MessageParser {
     const emojiStripPattern = /!?\[:[\w\-]+:\].*$/;
     const usernameWithoutEmoji = username.replace(emojiStripPattern, '').trim();
     
-    // NEW: Handle the specific pattern with emoji: "Name NameName Name![:emoji:]"
+    // NEW: Enhanced pattern for detecting doubled names with no space between them
+    // Specifically for "FirstLast FirstLast" pattern like "Alex MittellAlex Mittell"
+    const doubledExactPattern = /^([A-Za-z]+\s+[A-Za-z]+)([A-Za-z]+\s+[A-Za-z]+)$/i;
+    const doubledMatch = usernameWithoutEmoji.match(doubledExactPattern);
+    if (doubledMatch) {
+      const firstPart = doubledMatch[1].trim();
+      const secondPart = doubledMatch[2].trim();
+      
+      // Check if the two parts are exactly the same (ignoring case and whitespace)
+      if (firstPart.toLowerCase() === secondPart.toLowerCase()) {
+        return firstPart;
+      }
+      
+      // Check if the two parts are nearly the same (one might be truncated)
+      const firstNormalized = firstPart.toLowerCase().replace(/\s+/g, '');
+      const secondNormalized = secondPart.toLowerCase().replace(/\s+/g, '');
+      
+      if (firstNormalized === secondNormalized || 
+          firstNormalized.includes(secondNormalized) || 
+          secondNormalized.includes(firstNormalized)) {
+        // Take the longer name as it's likely more complete
+        return firstPart.length >= secondPart.length ? firstPart : secondPart;
+      }
+      
+      // Special case for "Alex MittellAlex Mittell" - first and last name are repeated with no space
+      const firstWords = firstPart.split(/\s+/);
+      const secondWords = secondPart.split(/\s+/);
+      
+      if (firstWords.length >= 2 && secondWords.length >= 2) {
+        const firstName = firstWords[0].toLowerCase();
+        const secondFirst = secondWords[0].toLowerCase();
+        
+        // If first names match, this is likely a doubled name
+        if (firstName === secondFirst) {
+          return firstPart;
+        }
+      }
+    }
+    
+    // Handle the specific pattern with emoji: "Name NameName Name![:emoji:]"
     const emojiMatch = usernameWithoutEmoji.match(/^([A-Za-z]+\s+[A-Za-z]+)([A-Za-z]+\s+[A-Za-z]+)$/i);
     if (emojiMatch) {
       // Check if the two parts are the same name
@@ -780,6 +849,29 @@ export class MessageParser {
    * Check if username looks valid
    */
   public isValidUsername(name: string): boolean {
+    // Basic validation
+    if (!name || name.length < 3) return false;
+    
+    // Check for doubled names like "Alex MittellAlex" and fix them first
+    const potentialDoubledName = this.fixDuplicatedUsername(name);
+    if (potentialDoubledName !== name) {
+      // If the username can be fixed with fixDuplicatedUsername, use that result for validation
+      name = potentialDoubledName;
+    }
+    
+    // Now check for truly truncated names (just fragments)
+    const nameParts = name.split(' ');
+    const lastPart = nameParts[nameParts.length - 1];
+    
+    // Only consider it truncated if it's a very short fragment (1-2 chars)
+    // and not a complete name/initial
+    const isTruncated = lastPart.length <= 2 && 
+                        ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 
+                         'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 
+                         'Y', 'Z'].indexOf(lastPart) === -1;
+    
+    if (isTruncated) return false;
+    
     return /^[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*$/.test(name) && 
            !name.includes('?') &&
            !name.includes('"') &&

@@ -71,4 +71,5 @@ export interface FormatterState {
   inReactionBlock: boolean;
   reactionLines: string[];
   unknownUserActive: boolean;
+  processedMessages: Set<string>; // Track processed messages to prevent duplicates
 }
