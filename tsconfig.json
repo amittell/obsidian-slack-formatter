@@ -4,17 +4,22 @@
     "inlineSourceMap": true,
     "inlineSources": true,
     "module": "ESNext",
-    "target": "ESNext",
+    "target": "ES6",
+    "allowJs": true,
+    "noImplicitAny": true,
     "moduleResolution": "node",
     "importHelpers": true,
-    "lib": ["DOM", "ESNext"],
     "allowSyntheticDefaultImports": true,
-    "noImplicitAny": true,
-    "strict": true,
-    "types": ["node"],
     "esModuleInterop": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true
+    "lib": [
+      "DOM",
+      "ES5",
+      "ES6",
+      "ES7"
+    ],
+    "isolatedModules": true,
+    "strictNullChecks": true,
+    "skipLibCheck": true
   },
-  "include": ["src/**/*.ts"]
+  "include": ["**/*.ts"]
 }

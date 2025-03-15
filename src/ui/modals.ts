@@ -134,13 +134,26 @@ export class SlackPreviewModal extends Modal {
     new ButtonComponent(buttonContainer)
       .setButtonText('Insert')
       .onClick(() => {
-        const raw = this.textArea.getValue();
-        
-        // Fix emoji issues in text before processing
-        const fixedText = this.formatter.fixEmojiFormatting(raw);
-        const formatted = this.formatter.formatSlackContent(fixedText);
-        this.onResult(formatted);
-        this.close();
+        try {
+          const raw = this.textArea.getValue();
+          
+          // Check if formatter is properly initialized
+          if (!this.formatter) {
+            console.error("[SlackFormat] Formatter is not initialized in preview modal");
+            new Notice("Error: Formatter not initialized. Please try again.");
+            return;
+          }
+          
+          // Fix emoji issues in text before processing
+          const fixedText = this.formatter.fixEmojiFormatting ? 
+            this.formatter.fixEmojiFormatting(raw) : raw;
+          const formatted = this.formatter.formatSlackContent(fixedText);
+          this.onResult(formatted);
+          this.close();
+        } catch (error) {
+          console.error("[SlackFormat] Error in Insert button handler:", error);
+          new Notice("Error processing text. Please try again.");
+        }
       });
     
     new ButtonComponent(buttonContainer)
@@ -208,7 +221,13 @@ export class SlackPreviewModal extends Modal {
       this.updatePreview();
     });
     
-    this.updatePreview();
+    // Ensure formatter is available before initial preview
+    if (this.formatter) {
+      this.updatePreview();
+    } else {
+      console.error("[SlackFormat] Formatter not available for initial preview");
+      this.previewEl.innerHTML = "<div style='color:red'>Unable to initialize formatter. Please try again.</div>";
+    }
   }
   
   onClose() {
@@ -219,28 +238,34 @@ export class SlackPreviewModal extends Modal {
     try {
       const raw = this.textArea.getValue();
       
-      // Fix emoji issues before previewing
-      const fixedText = this.formatter.fixEmojiFormatting(raw);
+      // Check if formatter is properly initialized
+      if (!this.formatter) {
+        console.error("[SlackFormat] Formatter is not initialized in updatePreview");
+        this.previewEl.innerHTML = "<div style='color:red'>Error: Formatter not initialized</div>";
+        return;
+      }
       
-      // Generate formatted output
-      let output = this.formatter.formatSlackContent(fixedText);
+      // Fix emoji issues before previewing - safely access method
+      const fixedText = this.formatter.fixEmojiFormatting ? 
+        this.formatter.fixEmojiFormatting(raw) : raw;
       
-      // Apply syntax highlighting to code blocks
-      output = output.replace(/```(\w+)?\n([\s\S]*?)```/g, (match, lang, code) => {
-        try {
-          return `<pre class="language-${lang || 'text'}">${code}</pre>`;
-        } catch (e) {
-          return match;
-        }
+      // Generate formatted output - safely access method
+      let output = this.formatter.formatSlackContent ? 
+        this.formatter.formatSlackContent(fixedText) : 
+        "<div style='color:orange'>Preview not available</div>";
+      
+      // Handle code blocks with syntax highlighting
+      output = output.replace(/```(\w+)?\n([\s\S]*?)```/g, (match: string, lang: string | undefined, code: string): string => {
+        return `<pre><code class="language-${lang || 'text'}">${code}</code></pre>`;
+      });
+
+      // Handle YAML frontmatter
+      output = output.replace(/^---\n([\s\S]*?)---/m, (match: string, yaml: string): string => {
+        return `<div class="frontmatter" style="font-family: monospace; background: var(--background-primary-alt); padding: 8px; margin-bottom: 10px;">${yaml}</div>`;
       });
       
-      // Format the YAML frontmatter for better preview
-      output = output.replace(/^---\n([\s\S]*?)---/m, (match, yaml) => {
-        return `<div class="yaml-frontmatter" style="color: var(--text-faint); background: var(--background-primary-alt); padding: 8px; border-radius: 4px; margin-bottom: 10px;">---\n${yaml}---</div>`;
-      });
-      
-      // Apply styles to callouts
-      output = output.replace(/>\[!note\]\+\s+(.*?)$/gm, (match, title) => {
+      // Handle note callouts
+      output = output.replace(/>\[!note\]\+\s+(.*?)$/gm, (match: string, title: string): string => {
         return `<div class="callout" style="background: var(--background-primary-alt); border-left: 4px solid var(--text-accent); padding: 8px; margin-bottom: 10px;"><div class="callout-title" style="font-weight: bold;">${title}</div>`;
       });
       

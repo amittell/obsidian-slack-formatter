@@ -3,6 +3,15 @@
  */
 
 /**
+ * Format mode enum 
+ */
+export enum FormatMode {
+  Slack = 'slack',
+  Markdown = 'markdown',
+  Auto = 'auto'
+}
+
+/**
  * Thread statistics for YAML frontmatter metadata
  */
 export interface ThreadStats {
@@ -22,9 +31,9 @@ export interface SlackFormatSettings {
   enableEmoji: boolean;
   enableTimestampParsing: boolean;
   enableSubThreadLinks: boolean;
-  userMapJson: string;
-  emojiMapJson: string;
-  channelMapJson: string;
+  userMap?: Record<string, string>;
+  emojiMap?: Record<string, string>;
+  channelMap?: Record<string, string>;
   hotkeyMode: 'cmdShiftV' | 'interceptCmdV';
   maxLines: number;
   enablePreviewPane: boolean;
@@ -32,6 +41,14 @@ export interface SlackFormatSettings {
   timeZone: string;
   collapseThreads: boolean;
   threadCollapseThreshold: number;
+  showSuccessMessage: boolean;
+}
+
+/**
+ * Extended settings for the formatter
+ */
+export interface SlackFormatterSettings extends SlackFormatSettings {
+  formatMode?: FormatMode;
 }
 
 /**
@@ -48,28 +65,33 @@ export interface ParsedMessageStart {
  * Formatter state interface for tracking formatting process
  */
 export interface FormatterState {
-  detectedDates: Date[];
-  participantSet: Set<string>;
-  result: string[];
-  threadInfo: string;
-  currentMessageNumber: number;
-  threadStats: ThreadStats;
-  userMessageCounts: Record<string, number>;
-  currentUser: string;
-  currentTime: string;
-  messageLines: string[];
-  lastKnownUser: string;
-  lastMessageTime: string;
-  isMessageContinuation: boolean;
-  inCodeBlock: boolean;
-  inQuotedBlock: boolean;
-  initialContent: string[];
-  hasInitialContent: boolean;
-  messageStarted: boolean;
-  currentAvatar: string;
-  lastDateLine: string;
-  inReactionBlock: boolean;
-  reactionLines: string[];
-  unknownUserActive: boolean;
-  processedMessages: Set<string>; // Track processed messages to prevent duplicates
+    detectedDates: Date[];
+    participantSet: Set<string>;
+    result: string[];
+    threadInfo: string;
+    currentMessageNumber: number;
+    threadStats: ThreadStats;
+    userMessageCounts: Record<string, number>;
+    currentUser: string;
+    currentTime: string;
+    messageLines: string[];
+    lastKnownUser: string;
+    lastMessageTime: string;
+    isMessageContinuation: boolean;
+    inCodeBlock: boolean;
+    inQuotedBlock: boolean;
+    initialContent: string[];
+    hasInitialContent: boolean;
+    messageStarted: boolean;
+    currentAvatar: string;
+    lastDateLine: string;
+    inReactionBlock: boolean;
+    reactionLines: string[];
+    unknownUserActive: boolean;
+    lines: string[];
+    isPreFormatted: boolean;
+    currentDate: string;
+    reactionText: string;
+    reactions: string[];
+    processedMessageKeys: Set<string>;
 }

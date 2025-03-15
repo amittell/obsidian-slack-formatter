@@ -1,11 +1,13 @@
 /**
  * Text processing utilities for formatting Slack conversations
  */
+import { FormatMode } from "../types";
+
 export class TextProcessor {
   private userMap: Record<string, string>;
   private emojiMap: Record<string, string>;
   private channelMap: Record<string, string>;
-  
+
   constructor(
     userMap: Record<string, string>,
     emojiMap: Record<string, string>,
@@ -15,152 +17,87 @@ export class TextProcessor {
     this.emojiMap = emojiMap || {};
     this.channelMap = channelMap || {};
   }
-  
-  /**
-   * Debug logging helper
-   */
+
   private debugLog(message: string, data?: any) {
     console.log(`[SlackFormat] ${message}`, data || '');
   }
-  
-  /**
-   * Handles mentioning users in the text
-   * This converts user IDs to proper names
-   */
+
   public processMentions(text: string): string {
     if (!text) return text;
-    
-    // Match <@U123456|username> or <@U123456> patterns
-    return text.replace(/<@([A-Z0-9]+)(?:\|([^>]+))?>/, (match, userId, displayName) => {
-      // If we have this user in the map, return it with linking
+    text = text.replace(/(?<![:])@([A-Za-z0-9_-]+)/g, (_, name) => `[[${name}]]`);
+    return text.replace(/<@([A-Z0-9]+)(?:\|([^>]+))?>+/g, (match, userId, displayName) => {
       if (this.userMap[userId]) {
-        return `[[@${this.userMap[userId]}]]`;
+        return `[[${this.userMap[userId]}]]`;
       }
-      
-      // Otherwise use the display name from the mention if available
       if (displayName) {
-        return `@${displayName}`;
+        return `[[${displayName}]]`;
       }
-      
-      // Fall back to just the user ID
-      return `@${userId}`;
+      return `[[${userId}]]`;
     });
   }
-  
-  /**
-   * Format emoji in text
-   */
+
   public processEmoji(text: string): string {
     if (!text) return text;
-    
-    // Match :emoji: format including custom emoji
     return text.replace(/:([\w\-\+]+):/g, (match, emojiName) => {
-      // If we have this emoji in our map, use that
-      if (this.emojiMap[emojiName]) {
-        return this.emojiMap[emojiName];
-      }
-      
-      // Otherwise, keep the original emoji format (will render in Obsidian)
-      return match;
+      return this.emojiMap[emojiName] || match;
     });
   }
-  
-  /**
-   * Handle channel references
-   */
+
   public processChannelRefs(text: string): string {
     if (!text) return text;
-    
-    // Match <#C123456|channel-name> pattern
     return text.replace(/<#([A-Z0-9]+)(?:\|([^>]+))?>/, (match, channelId, displayName) => {
-      // If we have this channel in the map, return it with linking
       if (this.channelMap[channelId]) {
         return `#${this.channelMap[channelId]}`;
       }
-      
-      // Otherwise use the display name from the mention if available
       if (displayName) {
         return `#${displayName}`;
       }
-      
-      // Fall back to just the channel ID
       return `#${channelId}`;
     });
   }
-  
-  /**
-   * Apply all text formatting to a line
-   */
-  public formatLine(line: string, enableMentions: boolean = true, enableEmoji: boolean = true): string {
-    if (!line) return line;
-    
-    // Clean up any markdown-breaking characters
-    let processed = line;
-    
-    // Fix special characters for Markdown
-    processed = this.cleanCharacters(processed);
-    
+
+  public formatLine(text: string, enableMentions: boolean, enableEmoji: boolean): string {
+    if (!text) return text;
+    let formatted = text;
     if (enableMentions) {
-      // Process user mentions
-      processed = this.processMentions(processed);
-      
-      // Process channel references
-      processed = this.processChannelRefs(processed);
+      formatted = this.processMentions(formatted);
     }
-    
     if (enableEmoji) {
-      // Process emoji
-      processed = this.processEmoji(processed);
+      formatted = formatted.replace(/^(:[\w\-\+]+:)\s*(\d+)$/i, '$1 $2');
+      const reactionPattern = /^(:[\w\-\+]+:)\s*(\d+)\s*$/;
+      const match = formatted.match(reactionPattern);
+      if (match) {
+        formatted = `${match[1]} ${match[2]}`;
+      }
+      formatted = formatted.replace(/:([\w\-\+]+):/g, (match, emojiName) => {
+        return this.emojiMap[emojiName] || match;
+      });
     }
-    
-    // Clean up URLs and links
-    processed = this.cleanLinkFormatting(processed);
-    
-    return processed;
+    formatted = this.cleanLinkFormatting(formatted);
+    return formatted;
   }
-  
-  /**
-   * Clean up characters that might interfere with Markdown
-   */
+
   private cleanCharacters(text: string): string {
     return text
-      // Fix backticks in inline code to avoid breaking Markdown
       .replace(/`([^`]+)`/g, (match, code) => {
-        // Escape any backticks inside code blocks
         return `\`${code.replace(/`/g, '\\`')}\``;
       });
   }
-  
-  /**
-   * Clean up links and URLs
-   */
+
   public cleanLinkFormatting(text: string): string {
     if (!text) return text;
-    
     return text
-      // Fix escaping of square brackets in URLs
-      .replace(/\\\[/g, '[')
-      .replace(/\\\]/g, ']')
-      // Fix link formatting with angle brackets <https://example.com>
+      .replace(/\\$$ /g, '[')
+      .replace(/\\ $$/g, ']')
       .replace(/<(https?:\/\/[^>]+)>/g, '$1')
-      // Fix issues with auto-linked URLs
-      .replace(/\[\]\((https?:\/\/[^)]+)\)/g, '$1');
+      .replace(/$$  $$$$ (https?:\/\/[^)]+) $$/g, '$1');
   }
 
-  /**
-   * Helper to fix doubled usernames in the final output stage
-   * This catches any usernames that might have slipped through earlier processing
-   */
   private fixDoubledUsernames(text: string): string {
     if (!text) return text;
-    
-    // Fix common patterns like "Alex MittellAlex Mittell"
-    return text.replace(/(\[\[)([A-Z][a-z]+\s+[A-Z][a-z]+)(\2)(\]\])/gi, '$1$2$4');
+    return text.replace(/($$ \[)([A-Z][a-z]+\s+[A-Z][a-z]+)(\2)( $$\])/gi, '$1$2$4');
   }
-  
-  /**
-   * Format thread info
-   */
+
   public formatThreadInfo(
     replyCount: number,
     collapseThreads: boolean,
@@ -169,33 +106,21 @@ export class TextProcessor {
     if (collapseThreads && replyCount >= collapseThreshold) {
       return `\n\n▼ ${replyCount} ${replyCount === 1 ? 'reply' : 'replies'}`;
     }
-    
     return '';
   }
-  
-  /**
-   * Format reaction data
-   */
-  private formatReactions(reactions: string[]): string {
+
+  public formatReactions(reactions: string[]): string {
     if (!reactions || reactions.length === 0) return '';
-    
-    return reactions
-      .map(reaction => {
-        // Clean up emoji formatting in reactions
-        return this.processEmoji(
-          reaction
-            .replace(/!?\[:([a-z0-9_\-\+]+):\]\s*(\d+)/i, ':$1: $2')
-            .replace(/!?\[:([a-z0-9_\-\+]+):\]/i, ':$1:')
-        );
-      })
-      .join(' ');
+    return reactions.map(r => r.trim()).join('\n> ');
   }
-  
-  /**
-   * Format a complete message with user info, timestamp, and content
-   */
+
+  public formatUserHandle(username: string): string {
+    if (!username) return 'Unknown user';
+    return `[[${username}]]`;
+  }
+
   public formatMessage(
-    user: string,
+    user: string | undefined, // Allow undefined and handle it
     time: string,
     date: string,
     avatar: string,
@@ -209,28 +134,21 @@ export class TextProcessor {
     },
     parseTimeCallback: (timeStr: string) => string
   ): string {
-    // Ensure we're working with a clean username
-    user = this.fixDoubledUsernames(user);
-    
-    // Create the header line
-    let result = `>[!note]+ Message from ${user}`;
-    
-    // Add the time and date
+    user = user || "Unknown user"; // Default if undefined
+    let formattedUser = user;
+    if (!user.startsWith('[[') && !user.includes('Unknown') && user !== 'THREAD_DIVIDER') {
+      formattedUser = `[[${user}]]`;
+    }
+    let result = `>[!note]+ Message from ${formattedUser}`;
     if (time) {
       const displayTime = options.enableTimestampParsing ? 
         parseTimeCallback(time) : time;
-        
       result += `\n> **Time:** ${displayTime}`;
     }
-    
     if (date) {
       result += `\n> **Date:** ${date}`;
     }
-    
-    // Add a blank line
     result += '\n>';
-    
-    // Add message content
     if (lines && lines.length > 0) {
       const formattedLines = lines
         .map(line => {
@@ -238,25 +156,266 @@ export class TextProcessor {
         })
         .filter(line => line.trim() !== '')
         .join('\n> ');
-      
       if (formattedLines) {
         result += `\n> ${formattedLines}`;
       }
     }
-    
-    // Add reactions
     if (reactions && reactions.length > 0) {
       const formattedReactions = this.formatReactions(reactions);
       if (formattedReactions) {
         result += `\n> ${formattedReactions}`;
       }
     }
-    
-    // Add thread info
     if (threadInfo) {
       result += threadInfo;
     }
-    
     return result;
+  }
+
+  public processText(text: string, formatMode: FormatMode = FormatMode.Slack): string {
+    if (formatMode === FormatMode.Slack) {
+      return this.processSlackText(text);
+    }
+    return this.cleanupMarkdown(text);
+  }
+
+  public isLikelySlackFormat(text: string): boolean {
+    if (!text || text.length < 20) return false;
+    if (text.includes('slack.com/archives/')) return true;
+    if (text.includes('ca.slack-edge.com/')) return true;
+    if (text.includes('files.slack.com/files-')) return true;
+    if (/([A-Z][a-z]+\s+[A-Z][a-z]+)([A-Z][a-z]+\s+[A-Z][a-z]+)/i.test(text)) return true;
+    if (/$$ [A-Z][a-z]+ \d+(?:st|nd|rd|th)? at \d{1,2}:\d{2}\s*(?:AM|PM)]/i.test(text)) return true;
+    if (/\[\d{1,2}:\d{2}\s*(?:AM|PM) $$/i.test(text)) return true;
+    if (text.includes('replied to thread')) return true;
+    if (text.includes('View thread')) return true;
+    if (/\d+ repl(?:y|ies)/.test(text)) return true;
+    if (/!?$$ :[\w\-]+: $$/i.test(text)) return true;
+    const timestampMatches = text.match(/\d{1,2}:\d{2}\s*(?:AM|PM)/ig);
+    if (timestampMatches && timestampMatches.length >= 3) return true;
+    return false;
+  }
+
+  private processSlackText(text: string): string {
+    const lines = text.split('\n');
+    const processedLines: string[] = [];
+    let currentAuthor: string | null = null;
+    let currentTimestamp: string | null = null;
+    let inMessageContent = false;
+    let currentContent: string[] = [];
+    let currentReactions: string[] = [];
+    let lastLineWasEmpty = true;
+    let inCodeBlock = false;
+
+    const nonUsernamePatterns = [
+      /^Added by/i,
+      /^Current users/i,
+      /^That works? for/i,
+      /^Interested in/i,
+      /^Thread with/i,
+      /^View (thread|repl(y|ies))/i,
+      /^Last reply/i,
+      /^Show more/i,
+      /^Loading more/i,
+      /^Pinned by/i,
+      /^Saved by/i,
+      /^Only visible to/i,
+      /^This message/i,
+      /^Posted in/i,
+      /^\d+ repl(y|ies)/i,
+      /^Reply in thread/i,
+      /^Language$/i
+    ];
+
+    const instructionalPhrases = /will\s+|has\s+|is\s+|can\s+|should\s+|must\s+/i;
+
+    const isNonUsername = (text: string): boolean => {
+      if (!text) return true;
+      return nonUsernamePatterns.some(pattern => pattern.test(text)) || 
+             instructionalPhrases.test(text);
+    };
+
+    const cleanUsername = (username: string): string => {
+      const doubledPattern = /([A-Z][a-z]+\s+[A-Z][a-z]+)([A-Z][a-z]+\s+[A-Z][a-z]+)/i;
+      if (doubledPattern.test(username)) {
+        const match = username.match(doubledPattern);
+        if (match) return match[1];
+      }
+      return username.replace(/!(?:$$ [^ $$]*\]|$$ :[\w\-]+: $$).*$/, '').trim();
+    };
+
+    const isLikelyUsernameLine = (line: string): boolean => {
+      if (isNonUsername(line)) return false;
+      const sentenceStartPattern = /^(Let|Anyone|Made|Is|Does|Our|That|Happy|If|I|We|This|Here|The|Check|What|When|How|Any|One|It|First|Added|Last|Who|Current|This|Only|Interested|View|Patrick)/i;
+      if (sentenceStartPattern.test(line)) return false;
+      const commonWords = [" if ", " the ", " with ", " for ", " a ", " to ", " in ", " my ", " our ", " your ", " is ", " are ", " show ", " this ", " team ", " us ", " you ", " through "];
+      if (commonWords.some(word => line.toLowerCase().includes(word))) return false;
+      const namePattern = /^([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,2})$/;
+      if (namePattern.test(line)) return true;
+      const doubledPattern = /([A-Z][a-z]+\s+[A-Z][a-z]+)([A-Z][a-z]+\s+[A-Z][a-z]+)/i;
+      if (doubledPattern.test(line)) return true;
+      if (line.split(/\s+/).length > 4) return false;
+      const words = line.split(/\s+/);
+      const uppercaseWordCount = words.filter(w => /^[A-Z]/.test(w)).length;
+      return uppercaseWordCount >= words.length * 0.5;
+    };
+
+    const addMessage = () => {
+      if (!currentAuthor || !currentContent.length) return;
+      const authorLink = `[[${currentAuthor}]]`;
+      const timeStr = currentTimestamp ? `[${currentTimestamp}]` : '';
+      processedLines.push(`**${authorLink}** ${timeStr}`);
+      currentContent.forEach(line => {
+        processedLines.push(`> ${line}`);
+      });
+      if (currentReactions.length) {
+        processedLines.push('> ');
+        processedLines.push(`> _Reactions: ${currentReactions.join(', ')}_`);
+      }
+      processedLines.push('');
+      currentAuthor = null;
+      currentTimestamp = null;
+      currentContent = [];
+      currentReactions = [];
+      inMessageContent = false;
+    };
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) {
+        lastLineWasEmpty = true;
+        if (inMessageContent && currentContent.length > 0) {
+          currentContent.push('');
+        }
+        continue;
+      }
+      if (line.startsWith('```')) {
+        inCodeBlock = !inCodeBlock;
+        if (inMessageContent) {
+          currentContent.push(line);
+        }
+        continue;
+      }
+      if (inCodeBlock) {
+        if (inMessageContent) {
+          currentContent.push(line);
+        }
+        continue;
+      }
+      if (line.match(/^:[\w\-]+:(\s*\d+)?$/)) {
+        if (inMessageContent) {
+          currentReactions.push(line);
+        }
+        continue;
+      }
+      if (line.match(/^(\d+ repl(?:y|ies)$|^View thread$|^Last reply)/i)) {
+        if (inMessageContent) {
+          currentContent.push(`_[Thread with replies]_`);
+        }
+        continue;
+      }
+      if (line.match(/^Posted in|^Only visible to you|^This message/i)) {
+        continue;
+      }
+      const usernameTimestampPattern = /^([A-Z][a-z]+(?:\s+[A-Za-z]+)+)(?:\s+\[[^\]]+\]|\s+\d{1,2}:\d{2}\s*(?:AM|PM))/i;
+      const match = line.match(usernameTimestampPattern);
+      if (match && !isNonUsername(match[1])) {
+        if (currentAuthor) {
+          addMessage();
+        }
+        const rawUsername = match[1];
+        if (!isNonUsername(rawUsername) && isLikelyUsernameLine(rawUsername)) {
+          currentAuthor = cleanUsername(rawUsername);
+          const timeMatch = line.match(/(\d{1,2}:\d{2}\s*(?:AM|PM))|(\[[^\]]+\])/i);
+          currentTimestamp = timeMatch ? timeMatch[0] : null;
+          const contentStartIdx = line.indexOf(timeMatch ? timeMatch[0] : match[0]) + (timeMatch ? timeMatch[0].length : match[0].length);
+          if (contentStartIdx < line.length) {
+            const remainingText = line.substring(contentStartIdx).trim();
+            if (remainingText) {
+              currentContent.push(remainingText);
+            }
+          }
+          inMessageContent = true;
+        } else {
+          if (inMessageContent) {
+            currentContent.push(line);
+          } else {
+            processedLines.push(line);
+          }
+        }
+        continue;
+      }
+      if (lastLineWasEmpty && isLikelyUsernameLine(line) && i < lines.length - 1) {
+        const nextLine = lines[i + 1].trim();
+        if (nextLine.match(/^\d{1,2}:\d{2}\s*(?:AM|PM)$/i)) {
+          if (currentAuthor) {
+            addMessage();
+          }
+          currentAuthor = cleanUsername(line);
+          currentTimestamp = nextLine;
+          i++;
+          inMessageContent = true;
+          continue;
+        }
+      }
+      if (line.startsWith('![') && i < lines.length - 1) {
+        const nextLine = lines[i + 1].trim();
+        if (isLikelyUsernameLine(nextLine)) {
+          if (currentAuthor) {
+            addMessage();
+          }
+          currentAuthor = cleanUsername(nextLine);
+          i++;
+          if (i < lines.length - 1 && lines[i + 1].trim().match(/^\d{1,2}:\d{2}\s*(?:AM|PM)$/i)) {
+            currentTimestamp = lines[i + 1].trim();
+            i++;
+          }
+          inMessageContent = true;
+          continue;
+        }
+      }
+      if (inMessageContent) {
+        if (line.match(/^thread$/i) || line.match(/^\d+ repl(?:y|ies)$/i)) {
+          continue;
+        }
+        currentContent.push(line);
+      } else {
+        if (lastLineWasEmpty && isLikelyUsernameLine(line)) {
+          if (currentAuthor) {
+            addMessage();
+          }
+          currentAuthor = cleanUsername(line);
+          inMessageContent = true;
+        } else {
+          processedLines.push(line);
+        }
+      }
+      lastLineWasEmpty = false;
+    }
+    if (currentAuthor) {
+      addMessage();
+    }
+    return processedLines.join('\n');
+  }
+
+  private cleanupMarkdown(text: string): string {
+    let output = text;
+    output = output.replace(/(?<!\(|\[)(https?:\/\/\S+)(?!\)|\])/g, '[[$1]]');
+    output = output.replace(/^([*\-+])([^\s])/gm, '$1 $2');
+    return output;
+  }
+
+  public formatTimestamp(timeStr: string): string {
+    return this.parseTimestamp(timeStr);
+  }
+
+  public parseTimestamp(timeStr: string): string {
+    if (!timeStr) return timeStr;
+    const timeMatch = timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM|am|pm)/i);
+    if (timeMatch) {
+      const [_, hours, minutes, meridiem] = timeMatch;
+      return `${hours}:${minutes} ${meridiem.toUpperCase()}`;
+    }
+    return timeStr;
   }
 }

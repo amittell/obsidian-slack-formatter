@@ -6,17 +6,17 @@
  * Formats Slack conversations pasted into Obsidian
  */
 import { Plugin, Editor, Notice, Menu, MenuItem, Platform } from 'obsidian';
-import { SlackFormatter } from './formatter';
-import { SlackFormatSettings } from './types';
+import { SlackFormatter } from './formatter/index';
 import { DEFAULT_SETTINGS } from './settings';
 import { SlackFormatSettingTab } from './ui/settings-tab';
 import { ConfirmSlackModal, SlackPreviewModal } from './ui/modals';
+import { SlackFormatSettings } from './types';
 
 export default class SlackFormatPlugin extends Plugin {
 	settings!: SlackFormatSettings;
 	formatter!: SlackFormatter;
 
-	async onload() {
+	async onload(): Promise<void> {
 		console.log('Loading Slack formatter plugin v0.0.8');
 
 		// Load settings
@@ -122,24 +122,41 @@ export default class SlackFormatPlugin extends Plugin {
 					}
 				}
 			}
+			return true;
 		}, true); // Using capture phase to get the event before other handlers
 	}
 
 	/**
 	 * Initialize the formatter with current settings
 	 */
-	private initFormatter() {
+	private initFormatter(): void {
 		try {
-			const userMap = this.parseJsonMap(this.settings.userMapJson);
-			const emojiMap = this.parseJsonMap(this.settings.emojiMapJson);
-			const channelMap = this.parseJsonMap(this.settings.channelMapJson);
+			console.log('Initializing formatter...');
 			
-			this.formatter = new SlackFormatter(this.settings, userMap, emojiMap, channelMap);
+			// Parse the JSON maps
+			const userMap = this.parseJsonMap(this.settings.userMap);
+			const emojiMap = this.parseJsonMap(this.settings.emojiMap);
+			const channelMap = this.parseJsonMap(this.settings.channelMap);
+			
+			// Create formatter
+			this.formatter = new SlackFormatter(
+				this.settings,
+				userMap,
+				emojiMap,
+				channelMap
+			);
 			
 			console.log("Slack formatter initialized successfully");
 		} catch (error) {
 			console.error("Error initializing formatter:", error);
-			new Notice("Failed to initialize Slack formatter. Check settings.");
+			// Initialize with empty maps as fallback
+			this.formatter = new SlackFormatter(
+				this.settings,
+				{}, // empty userMap
+				{}, // empty emojiMap
+				{}  // empty channelMap
+			);
+			new Notice("Warning: Initialized formatter with empty maps due to settings error.");
 		}
 	}
 
@@ -162,26 +179,29 @@ export default class SlackFormatPlugin extends Plugin {
 	 * Parse the JSON maps from settings
 	 * This method is called from settings UI
 	 */
-	public parseJsonMaps() {
+	public parseJsonMaps(): void {
 		this.initFormatter();
 	}
 
 	/**
 	 * Handle paste events with modifier keys
 	 */
-	private handlePasteEvent(evt: ClipboardEvent, editor: Editor) {
+	private handlePasteEvent(evt: ClipboardEvent, editor: Editor): void {
 		try {
 			// Check specifically for Cmd+Shift+V (Mac) or Ctrl+Shift+V (Windows/Linux)
-			const e = evt as unknown as KeyboardEvent;
-			const isCmdShiftV = (Platform.isMacOS && e.metaKey && e.shiftKey) || 
-								(!Platform.isMacOS && e.ctrlKey && e.shiftKey);
+			const metaKey = evt.metaKey;
+			const ctrlKey = evt.ctrlKey;
+			const shiftKey = evt.shiftKey;
+			
+			const isCmdShiftV = (Platform.isMacOS && metaKey && shiftKey) || 
+								(!Platform.isMacOS && ctrlKey && shiftKey);
 			
 			// Debug logging to help diagnose issues
 			console.log("[SlackFormat] Paste event detected", {
-				metaKey: e.metaKey,
-				shiftKey: e.shiftKey,
+				metaKey,
+				shiftKey,
 				isMacOS: Platform.isMacOS,
-				isCmdShiftV: isCmdShiftV
+				isCmdShiftV
 			});
 			
 			if (isCmdShiftV) {
@@ -209,8 +229,8 @@ export default class SlackFormatPlugin extends Plugin {
 			// If hotkeyMode is set to interceptCmdV and it's just Cmd+V with no Shift, 
 			// we still need to check if it's Slack content
 			if (this.settings.hotkeyMode === 'interceptCmdV' && 
-				((Platform.isMacOS && e.metaKey && !e.shiftKey) || 
-				(!Platform.isMacOS && e.ctrlKey && !e.shiftKey))) {
+				((Platform.isMacOS && metaKey && !shiftKey) || 
+				(!Platform.isMacOS && ctrlKey && !shiftKey))) {
 				
 				if (evt.clipboardData) {
 					const text = evt.clipboardData.getData('text/plain');
@@ -245,7 +265,7 @@ export default class SlackFormatPlugin extends Plugin {
 	/**
 	 * Format text and insert it into the editor
 	 */
-	formatAndInsert(editor: Editor, text: string) {
+	private formatAndInsert(editor: Editor, text: string): void {
 		try {
 			if (!text) {
 				new Notice("No text to format");
@@ -254,12 +274,12 @@ export default class SlackFormatPlugin extends Plugin {
 			
 			console.log("[SlackFormat] Attempting to format text", text.substring(0, 100) + "...");
 
-			 // If preview pane is enabled, show the preview first
+			// If preview pane is enabled, show the preview first
 			if (this.settings.enablePreviewPane) {
 				new SlackPreviewModal(
 					this.app, 
 					text, 
-					(formattedText: string) => {
+					(formattedText) => {
 						if (formattedText) {
 							editor.replaceSelection(formattedText);
 						}
@@ -285,15 +305,15 @@ export default class SlackFormatPlugin extends Plugin {
 	/**
 	 * Format with YAML frontmatter
 	 */
-	formatWithFrontmatter(text: string): string {
+	public formatWithFrontmatter(text: string): string {
 		return this.formatter.buildNoteWithFrontmatter(text);
 	}
 
-	onunload() {
+	onunload(): void {
 		console.log("Unloading Slack formatter plugin");
 	}
 
-	async loadSettings() {
+	async loadSettings(): Promise<void> {
 		try {
 			this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
 		} catch (error) {
@@ -302,7 +322,7 @@ export default class SlackFormatPlugin extends Plugin {
 		}
 	}
 
-	async saveSettings() {
+	async saveSettings(): Promise<void> {
 		await this.saveData(this.settings);
 		this.initFormatter();
 	}

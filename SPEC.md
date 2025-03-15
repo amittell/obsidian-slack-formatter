@@ -1,4 +1,5 @@
 # Obsidian Slack Formatter - Technical Specification
+Last Updated: March 13, 2025
 
 ## Overview
 The Obsidian Slack Formatter is a plugin for [Obsidian](https://obsidian.md) that transforms raw Slack conversation text into formatted Markdown callouts. It handles user messages, timestamps, formatting, mentions, emojis, code blocks, threads, and other Slack-specific elements.
@@ -23,6 +24,19 @@ The Obsidian Slack Formatter is a plugin for [Obsidian](https://obsidian.md) tha
    - Settings interface for configuring the plugin
    - Manages JSON maps, formatting options, and behavior settings
 
+5. **MessageParser**
+   - Specialized component for parsing raw Slack messages
+   - Handles detection and extraction of usernames, timestamps, and content
+   - Fixes common formatting issues like duplicated usernames
+
+6. **TextProcessor**
+   - Processes message content with rich formatting
+   - Handles links, code blocks, emojis, and mentions
+
+7. **SimpleFormatter**
+   - Alternative formatter for specific Slack formats
+   - Handles bracket-style timestamp formats efficiently
+
 ### Data Structures
 
 #### Settings Interface
@@ -43,6 +57,7 @@ interface SlackFormatSettings {
   timeZone: string;
   collapseThreads: boolean;
   threadCollapseThreshold: number;
+  showSuccessMessage: boolean;
 }
 ```
 
@@ -54,6 +69,15 @@ interface ThreadStats {
   threadCount: number;
   dateRange: string;
   mostActiveUser?: string;
+}
+```
+
+#### Message Interface
+```typescript
+interface SlackMessage {
+  author: string;
+  timestamp: string | null;
+  content: string;
 }
 ```
 
@@ -69,168 +93,234 @@ interface ThreadStats {
 ## Text Processing Algorithm
 
 ### Main Processing Flow
-1. Reset state variables and prepare for processing
-2. Detect if input is likely Slack content
-3. Split input into lines and process each line sequentially
-4. Detect different line types:
-   - Message starts (user + timestamp)
-   - Date markers
-   - Code blocks
-   - Thread indicators
-   - System messages
-   - Message continuation lines
-5. Format messages into Markdown callout format
-6. Collect thread statistics
-7. Return formatted result
+The plugin now uses a multi-tiered parsing approach:
 
-### Key Detection Methods
-1. **Message Start Detection**
+1. **Format Type Detection**
+   - First determines if the content should use the SimpleFormatter or the standard parser
+   - Counts bracket-style timestamps to identify the appropriate formatter to use
+
+2. **Pre-parsing Phase**
+   - Attempts to identify message boundaries in a first pass
+   - Fixes emoji formatting and other common issues
+   - Detects doubled usernames and fixes them
+   - Preserves whitespace for indented timestamp formats
+
+3. **Message Parsing**
+   - Processes text line by line, identifying message starts
+   - Collects message content until another message start is detected
+   - Handles special cases like thread dividers
+   - Supports indented timestamp formats (username followed by indented timestamp)
+
+4. **Fallback Processing**
+   - If standard parsing fails, tries simplified pattern matching
+   - Handles unattributed content gracefully
+   - Creates generic message blocks for unparseable content
+
+5. **Output Formatting**
+   - Transforms parsed messages into Obsidian-compatible markdown
+   - Creates wiki links for usernames
+   - Formats timestamps consistently
+
+### Key Processing Components
+
+1. **SlackFormatter Class**
    ```typescript
-   private handleMessageStart(line: string): { user: string; time: string; remainder: string } | null
+   public formatSlackContent(input: string): string
    ```
-   - Uses regex patterns to identify user and timestamp pairs
-   - Handles duplicated usernames common in Slack exports
-   - Returns structured data if a message start is detected
+   - New multi-pass parsing algorithm
+   - Preserves whitespace in original input for better format detection
+   - Handles both standard and simplified message formats
+   - Supports indented timestamp format detection
 
-2. **Metadata Line Detection**
+### Username Processing Architecture
+```typescript
+class MessageParser {
+    // Public API method for basic username fixes
+    public fixDuplicatedUsername(username: string): string {
+        return this._fixDoubledUsername(username);
+    }
+
+    // Private implementation for username deduplication
+    private _fixDoubledUsername(username: string): string {
+        // Handle various doubled username patterns
+        const patterns = [
+            /^(.+)\1$/,                    // Exact doubling
+            /^(.+?)\s+\1$/,               // Space-separated doubling
+            /^(.+?)(?:\s+.+?){0,1}\1$/,   // Partial name doubling
+            /^(.+?)([\u{1F300}-\u{1F9FF}]|[[\]:])$/u  // Name with emoji
+        ];
+        // ...pattern matching implementation...
+    }
+
+    // NEW: Content-aware username deduplication
+    private fixDoubledUsernamesInContent(text: string): string {
+        if (!text) return text;
+        
+        // Define patterns to match doubled usernames within content
+        const patterns = [
+            // Full doubled name: "Alex MittellAlex Mittell"
+            /([A-Z][a-z]+\s+[A-Z][a-z]+)([A-Z][a-z]+\s+[A-Z][a-z]+)/g,
+            
+            // First name repeat: "Alex MittellAlex" 
+            /([A-Z][a-z]+)\s+([A-Z][a-z]+)(\1)/g,
+            
+            // Last name with first: "Alex MittellMittell"
+            /([A-Z][a-z]+)\s+([A-Z][a-z]+)(\2)/g
+        ];
+        
+        // Apply each pattern and fix doubled usernames
+        let fixedText = text;
+        for (const pattern of patterns) {
+            fixedText = fixedText.replace(pattern, (match) => {
+                return this._fixDoubledUsername(match);
+            });
+        }
+        
+        return fixedText;
+    }
+}
+```
+
+### Special Character Handling
+```typescript
+interface EmojiProcessor {
+    // Handle emoji directly attached to usernames
+    processUsernameEmoji(text: string): {
+        username: string,
+        emoji: string | null
+    };
+    
+    // Fix various emoji formats
+    normalizeEmoji(text: string): string;
+}
+```
+
+### Message Format Detection
+```typescript
+interface FormatDetector {
+    isIndentedTimestamp(line: string): boolean;
+    preserveWhitespace: boolean;
+    normalizeTimeFormat(timestamp: string): string;
+}
+```
+
+### Message Content Processing
+The plugin now includes enhanced handling for doubled usernames that appear within message content, not just at message boundaries. This is implemented through a multi-stage approach:
+
+1. **Initial Message Parsing**
+   - Basic message structure detection
+   - Primary username and timestamp extraction
+   - Initial content collection
+
+2. **Content-Aware Username Processing**
+   - Secondary pass to detect doubled usernames in message content
+   - Pattern matching for various doubling formats within text
+   - Application of fixes while preserving surrounding content
+
+3. **Integration Points**
+   - Applied during message content processing
+   - Used in preview generation
+   - Applied during final markdown rendering
+
+## Performance Optimizations
+
+### Pre-parsing Optimization
+- Uses a two-pass approach to identify message boundaries first
+- Preserves whitespace for format-sensitive content
+- Reduces the need for complex line-by-line state tracking
+- More efficient processing of large conversations
+
+### Format-Specific Processing
+- Different processing algorithms for different Slack formats
+- Optimizes performance by using the most appropriate parser
+
+### Duplicate Prevention
+- Advanced message key generation to avoid duplicates
+- Content hashing to identify similar messages
+- Tracking of processed messages to prevent redundancy
+
+### Content Processing Optimizations
+- Efficient pattern matching for embedded username detection
+- Single-pass content processing with multiple pattern application
+- Reuse of existing username deduplication logic
+- Caching of processed content to prevent redundant operations
+
+## Edge Cases and Handling
+
+1. **Undetectable Messages**
+   - Fallback to pattern-based detection for non-standard formats
+   - Creates "Unknown" author blocks when attribution is impossible
+   - Preserves message content even when structure can't be determined
+
+2. **Indented Timestamp Format**
+   - Handles format where timestamps are indented on a separate line:
+   ```
+   Username
+     10:30 AM
+   Message content
+   ```
+   - Preserves whitespace during initial parsing to detect this pattern
+   - Properly associates timestamp with username from previous line
+
+3. **Timestamp Normalization**
    ```typescript
-   private handleSlackMetadataLine(line: string): false | string | undefined
+   public normalizeTimeFormat(timeStr: string): string
    ```
-   - Identifies and handles special lines like thread indicators
-   - Filters out redundant metadata lines
-   - Returns thread info if relevant
+   - Handles various timestamp formats from Slack
+   - Normalizes AM/PM formats and removes brackets
+   - Ensures consistent time representation
 
-3. **Date & Time Parsing**
+4. **System Message Filtering**
    ```typescript
-   private isDateLine(line: string): boolean
-   private parseDateLine(line: string): Date | null
-   private parseAndFormatTime(timeStr: string): string
+   public isSystemMessage(line: string): boolean
    ```
-   - Identifies and parses date markers in Slack conversations
-   - Converts times to full timestamps using detected dates
-   - Handles timezone conversions
+   - Identifies and filters out system messages
+   - Prevents clutter from join/leave notices and other system events
+   - Improves readability of the final output
 
-### Text Formatting
-1. **Line Formatting**
-   ```typescript
-   private formatLine(line: string): string
-   ```
-   - Main formatting function for message content
-   - Handles links, mentions, emojis, code, and other elements
-   - Sanitizes Markdown to avoid formatting conflicts
-
-2. **Message Assembly**
-   ```typescript
-   private flushMessage()
-   ```
-   - Collects processed lines into a complete message
-   - Formats into Obsidian callout style
-   - Adds metadata like user info and timestamp
-   - Adds thread information if available
-
-3. **Markdown Sanitization**
-   ```typescript
-   private sanitizeMarkdown(text: string): string
-   ```
-   - Prevents conflicts with existing Markdown syntax
-   - Handles escaping of special characters
-   - Normalizes formatting
-
-## Command Integration
-
-### Command Registration
-The plugin registers two main commands:
-1. `format-slack-paste`: Format clipboard content (hotkey: Cmd+Shift+V)
-2. `format-slack-create-note`: Create a new note with YAML frontmatter
-
-### Paste Handling
-Two modes are supported:
-1. **Dedicated hotkey** (Cmd+Shift+V)
-   - Reads clipboard content
-   - Formats as Slack conversation
-   - Inserts at cursor position
-
-2. **Intercept mode**
-   - Hooks into Obsidian's editor-paste event
-   - Detects if pasted content appears to be Slack text
-   - Optionally shows confirmation dialog
-   - Returns `false` to cancel default paste behavior
-
-## Special Features
-
-### Link & Mention Handling
-- Converts `<https://url|text>` to `[text](url)`
-- Detects image URLs and formats as `![alt](url)`
-- Transforms user mentions:
-  - `<@U123ABC>` → `[[User Name]]` (via user map)
-  - `@username` → `[[username]]`
-- Formats channel mentions:
-  - `#C01234` → `[[#channel-name]]` (via channel map)
-
-### Code Block Detection
-When `enableCodeBlocks` is true:
-- Detects lines starting with triple backticks
-- Properly handles language specifiers
-- Preserves content formatting between fences
-
-### Thread Detection
-- Identifies thread indicators like "3 replies"
-- Optionally collapses threads with replies exceeding threshold
-- Extracts thread statistics
-
-### YAML Frontmatter Generation
-When creating notes with `format-slack-create-note`:
-- Adds participants list
-- Includes date range
-- Provides message statistics
-- Records thread count and other metadata
-
-## Performance Considerations
-
-1. **Line Limiting**
-   - Truncates extremely large pastes at configurable threshold
-   - Prevents browser/Obsidian hangs with massive Slack exports
-
-2. **Duplicate Detection**
-   - Prevents duplicate messages from being added to output
-   - Handles unusual formatting in Slack exports
-
-3. **Error Handling**
-   - Graceful fallbacks for unexpected input formats
-   - JSON parsing error handling for configuration maps
-
-## Testing & Edge Cases
-
-### Known Edge Cases
-1. **Message Format Detection**
-   - Falls back to simpler parsing if standard format isn't detected
-   - Special handling for emoji in usernames
-
-2. **Timestamp Formatting**
-   - Handles 12/24-hour time formats
-   - Accounts for time zones
-   - Defaults to local timezone if not specified
-
-3. **System Messages**
-   - Filters out common system messages like "joined #channel"
-   - Handles "replied to thread" messages
+5. **Content-Embedded Usernames**
+   - Handles doubled usernames appearing within message content
+   - Fixes cases like "Trajan McGillTrajan McGill" in quoted text
+   - Preserves surrounding message content and formatting
+   - Maintains emoji and special character handling
 
 ## Future Development Areas
 
-1. **Parsing Improvements**
-   - Enhanced handling of complex nested threads
-   - Better support for Slack export formats
-   - More robust handling of variations in Slack UI copy/paste formats
+1. **Enhanced Format Detection**
+   - Support for more Slack export and copy/paste formats
+   - Adaptive processing based on detected format
+   - Better handling of thread structures
 
-2. **Feature Extensions**
-   - Support for Slack reactions
-   - Enhanced metadata extraction
-   - Optional message grouping by date/user
+2. **Code Block Improvements**
+   - Better detection of multi-line code blocks
+   - Syntax highlighting preservation
+   - Handling of inline code vs. block code
 
-3. **Performance Optimization**
-   - More efficient line processing for extremely large pastes
-   - Incremental processing for real-time feedback
+3. **Reaction Support**
+   - Preserve and display message reactions
+   - Format emoji reactions in a readable way
+   - Count and summarize frequent reactions
+
+4. **Integration Enhancements**
+   - Better integration with Obsidian's dataview
+   - Enhanced YAML frontmatter for better querying
+   - Dynamic linking to related notes
+
+5. **Testing Framework**
+   - Use actual parser implementation in the test framework
+   - Expand test coverage for all supported formats
+   - Add automated validation for parsing edge cases
 
 ## Version History
 
-The plugin is currently at version 0.0.7 as specified in the manifest.json and main.ts file.
+The plugin has been significantly improved with enhancements to the message parsing algorithm, including better handling of indented timestamp formats, generic username handling algorithms, and preservation of whitespace for format-sensitive content.
+
+Recent updates (as of March 13, 2025):
+- Enhanced username detection with improved emoji handling
+- Added content-aware username deduplication for embedded names
+- Fixed build errors related to duplicate method implementations
+- Resolved regex syntax issues in pattern matching
+- Implemented clean separation of public API and private implementation methods
+- Added comprehensive handling for doubled usernames in message content
+- Improved type safety across the codebase
+- Eliminated recursive method calls that could potentially cause infinite loops

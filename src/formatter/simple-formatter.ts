@@ -33,12 +33,16 @@ export class SimpleFormatter {
     emojiMap: Record<string, string>,
     channelMap: Record<string, string>
   ) {
-    this.settings = settings;
-    this.userMap = userMap;
-    this.emojiMap = emojiMap;
-    this.channelMap = channelMap;
-    this.textProcessor = new TextProcessor(userMap, emojiMap, channelMap);
-    this.messageParser = new MessageParser();
+    this.settings = settings || {};
+    this.userMap = userMap || {};
+    this.emojiMap = emojiMap || {};
+    this.channelMap = channelMap || {};
+    this.textProcessor = new TextProcessor(
+      this.userMap,
+      this.emojiMap,
+      this.channelMap
+    );
+    this.messageParser = new MessageParser(this.settings);
   }
   
   // Debug logging helper
