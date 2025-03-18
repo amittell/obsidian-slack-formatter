@@ -6,14 +6,14 @@
  * Formats Slack conversations pasted into Obsidian
  */
 import { Plugin, Editor, Notice, Menu, MenuItem, Platform } from 'obsidian';
-import { SlackFormatter } from './formatter/index';
+import { SlackFormatter } from './formatter/formatter';
 import { DEFAULT_SETTINGS } from './settings';
 import { SlackFormatSettingTab } from './ui/settings-tab';
 import { ConfirmSlackModal, SlackPreviewModal } from './ui/modals';
-import { SlackFormatSettings } from './types';
+import { SlackFormatterSettings } from './types';
 
 export default class SlackFormatPlugin extends Plugin {
-	settings!: SlackFormatSettings;
+	settings!: SlackFormatterSettings;
 	formatter!: SlackFormatter;
 
 	async onload(): Promise<void> {
@@ -134,28 +134,28 @@ export default class SlackFormatPlugin extends Plugin {
 			console.log('Initializing formatter...');
 			
 			// Parse the JSON maps
-			const userMap = this.parseJsonMap(this.settings.userMap);
-			const emojiMap = this.parseJsonMap(this.settings.emojiMap);
-			const channelMap = this.parseJsonMap(this.settings.channelMap);
+			const userMap = this.parseJsonMap(this.settings.userMapJson || '{}');
+			const emojiMap = this.parseJsonMap(this.settings.emojiMapJson || '{}');
+			const channelMap = this.parseJsonMap(this.settings.channelMapJson || '{}');
+			
+			// Update settings with parsed maps
+			this.settings.userMap = userMap;
+			this.settings.emojiMap = emojiMap;
+			this.settings.channelMap = channelMap;
 			
 			// Create formatter
-			this.formatter = new SlackFormatter(
-				this.settings,
-				userMap,
-				emojiMap,
-				channelMap
-			);
+			this.formatter = new SlackFormatter(this.settings);
 			
 			console.log("Slack formatter initialized successfully");
 		} catch (error) {
 			console.error("Error initializing formatter:", error);
-			// Initialize with empty maps as fallback
-			this.formatter = new SlackFormatter(
-				this.settings,
-				{}, // empty userMap
-				{}, // empty emojiMap
-				{}  // empty channelMap
-			);
+			// Initialize with empty settings as fallback
+			this.formatter = new SlackFormatter({
+				...this.settings,
+				userMap: {},
+				emojiMap: {},
+				channelMap: {}
+			});
 			new Notice("Warning: Initialized formatter with empty maps due to settings error.");
 		}
 	}
@@ -189,9 +189,9 @@ export default class SlackFormatPlugin extends Plugin {
 	private handlePasteEvent(evt: ClipboardEvent, editor: Editor): void {
 		try {
 			// Check specifically for Cmd+Shift+V (Mac) or Ctrl+Shift+V (Windows/Linux)
-			const metaKey = evt.metaKey;
-			const ctrlKey = evt.ctrlKey;
-			const shiftKey = evt.shiftKey;
+			const metaKey = (evt as any).metaKey;
+			const ctrlKey = (evt as any).ctrlKey;
+			const shiftKey = (evt as any).shiftKey;
 			
 			const isCmdShiftV = (Platform.isMacOS && metaKey && shiftKey) || 
 								(!Platform.isMacOS && ctrlKey && shiftKey);

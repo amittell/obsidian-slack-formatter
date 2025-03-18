@@ -1,6 +1,11 @@
 /**
  * MessageParser.ts
  * Parses raw Slack text into structured message objects for formatting
+ *
+ * This module contains the core parsing logic for Slack messages, handling various
+ * message formats, username patterns, timestamps, and special formatting.
+ * It implements a multi-strategy approach to parsing, with fallback mechanisms
+ * for different Slack export and copy/paste formats.
  */
 import { FormatMode, SlackFormatterSettings } from "../types";
 import { TextProcessor } from "./text-processor";
@@ -29,9 +34,22 @@ export class SlackMessage {
 }
 
 export class MessageParser {
+  // Regex pattern constants for improved readability and maintainability
+  private static readonly USERNAME_PATTERN = /^[A-Z][a-z]+(?:[-'\s]*(?:Mc|Mac)?[A-Z][a-z]+)*(?::[^:]+:)?$/;
+  private static readonly USERNAME_TIMESTAMP_PATTERN = /^([A-Z][a-z]+(?:[-'\s]*(?:Mc|Mac)?[A-Z][a-z]+)*)(?::[^:]+:)??\s+\[.*?(?:Today|Yesterday|[A-Z][a-z]{2}\s+\d+(?:st|nd|rd|th)?)?(?:\s+at\s+)?\d{1,2}:\d{2}\s*(?:AM|PM).*?\]/i;
+  private static readonly TIMESTAMP_PATTERN = /^\[((?:Today|Yesterday|[A-Z][a-z]{2}\s+\d+(?:st|nd|rd|th)?)?(?:\s+at\s+)?(?:\d{1,2}:\d{2}\s*(?:AM|PM)))\]/i;
+  private static readonly INDENTED_TIMESTAMP_PATTERN = /^\s+(\d{1,2}:\d{2}\s*(?:AM|PM))$/;
+  private static readonly AVATAR_URL_PATTERN = /^(?:!\[[^\]]*\])?\(https:\/\/ca\.slack-edge\.com\/[^)]+\)$/;
+  private static readonly DOUBLED_USERNAME_PATTERN = /^(.+?)(?:\s*\1)+$/;
+  private static readonly APP_MESSAGE_PATTERN = /^([A-Za-z0-9]+(?:\s+[A-Za-z0-9]+)?)\s+APP\s+(\d{1,2}:\d{2}\s*(?:AM|PM))/i;
+  private static readonly DATE_PATTERN = /^(?:Yesterday|Today|\w+, \w+ \d{1,2}(?:th|st|nd|rd)?)$/;
+  private static readonly THREAD_INFO_PATTERN = /^(?:View thread|Reply in thread)$/i;
+  private static readonly THREAD_REPLY_COUNT_PATTERN = /^(\d+) repl(?:y|ies)$/i;
+  
   private settings: SlackFormatterSettings;
   private textProcessor: TextProcessor;
   private seenMessages: Set<string>;
+  private messageCache: Map<string, SlackMessage[]>;
 
   constructor(settings: SlackFormatterSettings) {
     this.settings = settings;
@@ -41,6 +59,7 @@ export class MessageParser {
       settings.channelMap || {}
     );
     this.seenMessages = new Set();
+    this.messageCache = new Map();
   }
 
   private isLikelyUsername(text: string): boolean {
@@ -173,6 +192,24 @@ export class MessageParser {
     return null;
   }
 
+  /**
+   * Parses a message start from a line of text
+   *
+   * This method analyzes a line of text to determine if it represents the start of a new Slack message.
+   * It handles multiple message formats including:
+   * - Lines with avatar URLs followed by username and timestamp
+   * - Lines with username and timestamp patterns
+   * - Lines with app messages (e.g., "APP_NAME APP 10:30 AM")
+   *
+   * The method also tracks seen messages to prevent duplicates and handles
+   * special cases like thread replies.
+   *
+   * @param line - The line of text to parse
+   * @param lineIndex - The index of the line in the array of lines
+   * @param lines - The complete array of lines for context
+   * @returns An object containing the parsed message (or null if not a message start)
+   *          and number of lines to skip in subsequent processing
+   */
   private parseMessageStart(line: string, lineIndex: number, lines: string[]): {
     message: SlackMessage | null;
     skipLines: number;
@@ -734,21 +771,65 @@ export class MessageParser {
 
   /**
    * Parse messages with enhanced multi-strategy approach
-   * This tries the simple algorithm first, and falls back to more complex parsing if needed
+   *
+   * This method implements a sophisticated multi-tiered parsing strategy:
+   * 1. First checks the cache to see if this text has been processed before
+   * 2. If not cached, tries the simple algorithm which is optimized for common Slack formats
+   * 3. Falls back to the more complex algorithm if the simple one doesn't find any messages
+   *
+   * The multi-strategy approach ensures robust handling of various Slack formats
+   * while maintaining good performance through caching.
+   *
+   * @param text - The raw Slack text to parse
+   * @returns Array of parsed SlackMessage objects
    */
   public parse(text: string): SlackMessage[] {
+    // Generate a cache key based on text content
+    const cacheKey = this.generateCacheKey(text);
+    
+    // Check if we've already parsed this text
+    if (this.messageCache.has(cacheKey)) {
+      return this.messageCache.get(cacheKey) || [];
+    }
+    
+    // Clear seen messages set for a fresh parse
     this.seenMessages.clear();
     
-    // First try the simple algorithm
+    // First try the simple algorithm which is faster and handles common formats
     const simpleMessages = this.parseSimpleMessages(text);
     
-    // If we found messages with the simple algorithm, return them
+    // If we found messages with the simple algorithm, cache and return them
     if (simpleMessages.length > 0) {
+      this.messageCache.set(cacheKey, simpleMessages);
       return simpleMessages;
     }
     
     // Fall back to the more complex algorithm if the simple one didn't find anything
-    return this.parseMessages(text);
+    const complexMessages = this.parseMessages(text);
+    
+    // Cache the results before returning
+    this.messageCache.set(cacheKey, complexMessages);
+    return complexMessages;
+  }
+  
+  /**
+   * Generates a cache key for message parsing
+   *
+   * Creates a simple hash of the text content to use as a cache key.
+   * This helps avoid redundant parsing of the same content.
+   *
+   * @param text - The text to generate a key for
+   * @returns A string key for the cache
+   */
+  private generateCacheKey(text: string): string {
+    // Simple hash function - for production, consider a more robust hashing algorithm
+    let hash = 0;
+    for (let i = 0; i < Math.min(text.length, 1000); i++) {
+      const char = text.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32bit integer
+    }
+    return `msg_${hash}_${text.length}`;
   }
 
   public detectFirstMessage(text: string | string[]): SlackMessage | null {
@@ -796,7 +877,61 @@ export class MessageParser {
     return this.parseMessageStart(line, lineIndex, lines);
   }
 
-  public isLikelySlackFormat(text: string): boolean {
+  public isLikelySlackPublic(text: string): boolean {
     return this.textProcessor.isLikelySlackFormat(text);
   }
+  
+  public normalizeTimeFormatPublic(time: string): string {
+    return this.formatTimestamp(time);
+  }
+  
+  public detectFirstMessagePublic(text: string[]): SlackMessage | null {
+    return this.detectFirstMessage(text);
+  }
+  
+  public isDateLinePublic(line: string): boolean {
+    return /^(?:Yesterday|Today|\w+, \w+ \d{1,2}(?:th|st|nd|rd)?)$/.test(line);
+  }
+  
+  public parseDateLinePublic(line: string): Date | null {
+    if (!this.isDateLinePublic(line)) return null;
+    
+    // Handle "Yesterday" and "Today"
+    if (line === "Yesterday") {
+      const date = new Date();
+      date.setDate(date.getDate() - 1);
+      return date;
+    } else if (line === "Today") {
+      return new Date();
+    }
+    
+    // Handle date format like "Monday, February 5th"
+    try {
+      return new Date(line);
+    } catch (e) {
+      return null;
+    }
+  }
+  
+  public isSlackMetadataLinePublic(line: string): boolean {
+    return /^(?:View thread|Reply in thread|\d+ repl(?:y|ies)|Last reply|Thread with|🧵\s+)/.test(line);
+  }
+  
+  public parseThreadMetadataPublic(line: string): { isThreadInfo: boolean; replyCount?: number } {
+    if (!this.isSlackMetadataLinePublic(line)) {
+      return { isThreadInfo: false };
+    }
+    
+    const replyMatch = line.match(/^(\d+) repl(?:y|ies)/);
+    if (replyMatch) {
+      return {
+        isThreadInfo: true,
+        replyCount: parseInt(replyMatch[1], 10)
+      };
+    }
+    
+    return { isThreadInfo: true };
+  }
+  
+  // This method is already defined above at line 788
 }

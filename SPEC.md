@@ -1,5 +1,5 @@
 # Obsidian Slack Formatter - Technical Specification
-Last Updated: March 13, 2025
+Last Updated: March 17, 2025
 
 ## Overview
 The Obsidian Slack Formatter is a plugin for [Obsidian](https://obsidian.md) that transforms raw Slack conversation text into formatted Markdown callouts. It handles user messages, timestamps, formatting, mentions, emojis, code blocks, threads, and other Slack-specific elements.
@@ -28,14 +28,38 @@ The Obsidian Slack Formatter is a plugin for [Obsidian](https://obsidian.md) tha
    - Specialized component for parsing raw Slack messages
    - Handles detection and extraction of usernames, timestamps, and content
    - Fixes common formatting issues like duplicated usernames
+   - Implements caching for improved performance
 
 6. **TextProcessor**
    - Processes message content with rich formatting
    - Handles links, code blocks, emojis, and mentions
 
-7. **SimpleFormatter**
-   - Alternative formatter for specific Slack formats
-   - Handles bracket-style timestamp formats efficiently
+7. **EmojiProcessor**
+   - Specialized module for handling emoji-related functionality
+   - Processes emoji codes and converts them to Unicode equivalents
+   - Fixes emoji formatting issues in various contexts
+
+8. **DateTimeProcessor**
+   - Specialized module for date and time handling
+   - Parses and formats timestamps consistently
+   - Handles various date formats from Slack exports
+
+9. **MessageFormatStrategy**
+   - Implements the Strategy Pattern for message formatting
+   - Provides interface and base class for format handlers
+   - Includes factory for selecting appropriate handler
+
+10. **StandardFormatHandler**
+    - Concrete strategy for handling common Slack formats
+    - Processes standard username and timestamp patterns
+
+11. **BracketFormatHandler**
+    - Concrete strategy for bracket-style timestamps
+    - Handles formats like "[10:42 AM] User: Message"
+
+12. **SimpleFormatter**
+    - Legacy formatter for specific Slack formats
+    - Maintained for backward compatibility
 
 ### Data Structures
 
@@ -93,44 +117,82 @@ interface SlackMessage {
 ## Text Processing Algorithm
 
 ### Main Processing Flow
-The plugin now uses a multi-tiered parsing approach:
+The plugin now uses a Strategy Pattern approach with specialized processors:
 
-1. **Format Type Detection**
-   - First determines if the content should use the SimpleFormatter or the standard parser
-   - Counts bracket-style timestamps to identify the appropriate formatter to use
+1. **Format Strategy Selection**
+   - Uses the `MessageFormatFactory` to determine the appropriate formatter
+   - Selects between `StandardFormatHandler`, `BracketFormatHandler`, etc.
+   - Falls back to a default handler if no specific format is detected
 
-2. **Pre-parsing Phase**
-   - Attempts to identify message boundaries in a first pass
-   - Fixes emoji formatting and other common issues
-   - Detects doubled usernames and fixes them
-   - Preserves whitespace for indented timestamp formats
+2. **Specialized Processing**
+   - `EmojiProcessor` handles all emoji-related formatting
+   - `DateTimeProcessor` manages timestamp and date parsing
+   - Each format handler implements its own parsing logic
+   - Caching prevents redundant processing of the same content
 
 3. **Message Parsing**
-   - Processes text line by line, identifying message starts
-   - Collects message content until another message start is detected
+   - The selected strategy processes text line by line
+   - Identifies message boundaries based on format-specific patterns
+   - Extracts usernames, timestamps, and content
    - Handles special cases like thread dividers
-   - Supports indented timestamp formats (username followed by indented timestamp)
 
-4. **Fallback Processing**
-   - If standard parsing fails, tries simplified pattern matching
-   - Handles unattributed content gracefully
-   - Creates generic message blocks for unparseable content
+4. **Content Processing**
+   - Processes message content with specialized handlers
+   - Fixes emoji formatting with `EmojiProcessor`
+   - Normalizes timestamps with `DateTimeProcessor`
+   - Handles code blocks, mentions, and other formatting
 
 5. **Output Formatting**
    - Transforms parsed messages into Obsidian-compatible markdown
    - Creates wiki links for usernames
    - Formats timestamps consistently
+   - Handles thread formatting based on settings
 
 ### Key Processing Components
 
-1. **SlackFormatter Class**
+1. **MessageFormatStrategy Interface**
    ```typescript
-   public formatSlackContent(input: string): string
+   interface MessageFormatHandler {
+     canHandle(text: string): boolean;
+     format(input: string): SlackMessage[];
+     formatAsMarkdown(messages: SlackMessage[]): string;
+   }
    ```
-   - New multi-pass parsing algorithm
-   - Preserves whitespace in original input for better format detection
-   - Handles both standard and simplified message formats
-   - Supports indented timestamp format detection
+   - Defines the contract for all format handlers
+   - Allows for flexible handling of different Slack formats
+   - Enables easy addition of new format support
+
+2. **Format Handlers**
+   ```typescript
+   class StandardFormatHandler implements MessageFormatHandler {
+     // Implementation for standard Slack formats
+   }
+   
+   class BracketFormatHandler implements MessageFormatHandler {
+     // Implementation for bracket-style timestamps
+   }
+   ```
+   - Each handler specializes in a specific format
+   - Implements format-specific parsing logic
+   - Handles edge cases for its format type
+
+3. **Specialized Processors**
+   ```typescript
+   class EmojiProcessor {
+     processEmoji(text: string): string;
+     stripEmoji(text: string): string;
+     // Other emoji-related methods
+   }
+   
+   class DateTimeProcessor {
+     parseTimestamp(line: string): string | null;
+     formatTimestamp(timestamp: string): string;
+     // Other date/time methods
+   }
+   ```
+   - Focused modules for specific processing concerns
+   - Improves separation of concerns
+   - Enhances maintainability and testability
 
 ### Username Processing Architecture
 ```typescript
@@ -315,7 +377,10 @@ The plugin now includes enhanced handling for doubled usernames that appear with
 
 The plugin has been significantly improved with enhancements to the message parsing algorithm, including better handling of indented timestamp formats, generic username handling algorithms, and preservation of whitespace for format-sensitive content.
 
-Recent updates (as of March 13, 2025):
+Recent updates (as of March 17, 2025):
+- Implemented Strategy Pattern for message formatting with specialized handlers
+- Created dedicated modules for emoji processing and date/time handling
+- Added caching to improve performance for repeated operations
 - Enhanced username detection with improved emoji handling
 - Added content-aware username deduplication for embedded names
 - Fixed build errors related to duplicate method implementations
@@ -324,3 +389,9 @@ Recent updates (as of March 13, 2025):
 - Added comprehensive handling for doubled usernames in message content
 - Improved type safety across the codebase
 - Eliminated recursive method calls that could potentially cause infinite loops
+- Enhanced documentation with detailed JSDoc comments explaining purpose and behavior
+- Added inline comments to complex logic, especially regex patterns
+- Improved code organization with better modularization
+- Created a dedicated utils.ts file for common utility functions
+- Broke down large methods into smaller, single-responsibility methods
+- Improved error handling with more specific error messages

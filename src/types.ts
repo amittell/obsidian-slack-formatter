@@ -34,6 +34,9 @@ export interface SlackFormatSettings {
   userMap?: Record<string, string>;
   emojiMap?: Record<string, string>;
   channelMap?: Record<string, string>;
+  userMapJson: string;
+  emojiMapJson: string;
+  channelMapJson: string;
   hotkeyMode: 'cmdShiftV' | 'interceptCmdV';
   maxLines: number;
   enablePreviewPane: boolean;
@@ -42,6 +45,7 @@ export interface SlackFormatSettings {
   collapseThreads: boolean;
   threadCollapseThreshold: number;
   showSuccessMessage: boolean;
+  debug?: boolean;
 }
 
 /**
@@ -49,6 +53,13 @@ export interface SlackFormatSettings {
  */
 export interface SlackFormatterSettings extends SlackFormatSettings {
   formatMode?: FormatMode;
+}
+export interface ISlackFormatter {
+    isLikelySlack(text: string): boolean;
+    fixEmojiFormatting(text: string): string;
+    formatSlackContent(input: string): string;
+    getThreadStats(): ThreadStats;
+    buildNoteWithFrontmatter(text: string): string;
 }
 
 /**

@@ -145,9 +145,10 @@ export class SlackPreviewModal extends Modal {
           }
           
           // Fix emoji issues in text before processing
-          const fixedText = this.formatter.fixEmojiFormatting ? 
+          const fixedText = this.formatter.fixEmojiFormatting ?
             this.formatter.fixEmojiFormatting(raw) : raw;
-          const formatted = this.formatter.formatSlackContent(fixedText);
+          const messageContent = fixedText; // Define messageContent variable
+          const formatted = this.formatter.formatSlackContent(messageContent);
           this.onResult(formatted);
           this.close();
         } catch (error) {
@@ -250,8 +251,9 @@ export class SlackPreviewModal extends Modal {
         this.formatter.fixEmojiFormatting(raw) : raw;
       
       // Generate formatted output - safely access method
-      let output = this.formatter.formatSlackContent ? 
-        this.formatter.formatSlackContent(fixedText) : 
+      let messageContent = fixedText; // Define messageContent variable
+      let output = this.formatter.formatSlackContent ?
+        this.formatter.formatSlackContent(messageContent) :
         "<div style='color:orange'>Preview not available</div>";
       
       // Handle code blocks with syntax highlighting
