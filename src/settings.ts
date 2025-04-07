@@ -1,4 +1,4 @@
-import { SlackFormatSettings } from './types';
+import { SlackFormatSettings } from './types/settings.types'; // Corrected import path
 
 /**
  * Default settings for the Slack Formatter plugin
@@ -22,7 +22,6 @@ export const DEFAULT_SETTINGS: SlackFormatSettings = {
     "pray": "🙏",
     "no_entry": "⛔"
   }, null, 2),
-  channelMapJson: '{}',
   hotkeyMode: 'cmdShiftV',
   maxLines: 5000,
   enablePreviewPane: true,
@@ -30,19 +29,8 @@ export const DEFAULT_SETTINGS: SlackFormatSettings = {
   timeZone: '',
   collapseThreads: true,
   threadCollapseThreshold: 10,
-  showSuccessMessage: true
+  showSuccessMessage: true,
+  frontmatterCssClass: 'slack-conversation', // Default CSS class
+  frontmatterTitle: '# Slack Conversation', // Default title
+  debug: true // Add debug flag, default to false -> RE-ENABLED FOR DEBUGGING
 };
-
-/**
- * Load settings from storage
- */
-export async function loadSettings(plugin: any): Promise<SlackFormatSettings> {
-  return Object.assign({}, DEFAULT_SETTINGS, await plugin.loadData());
-}
-
-/**
- * Save settings to storage
- */
-export async function saveSettings(plugin: any, settings: SlackFormatSettings): Promise<void> {
-  await plugin.saveData(settings);
-}

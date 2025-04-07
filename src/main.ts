@@ -1,329 +1,276 @@
 /**
  * Obsidian Slack Formatter Plugin
- * @version 0.0.8
+ * @version 1.0.0
  * Author: Alex Mittell
  * 
  * Formats Slack conversations pasted into Obsidian
  */
 import { Plugin, Editor, Notice, Menu, MenuItem, Platform } from 'obsidian';
-import { SlackFormatter } from './formatter/formatter';
+import { SlackFormatter } from './formatter/slack-formatter';
 import { DEFAULT_SETTINGS } from './settings';
 import { SlackFormatSettingTab } from './ui/settings-tab';
 import { ConfirmSlackModal, SlackPreviewModal } from './ui/modals';
-import { SlackFormatterSettings } from './types';
+import { SlackFormatSettings } from './types/settings.types'; // Corrected import path
+import { parseJsonMap } from './utils'; // Import the centralized utility
 
 export default class SlackFormatPlugin extends Plugin {
-	settings!: SlackFormatterSettings;
-	formatter!: SlackFormatter;
+  settings!: SlackFormatSettings; // Corrected type name
+  formatter!: SlackFormatter;
 
-	async onload(): Promise<void> {
-		console.log('Loading Slack formatter plugin v0.0.8');
+  async onload(): Promise<void> {
+    console.log('Loading Slack formatter plugin v1.0.0');
 
-		// Load settings
-		await this.loadSettings();
+    // Load settings
+    await this.loadSettings();
 
-		// Initialize formatter
-		this.initFormatter();
+    // Initialize formatter
+    this.initFormatter();
 
-		// Add settings tab
-		this.addSettingTab(new SlackFormatSettingTab(this.app, this));
+    // Add settings tab
+    this.addSettingTab(new SlackFormatSettingTab(this.app, this));
 
-		// Register specific hotkey for Cmd+Shift+V / Ctrl+Shift+V
-		this.addCommand({
-			id: 'format-slack-paste-hotkey',
-			name: 'Format Slack paste with hotkey',
-			hotkeys: [
-				{
-					modifiers: ["Mod", "Shift"],
-					key: "v",
-				},
-			],
-			editorCallback: async (editor: Editor) => {
-				console.log("[SlackFormat] Hotkey command triggered");
-				const clipboardContent = await navigator.clipboard.readText();
-				this.formatAndInsert(editor, clipboardContent);
-			}
-		});
+    // Register commands using helper methods
+    this.registerHotkeyCommand();
+    this.registerPaletteCommand();
+    this.registerContextMenu();
 
-		// Register paste handler command for palette
-		this.addCommand({
-			id: 'format-slack',
-			name: 'Format Slack paste',
-			icon: 'clipboard-list',
-			editorCallback: async (editor: Editor) => {
-				const clipboardContent = await navigator.clipboard.readText();
-				this.formatAndInsert(editor, clipboardContent);
-			}
-		});
+    // Removed 'editor-paste' event listener registration
+    // Removed direct keydown event listener
+  }
 
-		// Add paste handler for Cmd+Shift+V as backup
-		this.registerEvent(
-			this.app.workspace.on(
-				'editor-paste',
-				this.handlePasteEvent.bind(this)
-			)
-		);
+  /**
+   * Initialize the formatter with current settings
+   */
+  private initFormatter(): void {
+    try {
+      console.log('Initializing formatter...');
+      let errorOccurred = false;
+      
+      // Parse the JSON maps using the utility function, handling potential nulls
+      const userMapResult = parseJsonMap(this.settings.userMapJson || '{}', 'User Map');
+      const emojiMapResult = parseJsonMap(this.settings.emojiMapJson || '{}', 'Emoji Map');
+      // const channelMapResult = parseJsonMap(this.settings.channelMapJson || '{}', 'Channel Map'); // Removed
 
-		// Add the context menu command
-		this.registerEvent(
-			this.app.workspace.on(
-				'editor-menu',
-				(menu: Menu, editor: Editor) => {
-					menu.addItem((item: MenuItem) => {
-						item
-							.setTitle('Format as Slack conversation')
-							.setIcon('clipboard-list')
-							.onClick(async () => {
-								// If there's a selection, format just that
-								const selection = editor.getSelection();
-								if (selection) {
-									this.formatAndInsert(editor, selection);
-								} else {
-									// Otherwise try to get from clipboard
-									const clipboardContent = await navigator.clipboard.readText();
-									this.formatAndInsert(editor, clipboardContent);
-								}
-							});
-					});
-				}
-			)
-		);
-		
-		// Add a direct DOM event listener for the keyboard shortcut as a last resort
-		// This is needed because Obsidian might be capturing the event before our handlers
-		document.addEventListener('keydown', (e: KeyboardEvent) => {
-			// Check for Cmd+Shift+V or Ctrl+Shift+V
-			const isCmdShiftV = (Platform.isMacOS && e.metaKey && e.shiftKey && e.key.toLowerCase() === 'v') || 
-							   (!Platform.isMacOS && e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'v');
-			
-			if (isCmdShiftV) {
-				console.log("[SlackFormat] Direct keydown event for Cmd+Shift+V detected");
-				
-				// Get the active editor if available
-				const activeLeaf = this.app.workspace.activeLeaf;
-				if (activeLeaf && activeLeaf.view && activeLeaf.view.getViewType() === "markdown") {
-					// @ts-ignore - Accessing internal API
-					const editor = activeLeaf.view.editor;
-					if (editor) {
-						e.preventDefault();
-						e.stopPropagation();
-						
-						// Use setTimeout to ensure this runs after any other event handlers
-						setTimeout(async () => {
-							try {
-								const clipboardContent = await navigator.clipboard.readText();
-								this.formatAndInsert(editor, clipboardContent);
-							} catch (error) {
-								console.error("[SlackFormat] Error processing clipboard:", error);
-							}
-						}, 0);
-						
-						return false;
-					}
-				}
-			}
-			return true;
-		}, true); // Using capture phase to get the event before other handlers
-	}
+      const userMap = userMapResult ?? {};
+      const emojiMap = emojiMapResult ?? {};
+      // const channelMap = channelMapResult ?? {}; // Removed
 
-	/**
-	 * Initialize the formatter with current settings
-	 */
-	private initFormatter(): void {
-		try {
-			console.log('Initializing formatter...');
-			
-			// Parse the JSON maps
-			const userMap = this.parseJsonMap(this.settings.userMapJson || '{}');
-			const emojiMap = this.parseJsonMap(this.settings.emojiMapJson || '{}');
-			const channelMap = this.parseJsonMap(this.settings.channelMapJson || '{}');
-			
-			// Update settings with parsed maps
-			this.settings.userMap = userMap;
-			this.settings.emojiMap = emojiMap;
-			this.settings.channelMap = channelMap;
-			
-			// Create formatter
-			this.formatter = new SlackFormatter(this.settings);
-			
-			console.log("Slack formatter initialized successfully");
-		} catch (error) {
-			console.error("Error initializing formatter:", error);
-			// Initialize with empty settings as fallback
-			this.formatter = new SlackFormatter({
-				...this.settings,
-				userMap: {},
-				emojiMap: {},
-				channelMap: {}
-			});
-			new Notice("Warning: Initialized formatter with empty maps due to settings error.");
-		}
-	}
+      // Show specific notices if parsing failed for any map
+      if (userMapResult === null) {
+          new Notice("Error parsing User Map JSON from settings. Mentions may not work correctly.");
+          errorOccurred = true;
+      }
+      if (emojiMapResult === null) {
+          new Notice("Error parsing Emoji Map JSON from settings. Custom emojis may not work correctly.");
+          errorOccurred = true;
+      }
+      // Removed check for channelMapResult
+      
+      // Create formatter, passing settings and potentially empty maps if parsing failed
+      this.formatter = new SlackFormatter(this.settings, userMap, emojiMap); // Removed channelMap
+      
+      if (!errorOccurred) {
+          console.log("Slack formatter initialized successfully");
+      } else {
+          console.warn("Slack formatter initialized with potential map parsing errors.");
+      }
+      
+    } catch (error) { // Catch any unexpected errors during initialization itself
+      console.error("Unexpected error during formatter initialization:", error);
+      // Fallback to ensure formatter is always assigned, even if constructor fails unexpectedly
+      this.formatter = new SlackFormatter(
+        { ...this.settings },
+        {}, {} // Removed extra {} for channelMap
+      );
+      new Notice("Critical Error: Formatter initialization failed unexpectedly. Using default settings.");
+    }
+  }
 
-	/**
-	 * Parse a JSON string into a map safely
-	 */
-	private parseJsonMap(jsonStr: string): Record<string, string> {
-		try {
-			if (!jsonStr || jsonStr.trim() === '') {
-				return {};
-			}
-			return JSON.parse(jsonStr);
-		} catch (error) {
-			console.error('Failed to parse JSON map:', error);
-			return {};
-		}
-	}
+  // Removed local parseJsonMap method (now using utility)
+ 
+  // Removed handlePasteEvent method
 
-	/**
-	 * Parse the JSON maps from settings
-	 * This method is called from settings UI
-	 */
-	public parseJsonMaps(): void {
-		this.initFormatter();
-	}
+  /**
+   * Format text and insert it into the editor
+   */
+  private formatAndInsert(editor: Editor, text: string): void {
+    try {
+      if (!text) {
+        new Notice("No text to format");
+        return;
+      }
+      
+      console.log("[SlackFormat] Attempting to format text", text.substring(0, 100) + "...");
 
-	/**
-	 * Handle paste events with modifier keys
-	 */
-	private handlePasteEvent(evt: ClipboardEvent, editor: Editor): void {
-		try {
-			// Check specifically for Cmd+Shift+V (Mac) or Ctrl+Shift+V (Windows/Linux)
-			const metaKey = (evt as any).metaKey;
-			const ctrlKey = (evt as any).ctrlKey;
-			const shiftKey = (evt as any).shiftKey;
-			
-			const isCmdShiftV = (Platform.isMacOS && metaKey && shiftKey) || 
-								(!Platform.isMacOS && ctrlKey && shiftKey);
-			
-			// Debug logging to help diagnose issues
-			console.log("[SlackFormat] Paste event detected", {
-				metaKey,
-				shiftKey,
-				isMacOS: Platform.isMacOS,
-				isCmdShiftV
-			});
-			
-			if (isCmdShiftV) {
-				// Always intercept Cmd+Shift+V regardless of settings
-				console.log("[SlackFormat] Cmd+Shift+V detected, preventing default");
-				evt.preventDefault();
-				evt.stopPropagation();
-				
-				// Get the clipboard text
-				if (evt.clipboardData) {
-					const text = evt.clipboardData.getData('text/plain');
-					if (text) {
-						console.log("[SlackFormat] Got clipboard text, length:", text.length);
-						// Always attempt to format the text, even if it doesn't look like Slack
-						this.formatAndInsert(editor, text);
-						return;
-					} else {
-						console.log("[SlackFormat] No text in clipboard");
-					}
-				} else {
-					console.log("[SlackFormat] No clipboard data available");
-				}
-			}
-			
-			// If hotkeyMode is set to interceptCmdV and it's just Cmd+V with no Shift, 
-			// we still need to check if it's Slack content
-			if (this.settings.hotkeyMode === 'interceptCmdV' && 
-				((Platform.isMacOS && metaKey && !shiftKey) || 
-				(!Platform.isMacOS && ctrlKey && !shiftKey))) {
-				
-				if (evt.clipboardData) {
-					const text = evt.clipboardData.getData('text/plain');
-					if (text && this.formatter.isLikelySlack(text)) {
-						// It looks like Slack content, handle based on settings
-						evt.preventDefault();
-						evt.stopPropagation();
-						
-						// If confirmation dialog is enabled, show it
-						if (this.settings.enableConfirmationDialog) {
-							new ConfirmSlackModal(this.app, (confirmed) => {
-								if (confirmed) {
-									this.formatAndInsert(editor, text);
-								} else {
-									// Just insert the plain text
-									editor.replaceSelection(text);
-								}
-							}).open();
-						} else {
-							// No dialog needed, format directly
-							this.formatAndInsert(editor, text);
-						}
-					}
-				}
-			}
-		} catch (error) {
-			console.error("Error in paste handler:", error);
-			new Notice("Error handling paste event");
-		}
-	}
+      // Handle auto-detect mode with confirmation dialog
+      if (this.settings.hotkeyMode === 'interceptCmdV' && this.formatter.isLikelySlack(text)) {
+          if (this.settings.enableConfirmationDialog) {
+              new ConfirmSlackModal(
+                  this.app,
+                  (confirmed) => {
+                      if (confirmed) {
+                          this.performFormatting(editor, text);
+                      }
+                      // If not confirmed, do nothing
+                  }
+              ).open();
+              return; // Wait for modal confirmation
+          }
+          // If confirmation is disabled, proceed directly
+      } else if (this.settings.hotkeyMode === 'interceptCmdV' && !this.formatter.isLikelySlack(text)) {
+          // If intercept mode is on but text isn't likely Slack, do nothing (allow normal paste)
+          editor.replaceSelection(text); // Perform normal paste
+          return;
+      }
+      
+      // Proceed with formatting for cmdShiftV mode or if intercept checks passed
+      this.performFormatting(editor, text);
 
-	/**
-	 * Format text and insert it into the editor
-	 */
-	private formatAndInsert(editor: Editor, text: string): void {
-		try {
-			if (!text) {
-				new Notice("No text to format");
-				return;
-			}
-			
-			console.log("[SlackFormat] Attempting to format text", text.substring(0, 100) + "...");
+    } catch (error) {
+      console.error("Error in formatAndInsert:", error);
+      new Notice("Error formatting Slack text");
+    }
+  }
 
-			// If preview pane is enabled, show the preview first
-			if (this.settings.enablePreviewPane) {
-				new SlackPreviewModal(
-					this.app, 
-					text, 
-					(formattedText) => {
-						if (formattedText) {
-							editor.replaceSelection(formattedText);
-						}
-					},
-					this.formatter
-				).open();
-				return;
-			}
-			
-			// Otherwise format directly
-			const formattedText = this.formatter.formatSlackContent(text);
-			editor.replaceSelection(formattedText);
-			
-			if (this.settings.showSuccessMessage) {
-				new Notice("Slack message formatted!");
-			}
-		} catch (error) {
-			console.error("Error formatting text:", error);
-			new Notice("Error formatting Slack text");
-		}
-	}
+  /**
+   * Performs the actual formatting and insertion/preview
+   */
+   private performFormatting(editor: Editor, text: string): void {
+    try {
+        // If preview pane is enabled, show the preview first
+        if (this.settings.enablePreviewPane) {
+            new SlackPreviewModal(
+                this.app,
+                text,
+                (formattedText) => {
+                    if (formattedText) {
+                        editor.replaceSelection(formattedText);
+                        if (this.settings.showSuccessMessage) {
+                            new Notice("Slack message formatted!");
+                        }
+                    }
+                },
+                this.formatter // Pass the formatter instance
+            ).open();
+        } else {
+            // Otherwise format directly
+            const formattedText = this.formatter.formatSlackContent(text);
+            editor.replaceSelection(formattedText);
+            if (this.settings.showSuccessMessage) {
+                new Notice("Slack message formatted!");
+            }
+        }
+    } catch (error) {
+        console.error("Error during performFormatting:", error);
+        new Notice("Error applying Slack formatting.");
+    }
+}
 
-	/**
-	 * Format with YAML frontmatter
-	 */
-	public formatWithFrontmatter(text: string): string {
-		return this.formatter.buildNoteWithFrontmatter(text);
-	}
+  /**
+   * Reads text content from the system clipboard.
+   * Handles errors and displays a notice to the user.
+   * @returns The clipboard content as a string, or null if reading fails.
+   */
+  private async getClipboardContent(): Promise<string | null> {
+    try {
+      return await navigator.clipboard.readText();
+    } catch (error) {
+      console.error("[SlackFormat] Error reading clipboard:", error);
+      new Notice("Error reading clipboard content. Check permissions?");
+      return null;
+    }
+  }
 
-	onunload(): void {
-		console.log("Unloading Slack formatter plugin");
-	}
 
-	async loadSettings(): Promise<void> {
-		try {
-			this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
-		} catch (error) {
-			console.error("Error loading settings:", error);
-			this.settings = { ...DEFAULT_SETTINGS };
-		}
-	}
+  /**
+   * Format with YAML frontmatter
+   */
+  public formatWithFrontmatter(text: string): string {
+    return this.formatter.buildNoteWithFrontmatter(text);
+  }
 
-	async saveSettings(): Promise<void> {
-		await this.saveData(this.settings);
-		this.initFormatter();
-	}
+  onunload(): void {
+    console.log("Unloading Slack formatter plugin");
+    // No need to manually remove listeners added via registerEvent
+  }
+
+  async loadSettings(): Promise<void> {
+    try {
+      this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+    } catch (error) {
+      console.error("Error loading settings:", error);
+      this.settings = { ...DEFAULT_SETTINGS };
+    }
+  }
+
+  async saveSettings(): Promise<void> {
+    await this.saveData(this.settings);
+    // Re-initialize the formatter with new settings and re-parsed maps
+    this.initFormatter(); 
+  }
+
+  // --- Command Registration Methods ---
+
+  private registerHotkeyCommand(): void {
+    this.addCommand({
+      id: 'format-slack-paste-hotkey',
+      name: 'Format Slack paste with hotkey',
+      hotkeys: [
+        {
+          modifiers: ["Mod", "Shift"],
+          key: "v",
+        },
+      ],
+      editorCallback: async (editor: Editor) => {
+        const clipboardContent = await this.getClipboardContent();
+        if (clipboardContent !== null) { // Check if reading was successful
+          this.formatAndInsert(editor, clipboardContent);
+        }
+        // Error handling is now inside getClipboardContent
+      }
+    });
+  }
+
+  private registerPaletteCommand(): void {
+    this.addCommand({
+      id: 'format-slack',
+      name: 'Format Slack paste',
+      icon: 'clipboard-list',
+      editorCallback: async (editor: Editor) => {
+        const clipboardContent = await this.getClipboardContent();
+        if (clipboardContent !== null) { // Check if reading was successful
+          this.formatAndInsert(editor, clipboardContent);
+        }
+        // Error handling is now inside getClipboardContent
+      }
+    });
+  }
+
+  private registerContextMenu(): void {
+    this.registerEvent(
+      this.app.workspace.on(
+        'editor-menu',
+        (menu: Menu, editor: Editor) => {
+          menu.addItem((item: MenuItem) => {
+            item
+              .setTitle('Format as Slack conversation')
+              .setIcon('clipboard-list')
+              .onClick(async () => {
+                const selection = editor.getSelection();
+                if (selection) {
+                  this.formatAndInsert(editor, selection);
+                } else {
+                  // Use the helper method to read clipboard
+                  const clipboardContent = await this.getClipboardContent();
+                  if (clipboardContent !== null) { // Check if reading was successful
+                    this.formatAndInsert(editor, clipboardContent);
+                  }
+                  // Error handling is now inside getClipboardContent
+                }
+              });
+          });
+        }
+      )
+    );
+  }
 }

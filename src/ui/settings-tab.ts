@@ -1,8 +1,9 @@
 /**
  * Settings tab for Slack Formatter plugin
  */
-import { App, PluginSettingTab, Setting, Notice } from 'obsidian';
+import { App, PluginSettingTab, Setting, Notice, TextComponent, TextAreaComponent } from 'obsidian';
 import type SlackFormatPlugin from '../main';
+import { isValidJson } from '../utils'; // Import the centralized utility
 
 export class SlackFormatSettingTab extends PluginSettingTab {
   plugin: SlackFormatPlugin;
@@ -11,33 +12,50 @@ export class SlackFormatSettingTab extends PluginSettingTab {
     super(app, plugin);
     this.plugin = plugin;
   }
+
+  // Helper to display validation errors
+  private setError(inputEl: HTMLElement, messageEl: HTMLElement, message: string | null): void {
+    if (message) {
+      inputEl.addClass('is-invalid');
+      messageEl.setText(message);
+      messageEl.style.display = 'block';
+      messageEl.style.color = 'var(--text-error)'; // Use theme error color
+      messageEl.style.fontSize = 'var(--font-ui-smaller)'; // Smaller font size
+    } else {
+      inputEl.removeClass('is-invalid');
+      messageEl.style.display = 'none';
+      messageEl.setText('');
+    }
+  }
+
+  // Removed local isValidJson method (now using utility)
   
   display(): void {
     const { containerEl } = this;
     containerEl.empty();
     
-    containerEl.createEl('h2', { text: 'Slack Format Plugin (Callout Style)' });
+    containerEl.createEl('h2', { text: 'Slack Format Plugin Settings' }); // Updated title
     
-    // General settings section
+    // --- General settings section ---
     containerEl.createEl('h3', { text: 'General Settings' });
     
     new Setting(containerEl)
       .setName('Hotkey Behavior')
-      .setDesc('Use Cmd+Shift+V or intercept normal Cmd+V if Slack text is detected')
+      .setDesc('Choose how the formatting is triggered: dedicated hotkey or intercepting standard paste.')
       .addDropdown(dd => {
-        dd.addOption('cmdShiftV', 'Cmd+Shift+V (default)');
-        dd.addOption('interceptCmdV', 'Intercept Cmd+V');
+        dd.addOption('cmdShiftV', 'Cmd/Ctrl+Shift+V (Dedicated Hotkey)');
+        dd.addOption('interceptCmdV', 'Intercept Cmd/Ctrl+V (Auto-detect)');
         dd.setValue(this.plugin.settings.hotkeyMode);
         dd.onChange(async (val) => {
           this.plugin.settings.hotkeyMode = val as 'cmdShiftV' | 'interceptCmdV';
           await this.plugin.saveSettings();
-          new Notice('Hotkey setting changed. Reload or toggle plugin to apply.');
+          // Removed notice about reloading, as event listeners might update dynamically or command registration handles it.
         });
       });
     
     new Setting(containerEl)
       .setName('Confirmation Dialog on Intercept')
-      .setDesc('Ask the user if they want to convert Slack text when intercepting Cmd+V.')
+      .setDesc('When intercepting Cmd/Ctrl+V, ask before formatting likely Slack content.')
       .addToggle(tg => {
         tg.setValue(this.plugin.settings.enableConfirmationDialog);
         tg.onChange(async (val) => {
@@ -48,7 +66,7 @@ export class SlackFormatSettingTab extends PluginSettingTab {
     
     new Setting(containerEl)
       .setName('Enable Preview Pane')
-      .setDesc('Show a real-time preview modal before inserting Slack text.')
+      .setDesc('Show a preview modal before inserting formatted content.')
       .addToggle(tg => {
         tg.setValue(this.plugin.settings.enablePreviewPane);
         tg.onChange(async (val) => {
@@ -59,37 +77,43 @@ export class SlackFormatSettingTab extends PluginSettingTab {
     
     new Setting(containerEl)
       .setName('Time Zone')
-      .setDesc('Time zone for date/time formatting (e.g., America/New_York)')
+      .setDesc('Optional: Specify IANA time zone for date/time formatting (e.g., "America/New_York", "Europe/London"). Leave blank to use local time.')
       .addText(text => {
+        text.setPlaceholder("e.g., America/New_York")
         text.setValue(this.plugin.settings.timeZone);
         text.onChange(async (val) => {
-          this.plugin.settings.timeZone = val;
+          // Basic validation: just save the value. Actual validation happens in formatDateWithZone.
+          this.plugin.settings.timeZone = val.trim();
           await this.plugin.saveSettings();
         });
       });
       
-    new Setting(containerEl)
+    // Max Lines Setting with Validation
+    const maxLinesSetting = new Setting(containerEl)
       .setName('Max lines to process')
-      .setDesc('Truncate Slack paste if it exceeds this limit.')
-      .addText(txt => {
+      .setDesc('Maximum number of lines to process from a paste. Helps prevent performance issues with very large inputs.');
+    const maxLinesErrorEl = maxLinesSetting.controlEl.createDiv({ cls: 'setting-error-message' }); // Element for error message
+    maxLinesSetting.addText(txt => {
         txt.setValue(String(this.plugin.settings.maxLines));
         txt.onChange(async (val) => {
           const num = parseInt(val, 10);
           if (!isNaN(num) && num > 0) {
+            this.setError(txt.inputEl, maxLinesErrorEl, null); // Clear error
             this.plugin.settings.maxLines = num;
             await this.plugin.saveSettings();
           } else {
-            new Notice('Invalid max lines value.');
+            this.setError(txt.inputEl, maxLinesErrorEl, 'Must be a positive number.'); // Show error
+            // Do not save invalid value
           }
         });
       });
     
-    // Thread display settings
+    // --- Thread display settings ---
     containerEl.createEl('h3', { text: 'Thread Display' });
     
     new Setting(containerEl)
       .setName('Collapse Long Threads')
-      .setDesc('Automatically collapse threads with many replies')
+      .setDesc('Automatically collapse threads exceeding the threshold below.')
       .addToggle(tg => {
         tg.setValue(this.plugin.settings.collapseThreads);
         tg.onChange(async (val) => {
@@ -98,26 +122,32 @@ export class SlackFormatSettingTab extends PluginSettingTab {
         });
       });
     
-    new Setting(containerEl)
+    // Thread Collapse Threshold with Validation
+    const threadThresholdSetting = new Setting(containerEl)
       .setName('Thread Collapse Threshold')
-      .setDesc('Number of replies before collapsing a thread')
-      .addText(text => {
+      .setDesc('Number of replies before collapsing a thread (if enabled above).');
+    const threadThresholdErrorEl = threadThresholdSetting.controlEl.createDiv({ cls: 'setting-error-message' });
+    threadThresholdSetting.addText(text => {
         text.setValue(String(this.plugin.settings.threadCollapseThreshold));
         text.onChange(async (val) => {
           const num = parseInt(val);
           if (!isNaN(num) && num > 0) {
+            this.setError(text.inputEl, threadThresholdErrorEl, null); // Clear error
             this.plugin.settings.threadCollapseThreshold = num;
             await this.plugin.saveSettings();
+          } else {
+             this.setError(text.inputEl, threadThresholdErrorEl, 'Must be a positive number.'); // Show error
+             // Do not save invalid value
           }
         });
       });
     
-    // Content formatting settings
+    // --- Content formatting settings ---
     containerEl.createEl('h3', { text: 'Content Formatting' });
     
     new Setting(containerEl)
       .setName('Detect & Preserve Code Blocks')
-      .setDesc('If enabled, lines starting with ``` become code fences.')
+      .setDesc('Format lines within ```...``` as code blocks.')
       .addToggle(tg => {
         tg.setValue(this.plugin.settings.enableCodeBlocks);
         tg.onChange(async (val) => {
@@ -127,8 +157,8 @@ export class SlackFormatSettingTab extends PluginSettingTab {
       });
     
     new Setting(containerEl)
-      .setName('@username => [[username]]')
-      .setDesc('Convert Slack mentions into Obsidian wikilinks.')
+      .setName('Format Mentions')
+      .setDesc('Convert Slack mentions (@User, #Channel) using the maps below.')
       .addToggle(tg => {
         tg.setValue(this.plugin.settings.enableMentions);
         tg.onChange(async (val) => {
@@ -138,8 +168,8 @@ export class SlackFormatSettingTab extends PluginSettingTab {
       });
     
     new Setting(containerEl)
-      .setName('Convert :emoji: => actual emoji')
-      .setDesc('Use an emoji map to replace Slack :smile: with 😄, etc.')
+      .setName('Format Emojis')
+      .setDesc('Convert Slack emoji codes (e.g., :smile:) to characters using the map below.')
       .addToggle(tg => {
         tg.setValue(this.plugin.settings.enableEmoji);
         tg.onChange(async (val) => {
@@ -150,7 +180,7 @@ export class SlackFormatSettingTab extends PluginSettingTab {
     
     new Setting(containerEl)
       .setName('Parse Slack Times & Dates')
-      .setDesc('Convert "10:25 AM" into local date/time and detect lines like "Feb 2, 2025".')
+      .setDesc('Attempt to parse timestamps (e.g., "10:25 AM") and date lines.')
       .addToggle(tg => {
         tg.setValue(this.plugin.settings.enableTimestampParsing);
         tg.onChange(async (val) => {
@@ -160,8 +190,8 @@ export class SlackFormatSettingTab extends PluginSettingTab {
       });
     
     new Setting(containerEl)
-      .setName('Highlight Slack Threads')
-      .setDesc('If Slack text references "View thread", create a clickable link if URL is present.')
+      .setName('Format Thread Links')
+      .setDesc('Make "View thread" or similar text clickable if a URL is detected.')
       .addToggle(tg => {
         tg.setValue(this.plugin.settings.enableSubThreadLinks);
         tg.onChange(async (val) => {
@@ -169,54 +199,93 @@ export class SlackFormatSettingTab extends PluginSettingTab {
           await this.plugin.saveSettings();
         });
       });
-    
-    // Mapping sections
-    containerEl.createEl('h3', { text: 'Slack User ID → Name Map' });
+      
+    // --- Frontmatter Settings ---
+    containerEl.createEl('h3', { text: 'Frontmatter Output' });
     
     new Setting(containerEl)
-      .setName('User Map (JSON)')
-      .setDesc('Map "<@U123>" => "[[Alice]]". Example: { "U123":"Alice" }')
-      .addTextArea(txt => {
+      .setName('Frontmatter CSS Class')
+      .setDesc('CSS class to add to the frontmatter (e.g., for styling).')
+      .addText(text => {
+        text.setValue(this.plugin.settings.frontmatterCssClass);
+        text.onChange(async (val) => {
+          this.plugin.settings.frontmatterCssClass = val.trim();
+          await this.plugin.saveSettings();
+        });
+      });
+      
+    new Setting(containerEl)
+      .setName('Frontmatter Title')
+      .setDesc('Markdown title to add below the frontmatter (e.g., "# Slack Conversation"). Leave blank for no title.')
+      .addText(text => {
+        text.setValue(this.plugin.settings.frontmatterTitle);
+        text.onChange(async (val) => {
+          this.plugin.settings.frontmatterTitle = val.trim();
+          await this.plugin.saveSettings();
+        });
+      });
+    
+    // --- Mapping sections ---
+    containerEl.createEl('h3', { text: 'Mapping Rules (JSON Format)' });
+
+    // User Map with Validation
+    const userMapSetting = new Setting(containerEl)
+      .setName('User Map')
+      .setDesc('Map Slack User IDs (<@U...>) to Obsidian links or names.');
+    const userMapErrorEl = userMapSetting.controlEl.createDiv({ cls: 'setting-error-message' });
+    userMapSetting.addTextArea(txt => {
+        txt.setPlaceholder('{\n  "U123ABC": "[[Alice]]",\n  "U456DEF": "Bob"\n}');
         txt.setValue(this.plugin.settings.userMapJson);
         txt.inputEl.rows = 6;
         txt.inputEl.style.width = '100%';
         txt.onChange(async (val) => {
-          this.plugin.settings.userMapJson = val;
-          await this.plugin.saveSettings();
-          this.plugin.parseJsonMaps();
+          if (isValidJson(val)) { // Use imported function
+            this.setError(txt.inputEl, userMapErrorEl, null); // Clear error
+            this.plugin.settings.userMapJson = val;
+            await this.plugin.saveSettings(); 
+          } else {
+             this.setError(txt.inputEl, userMapErrorEl, 'Invalid JSON format.'); // Show error
+             // Do not save invalid value
+          }
         });
       });
     
-    containerEl.createEl('h3', { text: 'Slack Channel ID → Channel Name Map' });
+    // Removed Channel Map setting - Unused feature
     
-    new Setting(containerEl)
-      .setName('Channel Map (JSON)')
-      .setDesc('Map "#C01234" => "[[#general]]". Example: { "C01234": "general" }')
-      .addTextArea(txt => {
-        txt.setValue(this.plugin.settings.channelMapJson);
-        txt.inputEl.rows = 6;
-        txt.inputEl.style.width = '100%';
-        txt.onChange(async (val) => {
-          this.plugin.settings.channelMapJson = val;
-          await this.plugin.saveSettings();
-          this.plugin.parseJsonMaps();
-        });
-      });
-    
-    containerEl.createEl('h3', { text: 'Emoji Map (JSON)' });
-    
-    new Setting(containerEl)
+    // Emoji Map with Validation
+    const emojiMapSetting = new Setting(containerEl)
       .setName('Emoji Map')
-      .setDesc('Map :smile: => actual emoji. Example: { "smile":"😄" }')
-      .addTextArea(txt => {
+      .setDesc('Map Slack emoji codes (:code:) to replacement characters.');
+    const emojiMapErrorEl = emojiMapSetting.controlEl.createDiv({ cls: 'setting-error-message' });
+    emojiMapSetting.addTextArea(txt => {
+        txt.setPlaceholder('{\n  "smile": "😄",\n  "+1": "👍",\n  "bufo-thumbsup": "👍"\n}');
         txt.setValue(this.plugin.settings.emojiMapJson);
         txt.inputEl.rows = 6;
         txt.inputEl.style.width = '100%';
         txt.onChange(async (val) => {
-          this.plugin.settings.emojiMapJson = val;
-          await this.plugin.saveSettings();
-          this.plugin.parseJsonMaps();
+           if (isValidJson(val)) { // Use imported function
+            this.setError(txt.inputEl, emojiMapErrorEl, null); // Clear error
+            this.plugin.settings.emojiMapJson = val;
+            await this.plugin.saveSettings(); 
+          } else {
+             this.setError(txt.inputEl, emojiMapErrorEl, 'Invalid JSON format.'); // Show error
+             // Do not save invalid value
+          }
         });
       });
+
+    // --- Debug Settings ---
+     containerEl.createEl('h3', { text: 'Debugging' });
+
+     new Setting(containerEl)
+       .setName('Enable Debug Logging')
+       .setDesc('Log detailed information to the developer console.')
+       .addToggle(tg => {
+         tg.setValue(this.plugin.settings.debug ?? false); // Provide default value for optional setting
+         tg.onChange(async (val) => {
+           this.plugin.settings.debug = val;
+           await this.plugin.saveSettings();
+         });
+       });
   }
 }

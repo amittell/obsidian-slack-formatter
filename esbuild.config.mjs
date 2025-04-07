@@ -1,5 +1,6 @@
 import esbuild from 'esbuild';
-import { readFileSync } from 'fs';
+import { readFileSync, writeFileSync, mkdirSync } from 'fs';
+import path from 'path';
 
 const pkg = JSON.parse(readFileSync('./package.json'));
 const isProd = process.argv.includes('production');
@@ -8,16 +9,31 @@ const buildOptions = {
   entryPoints: ['src/main.ts'],
   bundle: true,
   format: 'cjs',
-  platform: 'node',
+  platform: 'node', // Keep as node since Obsidian plugins run in a Node-like environment
   outfile: 'main.js',
-  external: Object.keys(pkg.dependencies),
-  minify: isProd,
-  sourcemap: !isProd
+  external: ['obsidian'], // Explicitly mark obsidian as external
+  treeShaking: true, // Explicitly enable tree shaking
+  minify: isProd, // Keep existing logic for minification based on isProd
+  sourcemap: isProd ? false : 'inline', // Use inline sourcemaps for dev, none for prod
+  metafile: isProd, // Generate metafile only for production builds for analysis
 };
 
 async function runBuild() {
   if (isProd) {
-    await esbuild.build(buildOptions);
+    console.log('Running production build...');
+    const result = await esbuild.build(buildOptions);
+    console.log('Production build complete.');
+    if (result.metafile) {
+      const distDir = path.dirname(buildOptions.outfile);
+      try {
+        mkdirSync(distDir, { recursive: true }); // Ensure dist directory exists
+        const metaPath = path.join(distDir, 'meta.json');
+        writeFileSync(metaPath, JSON.stringify(result.metafile));
+        console.log(`Metafile written to ${metaPath}`);
+      } catch (err) {
+        console.error('Error writing metafile:', err);
+      }
+    }
   } else {
     const ctx = await esbuild.context(buildOptions);
     await ctx.watch();

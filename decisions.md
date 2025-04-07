@@ -1,9 +1,26 @@
 # Obsidian Slack Formatter - Design Decisions
-Last Updated: March 17, 2025
+Last Updated: March 25, 2025
 
 This document tracks key design decisions made during the development of the Obsidian Slack Formatter plugin. It serves as a record of architectural choices, trade-offs, and rationale to help maintain consistency and provide context for future development.
 
 ## Code Organization
+
+### Comprehensive Architecture Rationalization (March 25, 2025)
+**Decision:** Implemented a comprehensive rationalization of the codebase using clean architecture principles, strategy pattern, and specialized processors.
+
+**Rationale:**
+- Eliminates code duplication and improves maintainability
+- Creates clear separation of concerns with single-responsibility components
+- Enhances extensibility through well-defined interfaces
+- Improves type safety and reduces error potential
+- Provides a consistent mental model for developers
+
+**Implementation:**
+- Created a `/strategies` folder for format-specific strategies
+- Created a `/processors` folder for specialized text processors
+- Implemented proper interfaces for all components
+- Created a factory pattern for strategy selection
+- Consolidated duplicate implementations of core models
 
 ### Creation of utils.ts (March 17, 2025)
 **Decision:** Extract common utility functions into a dedicated utils.ts file.
@@ -69,6 +86,43 @@ This document tracks key design decisions made during the development of the Obs
 
 ## Architecture Decisions
 
+### Strategy Pattern Implementation (March 25, 2025)
+**Decision:** Implemented a robust Strategy Pattern for handling different message formats.
+
+**Rationale:**
+- Different Slack message formats require distinct parsing approaches
+- Strategy Pattern allows for clean separation of format-specific logic
+- Makes adding new format support straightforward and non-disruptive
+- Improves testability by isolating format handlers
+- Simplifies the main formatter class by delegating format-specific work
+
+**Implementation:**
+- Created `FormatStrategy` interface with key methods:
+  - `canHandle(text: string): boolean`
+  - `parse(text: string): SlackMessage[]`
+  - `formatToMarkdown(messages: SlackMessage[]): string`
+- Created `BaseFormatStrategy` abstract class with common functionality
+- Implemented concrete strategies:
+  - `StandardFormatStrategy`: For "Username [timestamp]" formats
+  - `BracketFormatStrategy`: For "[timestamp] Username" formats
+- Created `FormatStrategyFactory` for selecting the appropriate strategy
+
+### Processor Specialization (March 25, 2025)
+**Decision:** Create specialized processor modules for specific content types.
+
+**Rationale:**
+- Different content types (text, emoji, dates, usernames) have specific processing needs
+- Dedicated processors improve separation of concerns
+- Makes testing and debugging more straightforward
+- Enhances modularity and maintainability
+
+**Implementation:**
+- Created `SlackTextProcessor` for general text handling
+- Created `EmojiProcessor` for emoji-specific formatting
+- Created `DateTimeProcessor` for timestamp and date processing
+- Created `UsernameProcessor` for username handling and mentions
+- Ensured clear interfaces for all processors
+
 ### Type Safety Improvements (March 17, 2025)
 **Decision:** Enhance type safety across the codebase.
 
@@ -84,54 +138,34 @@ This document tracks key design decisions made during the development of the Obs
 - Improved parameter typing in method signatures
 - Added return type annotations to all methods
 
-### Future Considerations
+## Future Considerations
 
-### Strategy Pattern for Message Formats (March 17, 2025)
-**Decision:** Implement a Strategy Pattern for different message formats.
-
-**Rationale:**
-- Allows for more flexible handling of different Slack formats
-- Makes adding new format support easier
-- Improves separation of concerns
-- Simplifies the main formatter class
-
-**Implementation:**
-- Created an interface `MessageFormatHandler` with methods:
-  - `canHandle(text: string): boolean`
-  - `format(input: string): SlackMessage[]`
-  - `formatAsMarkdown(messages: SlackMessage[]): string`
-- Implemented concrete strategies:
-  - `StandardFormatHandler`: For common Slack formats
-  - `BracketFormatHandler`: For bracket-style timestamps
-- Created a factory (`MessageFormatFactory`) to determine the appropriate handler
-- Refactored the main formatter to use these strategies
-
-### Specialized Processing Modules (March 17, 2025)
-**Decision:** Create specialized modules for specific processing concerns.
+### Performance Optimization (March 25, 2025)
+**Decision:** Plan for performance optimization in future updates.
 
 **Rationale:**
-- Improves separation of concerns
-- Enhances maintainability by isolating specific functionality
-- Makes testing easier with focused modules
-- Reduces complexity in the main formatter class
+- Current implementation prioritizes correctness and maintainability
+- Large conversations may benefit from performance improvements
+- More efficient regex patterns could improve processing speed
+- Caching mechanisms could reduce redundant processing
 
-**Implementation:**
-- Created `EmojiProcessor` class for emoji-related functionality
-- Created `DateTimeProcessor` class for date and time handling
-- Moved related methods from other classes to these specialized modules
-- Added comprehensive documentation to each module
+**Planned Implementation:**
+- Add selective processing based on input size
+- Implement regex pattern optimization
+- Consider adding caching for repeated operations
+- Explore lazy loading techniques for large content
 
-### Performance Optimization (March 17, 2025)
-**Decision:** Implement caching and other performance improvements.
+### Enhanced Threading Support (March 25, 2025)
+**Decision:** Improve thread handling in future updates.
 
 **Rationale:**
-- Improves performance for repeated operations
-- Reduces redundant processing of the same content
-- Enhances user experience with faster formatting
-- Makes the plugin more efficient for large conversations
+- Current thread handling works but could be more sophisticated
+- Better visualization would enhance readability
+- Thread collapsing could improve document navigation
+- Metadata preservation would provide more context
 
-**Implementation:**
-- Added caching to the `MessageParser` class to avoid redundant parsing
-- Extracted regex patterns to constants for better performance
-- Implemented a simple hash-based cache key generation
-- Added cache invalidation when settings change
+**Planned Implementation:**
+- Add collapsible thread support
+- Enhance thread visualization
+- Improve thread metadata handling
+- Create better linking between related messages
