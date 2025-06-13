@@ -160,9 +160,10 @@ export class ImprovedFormatDetector {
         if (standardMatches > 5) score.standard *= 1.2;
         
         // Normalize scores
-        const maxScore = Math.max(score.standard, score.bracket, 0.1);
+        const maxScore = Math.max(score.standard, score.bracket, score.mixed, 0.1);
         score.standard = Math.min(1, score.standard / maxScore);
         score.bracket = Math.min(1, score.bracket / maxScore);
+        score.mixed = Math.min(1, score.mixed / maxScore);
 
         return score;
     }
