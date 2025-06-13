@@ -190,7 +190,8 @@ export class SlackFormatter implements ISlackFormatter {
         return this.lastStats || {
             messageCount: 0,
             uniqueUsers: 0,
-            formatStrategy: 'unknown'
+            formatStrategy: 'unknown',
+            threadReplies: 0
         };
     }
 
