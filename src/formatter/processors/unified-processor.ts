@@ -46,7 +46,6 @@ export class UnifiedProcessor {
     constructor(private settings: SlackFormatSettings) {
         // Initialize all processors
         const urlProcessor = new UrlProcessor();
-        const usernameProcessor = new UsernameProcessor();
         const codeBlockProcessor = new CodeBlockProcessor();
         const emojiProcessor = new EmojiProcessor();
         const threadLinkProcessor = new ThreadLinkProcessor();
