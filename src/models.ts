@@ -2,9 +2,8 @@
  * Core data models for Slack formatter
  */
 
-import type { SlackReaction } from './types/messages.types'; // Removed SlackAttachment import
+import type { SlackReaction } from './types/messages.types';
 
-// Removed unused RawSlackContent interface
 
 /**
  * Represents a parsed Slack message with its associated metadata.
@@ -65,10 +64,12 @@ export class SlackMessage {
    */
   isEdited?: boolean;
 
-  // NOTE: Properties related to attachments, specific thread IDs/levels,
-  // code blocks, nesting, raw content, and continuations were previously
-  // part of this model but are currently unused or handled differently
-  // by the parser and formatting stages. (Removed for clarity).
+  /**
+   * Thread information string (e.g., "5 replies", "View thread").
+   * Set by the parser when identifying thread metadata.
+   */
+  threadInfo?: string;
+
 } // End of SlackMessage class
 
 /**

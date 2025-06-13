@@ -5,20 +5,21 @@
  * 
  * Formats Slack conversations pasted into Obsidian
  */
-import { Plugin, Editor, Notice, Menu, MenuItem, Platform } from 'obsidian';
+import { Plugin, Editor, Notice, Menu, MenuItem } from 'obsidian';
 import { SlackFormatter } from './formatter/slack-formatter';
 import { DEFAULT_SETTINGS } from './settings';
 import { SlackFormatSettingTab } from './ui/settings-tab';
 import { ConfirmSlackModal, SlackPreviewModal } from './ui/modals';
 import { SlackFormatSettings } from './types/settings.types'; // Corrected import path
 import { parseJsonMap } from './utils'; // Import the centralized utility
+import { Logger } from './utils/logger';
 
 export default class SlackFormatPlugin extends Plugin {
   settings!: SlackFormatSettings; // Corrected type name
   formatter!: SlackFormatter;
 
   async onload(): Promise<void> {
-    console.log('Loading Slack formatter plugin v1.0.0');
+    Logger.info('SlackFormatPlugin', 'Loading Slack formatter plugin v1.0.0');
 
     // Load settings
     await this.loadSettings();
@@ -43,17 +44,14 @@ export default class SlackFormatPlugin extends Plugin {
    */
   private initFormatter(): void {
     try {
-      console.log('Initializing formatter...');
+      Logger.info('SlackFormatPlugin', 'Initializing formatter...');
       let errorOccurred = false;
       
       // Parse the JSON maps using the utility function, handling potential nulls
       const userMapResult = parseJsonMap(this.settings.userMapJson || '{}', 'User Map');
       const emojiMapResult = parseJsonMap(this.settings.emojiMapJson || '{}', 'Emoji Map');
-      // const channelMapResult = parseJsonMap(this.settings.channelMapJson || '{}', 'Channel Map'); // Removed
-
       const userMap = userMapResult ?? {};
       const emojiMap = emojiMapResult ?? {};
-      // const channelMap = channelMapResult ?? {}; // Removed
 
       // Show specific notices if parsing failed for any map
       if (userMapResult === null) {
@@ -64,23 +62,22 @@ export default class SlackFormatPlugin extends Plugin {
           new Notice("Error parsing Emoji Map JSON from settings. Custom emojis may not work correctly.");
           errorOccurred = true;
       }
-      // Removed check for channelMapResult
       
       // Create formatter, passing settings and potentially empty maps if parsing failed
-      this.formatter = new SlackFormatter(this.settings, userMap, emojiMap); // Removed channelMap
+      this.formatter = new SlackFormatter(this.settings, userMap, emojiMap);
       
       if (!errorOccurred) {
-          console.log("Slack formatter initialized successfully");
+          Logger.info('SlackFormatPlugin', 'Slack formatter initialized successfully');
       } else {
-          console.warn("Slack formatter initialized with potential map parsing errors.");
+          Logger.warn('SlackFormatPlugin', 'Slack formatter initialized with potential map parsing errors.');
       }
       
     } catch (error) { // Catch any unexpected errors during initialization itself
-      console.error("Unexpected error during formatter initialization:", error);
+      Logger.error('SlackFormatPlugin', 'Unexpected error during formatter initialization:', error);
       // Fallback to ensure formatter is always assigned, even if constructor fails unexpectedly
       this.formatter = new SlackFormatter(
         { ...this.settings },
-        {}, {} // Removed extra {} for channelMap
+        {}, {}
       );
       new Notice("Critical Error: Formatter initialization failed unexpectedly. Using default settings.");
     }
@@ -100,7 +97,7 @@ export default class SlackFormatPlugin extends Plugin {
         return;
       }
       
-      console.log("[SlackFormat] Attempting to format text", text.substring(0, 100) + "...");
+      Logger.info('SlackFormatPlugin', 'Attempting to format text', text.substring(0, 100) + '...');
 
       // Handle auto-detect mode with confirmation dialog
       if (this.settings.hotkeyMode === 'interceptCmdV' && this.formatter.isLikelySlack(text)) {
@@ -127,7 +124,7 @@ export default class SlackFormatPlugin extends Plugin {
       this.performFormatting(editor, text);
 
     } catch (error) {
-      console.error("Error in formatAndInsert:", error);
+      Logger.error('SlackFormatPlugin', 'Error in formatAndInsert:', error);
       new Notice("Error formatting Slack text");
     }
   }
@@ -161,7 +158,7 @@ export default class SlackFormatPlugin extends Plugin {
             }
         }
     } catch (error) {
-        console.error("Error during performFormatting:", error);
+        Logger.error('SlackFormatPlugin', 'Error during performFormatting:', error);
         new Notice("Error applying Slack formatting.");
     }
 }
@@ -175,7 +172,7 @@ export default class SlackFormatPlugin extends Plugin {
     try {
       return await navigator.clipboard.readText();
     } catch (error) {
-      console.error("[SlackFormat] Error reading clipboard:", error);
+      Logger.error('SlackFormatPlugin', 'Error reading clipboard:', error);
       new Notice("Error reading clipboard content. Check permissions?");
       return null;
     }
@@ -190,7 +187,7 @@ export default class SlackFormatPlugin extends Plugin {
   }
 
   onunload(): void {
-    console.log("Unloading Slack formatter plugin");
+    Logger.info('SlackFormatPlugin', 'Unloading Slack formatter plugin');
     // No need to manually remove listeners added via registerEvent
   }
 
@@ -198,7 +195,7 @@ export default class SlackFormatPlugin extends Plugin {
     try {
       this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
     } catch (error) {
-      console.error("Error loading settings:", error);
+      Logger.error('SlackFormatPlugin', 'Error loading settings:', error);
       this.settings = { ...DEFAULT_SETTINGS };
     }
   }

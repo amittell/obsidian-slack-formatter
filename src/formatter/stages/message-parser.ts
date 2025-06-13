@@ -241,9 +241,9 @@ export class SlackMessageParser {
             state.lineIndex++; // Ensure progress
 
         } catch (lineError) {
-            // Log directly to console to bypass custom logger potentially hiding details
-            console.error(`[SlackMessageParser] RAW ERROR processing line ${state.lineIndex}:`, lineError);
-            console.error(`[SlackMessageParser] Line content: "${trimmedLine}"`);
+            // Log error details
+            Logger.error('SlackMessageParser', `RAW ERROR processing line ${state.lineIndex}:`, lineError);
+            Logger.error('SlackMessageParser', `Line content: "${trimmedLine}"`);
             // Also log the custom log message for context
             this.log('error', `Error processing line ${state.lineIndex} (see raw error above)`, { line: trimmedLine }); // Removed error data duplication
             state.lineIndex++; // Ensure progress even on error

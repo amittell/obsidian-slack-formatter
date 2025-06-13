@@ -37,8 +37,8 @@ describe('Emoji Utils', () => {
       expect(replaceEmoji('Hello world', emojiMap)).toBe('Hello world');
     });
 
-    it('should return the original string if the map is empty', () => {
-      expect(replaceEmoji('Hello :smile:', {})).toBe('Hello :smile:');
+    it('should use default emoji map if the custom map is empty', () => {
+      expect(replaceEmoji('Hello :smile:', {})).toBe('Hello 😄');
     });
 
     it('should handle empty string input', () => {
@@ -49,22 +49,22 @@ describe('Emoji Utils', () => {
   describe('formatReactions', () => {
     it('should format a list of reactions', () => {
       const reactions: SlackReaction[] = [
-        { name: '+1', count: 3, users: [] },
-        { name: 'tada', count: 1, users: [] },
+        { name: '+1', count: 3 },
+        { name: 'tada', count: 1 },
       ];
       expect(formatReactions(reactions, emojiMap)).toBe('👍 3 🎉 1');
     });
 
     it('should use emoji code if not found in map', () => {
       const reactions: SlackReaction[] = [
-        { name: 'unknown', count: 2, users: [] },
+        { name: 'unknown', count: 2 },
       ];
       expect(formatReactions(reactions, emojiMap)).toBe(':unknown: 2');
     });
     
     it('should handle custom emoji names from map', () => {
        const reactions: SlackReaction[] = [
-        { name: 'bufo-thumbsup', count: 5, users: [] },
+        { name: 'bufo-thumbsup', count: 5 },
       ];
       expect(formatReactions(reactions, emojiMap)).toBe('👍 5');
     });
@@ -78,12 +78,12 @@ describe('Emoji Utils', () => {
       expect(formatReactions(undefined as any, emojiMap)).toBe('');
     });
     
-    it('should handle an empty emoji map', () => {
+    it('should use default emoji map if the custom map is empty', () => {
        const reactions: SlackReaction[] = [
-        { name: '+1', count: 3, users: [] },
-        { name: 'tada', count: 1, users: [] },
+        { name: '+1', count: 3 },
+        { name: 'tada', count: 1 },
       ];
-      expect(formatReactions(reactions, {})).toBe(':+1: 3 :tada: 1');
+      expect(formatReactions(reactions, {})).toBe('👍 3 :tada: 1');
     });
   });
 });

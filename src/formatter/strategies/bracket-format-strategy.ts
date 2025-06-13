@@ -20,7 +20,10 @@ export class BracketFormatStrategy extends BaseFormatStrategy {
         const formattedTimestamp = this.getFormattedTimestamp(message); // Use helper from base
 
         // Construct the new header lines with callout prefix
-        const titleLine = `> [!slack]+ Message from ${displayName}`;
+        const isThreadReply = message.isThreadReply || (message.threadInfo && message.threadInfo.includes('replied to a thread:'));
+        const titleLine = isThreadReply 
+            ? `> [!slack]+ Thread Reply from ${displayName}`
+            : `> [!slack]+ Message from ${displayName}`;
         const timeLine = `> **Time:** ${formattedTimestamp}`;
 
         return [titleLine, timeLine];

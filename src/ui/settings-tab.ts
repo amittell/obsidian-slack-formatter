@@ -149,9 +149,9 @@ export class SlackFormatSettingTab extends PluginSettingTab {
       .setName('Detect & Preserve Code Blocks')
       .setDesc('Format lines within ```...``` as code blocks.')
       .addToggle(tg => {
-        tg.setValue(this.plugin.settings.enableCodeBlocks);
+        tg.setValue(this.plugin.settings.detectCodeBlocks);
         tg.onChange(async (val) => {
-          this.plugin.settings.enableCodeBlocks = val;
+          this.plugin.settings.detectCodeBlocks = val;
           await this.plugin.saveSettings();
         });
       });
@@ -160,9 +160,9 @@ export class SlackFormatSettingTab extends PluginSettingTab {
       .setName('Format Mentions')
       .setDesc('Convert Slack mentions (@User, #Channel) using the maps below.')
       .addToggle(tg => {
-        tg.setValue(this.plugin.settings.enableMentions);
+        tg.setValue(this.plugin.settings.convertUserMentions);
         tg.onChange(async (val) => {
-          this.plugin.settings.enableMentions = val;
+          this.plugin.settings.convertUserMentions = val;
           await this.plugin.saveSettings();
         });
       });
@@ -171,9 +171,9 @@ export class SlackFormatSettingTab extends PluginSettingTab {
       .setName('Format Emojis')
       .setDesc('Convert Slack emoji codes (e.g., :smile:) to characters using the map below.')
       .addToggle(tg => {
-        tg.setValue(this.plugin.settings.enableEmoji);
+        tg.setValue(this.plugin.settings.replaceEmoji);
         tg.onChange(async (val) => {
-          this.plugin.settings.enableEmoji = val;
+          this.plugin.settings.replaceEmoji = val;
           await this.plugin.saveSettings();
         });
       });
@@ -182,9 +182,9 @@ export class SlackFormatSettingTab extends PluginSettingTab {
       .setName('Parse Slack Times & Dates')
       .setDesc('Attempt to parse timestamps (e.g., "10:25 AM") and date lines.')
       .addToggle(tg => {
-        tg.setValue(this.plugin.settings.enableTimestampParsing);
+        tg.setValue(this.plugin.settings.parseSlackTimes);
         tg.onChange(async (val) => {
-          this.plugin.settings.enableTimestampParsing = val;
+          this.plugin.settings.parseSlackTimes = val;
           await this.plugin.saveSettings();
         });
       });
@@ -193,9 +193,9 @@ export class SlackFormatSettingTab extends PluginSettingTab {
       .setName('Format Thread Links')
       .setDesc('Make "View thread" or similar text clickable if a URL is detected.')
       .addToggle(tg => {
-        tg.setValue(this.plugin.settings.enableSubThreadLinks);
+        tg.setValue(this.plugin.settings.highlightThreads);
         tg.onChange(async (val) => {
-          this.plugin.settings.enableSubThreadLinks = val;
+          this.plugin.settings.highlightThreads = val;
           await this.plugin.saveSettings();
         });
       });

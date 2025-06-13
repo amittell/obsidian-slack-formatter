@@ -3,26 +3,34 @@
  */
 
 export interface SlackFormatSettings {
-    enableCodeBlocks: boolean;
-    enableMentions: boolean;
-    enableEmoji: boolean;
-    enableTimestampParsing: boolean;
-    enableSubThreadLinks: boolean;
+    // Core formatting options
+    detectCodeBlocks: boolean;
+    convertUserMentions: boolean;
+    replaceEmoji: boolean;
+    parseSlackTimes: boolean;
+    highlightThreads: boolean;
+    convertSlackLinks: boolean;
+    
+    // Maps (JSON strings)
     userMapJson: string;
     emojiMapJson: string;
-    // channelMapJson: string; // Removed - Unused feature
+    
+    // UI options
     hotkeyMode: 'cmdShiftV' | 'interceptCmdV';
     maxLines: number;
     enablePreviewPane: boolean;
     enableConfirmationDialog: boolean;
-    timeZone: string;
+    showSuccessMessage: boolean;
+    
+    // Thread options
     collapseThreads: boolean;
     threadCollapseThreshold: number;
-    showSuccessMessage: boolean;
-    frontmatterCssClass: string; // Added: CSS class for frontmatter
-    frontmatterTitle: string; // Added: Title for frontmatter section
-    // userMap?: Record<string, string>; // Removed: Parsed maps handled separately
-    // emojiMap?: Record<string, string>; // Removed: Parsed maps handled separately
-    // channelMap?: Record<string, string>; // Removed - Unused feature
-    debug?: boolean; // Add optional debug property
+    
+    // Frontmatter options
+    frontmatterCssClass: string;
+    frontmatterTitle: string;
+    
+    // Advanced options
+    timeZone: string;
+    debug?: boolean;
 }

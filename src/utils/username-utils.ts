@@ -1,46 +1,186 @@
 /**
- * Username handling utilities
+ * Username handling utilities with improved error handling
  */
+import { Logger } from './logger';
 
 /**
  * Replace Slack user mentions with wiki links
+ * Handles multiple formats and provides fallbacks
  */
 export function formatUserMentions(text: string, userMap: Record<string, string>): string {
-    return text.replace(/<@([A-Z0-9]+)>/g, (match, userId) => {
-        const username = userMap[userId];
-        // Check if username is already a wiki link before wrapping
-        if (username) {
-            return /^\[\[.*\]\]$/.test(username) ? username : `[[${username}]]`;
-        }
-        return match; // Return original mention if user ID not in map
-    });
+    try {
+        // Handle <@U123ABC> format (user IDs)
+        text = text.replace(/<@(U[A-Z0-9]+)>/g, (match, userId) => {
+            try {
+                const username = userMap[userId];
+                if (username && username.trim()) {
+                    // Check if already wiki-linked
+                    if (/^\[\[.*\]\]$/.test(username)) {
+                        return username;
+                    }
+                    // Sanitize username for Obsidian links
+                    const sanitized = sanitizeForWikiLink(username);
+                    return `[[${sanitized}]]`;
+                }
+                // Fallback: readable user reference
+                return `[[User-${userId.substring(0, 6)}]]`;
+            } catch {
+                return match;
+            }
+        });
+        
+        // Handle @username mentions (careful with emails)
+        text = text.replace(/(?<![[@\w])@(\w+)(?![@\w])/g, (match, username, offset, string) => {
+            try {
+                // Check context to avoid emails
+                const beforeChar = offset > 0 ? string[offset - 1] : '';
+                const afterChar = offset + match.length < string.length ? string[offset + match.length] : '';
+                
+                // Skip if it looks like part of an email
+                if (beforeChar.match(/[\w.]/) || afterChar === '.' || afterChar === '@') {
+                    return match;
+                }
+                
+                const sanitized = sanitizeForWikiLink(username);
+                return `[[${sanitized}]]`;
+            } catch {
+                return match;
+            }
+        });
+        
+        // Handle <@username> format (username without ID)
+        text = text.replace(/<@(\w+)>/g, (match, username) => {
+            try {
+                const sanitized = sanitizeForWikiLink(username);
+                return `[[${sanitized}]]`;
+            } catch {
+                return match;
+            }
+        });
+        
+        // Handle special Slack mentions <!channel>, <!here>, <!everyone>
+        text = text.replace(/<!([a-z]+)(?:\|([^>]+))?>/g, (match, type, label) => {
+            const display = label || `@${type}`;
+            switch (type) {
+                case 'channel':
+                case 'here':
+                case 'everyone':
+                    return `**${display}**`; // Bold instead of wiki link
+                default:
+                    return display;
+            }
+        });
+        
+        return text;
+    } catch (error) {
+        Logger.warn('username-utils', 'formatUserMentions error:', error);
+        return text; // Return original on catastrophic failure
+    }
+}
+
+/**
+ * Sanitize username for use in wiki links
+ * Removes characters that are invalid in Obsidian links
+ */
+function sanitizeForWikiLink(username: string): string {
+    return username
+        .trim()
+        .replace(/[[\]|#^<>]/g, '') // Remove invalid characters
+        .replace(/\s+/g, ' ') // Normalize whitespace
+        .slice(0, 100); // Limit length
 }
  
 /**
  * Clean up immediately doubled usernames/names (e.g., "Alex MittellAlex Mittell" -> "Alex Mittell").
- * This specifically targets cases where a name (one or more words, potentially hyphenated) is repeated
- * directly after itself with no intervening characters, often due to copy-paste errors.
- * It does NOT handle cases like "Alex Mittell Alex Mittell" (with a space in between).
+ * Enhanced to handle more edge cases
  */
 export function cleanupDoubledUsernames(text: string): string {
-    // (\b[\w-]+(?:\s+[\w-]+)*) : Capture group 1: Matches word boundary, word chars OR hyphen,
-    //                           followed by zero or more groups of (whitespace + word chars OR hyphen).
-    // \1                       : Backreference to capture group 1.
-    // \b                       : Word boundary.
-    // Reverting to the regex that handles multi-word names, accepting it might fail edge cases like 'abab'.
-    return text.replace(/(\b[\w-]+(?:\s+[\w-]+)*)\1\b/g, '$1');
+    try {
+        // First pass: Handle exact duplicates with no space
+        text = text.replace(/(\b[\w-]+(?:\s+[\w-]+)*)\1\b/g, '$1');
+        
+        // Second pass: Handle duplicates with space between
+        text = text.replace(/(\b[\w-]+(?:\s+[\w-]+)*)\s+\1\b/g, '$1');
+        
+        // Third pass: Handle case-insensitive duplicates
+        const words = text.split(/\s+/);
+        const cleaned: string[] = [];
+        
+        for (let i = 0; i < words.length; i++) {
+            const current = words[i];
+            const next = words[i + 1];
+            
+            // Skip if current word equals next word (case-insensitive)
+            if (next && current.toLowerCase() === next.toLowerCase()) {
+                cleaned.push(current);
+                i++; // Skip the duplicate
+            } else {
+                cleaned.push(current);
+            }
+        }
+        
+        return cleaned.join(' ');
+    } catch (error) {
+        Logger.warn('username-utils', 'cleanupDoubledUsernames error:', error);
+        return text;
+    }
 }
 
 /**
- * Format username for display (simple title casing)
+ * Format username for display (improved title casing)
  */
 export function formatUsername(username: string): string {
-    // Re-add trimming logic
-    const trimmedUsername = username.trim().replace(/^[_\s]+|[_\s]+$/g, '');
-    if (!trimmedUsername) return ''; // Handle empty or whitespace-only input
+    try {
+        // Clean and trim
+        const trimmed = username.trim().replace(/^[_\s-]+|[_\s-]+$/g, '');
+        if (!trimmed) return '';
+        
+        // Preserve camelCase and existing capitalization patterns
+        if (/[a-z][A-Z]/.test(trimmed)) {
+            // Has camelCase, just clean it up
+            return trimmed.replace(/[_-]+/g, ' ');
+        }
+        
+        // Otherwise apply title casing
+        return trimmed
+            .split(/[_\s-]+/)
+            .filter(part => part.length > 0)
+            .map((part, index) => {
+                // Don't capitalize certain words unless they're first
+                const lowercaseWords = ['and', 'or', 'the', 'a', 'an', 'in', 'on', 'at', 'to', 'for'];
+                if (index > 0 && lowercaseWords.includes(part.toLowerCase())) {
+                    return part.toLowerCase();
+                }
+                return part.charAt(0).toUpperCase() + part.slice(1).toLowerCase();
+            })
+            .join(' ');
+    } catch (error) {
+        Logger.warn('username-utils', 'formatUsername error:', error);
+        return username; // Return original on error
+    }
+}
 
-    return trimmedUsername
-        .split(/[_\s]+/) // Split by one or more underscores or spaces
-        .map(part => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
-        .join(' ');
+/**
+ * Extract username from various formats
+ * E.g., "John Doe :emoji:" -> "John Doe"
+ */
+export function extractUsername(text: string): string {
+    try {
+        // Remove emoji codes
+        let cleaned = text.replace(/:[\w+-]+:/g, '').trim();
+        
+        // Remove Unicode emoji
+        cleaned = cleaned.replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '').trim();
+        
+        // Remove trailing punctuation
+        cleaned = cleaned.replace(/[.,;:!?]+$/, '').trim();
+        
+        // Clean up extra spaces
+        cleaned = cleaned.replace(/\s+/g, ' ');
+        
+        return cleaned || 'Unknown User';
+    } catch (error) {
+        Logger.warn('username-utils', 'extractUsername error:', error);
+        return text;
+    }
 }

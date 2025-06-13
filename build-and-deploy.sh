@@ -106,7 +106,7 @@ print_main_header() {
     echo "               ✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨✨                  "
     echo -e "${RESET}\n"
 }
-
+ 
 # Print a fancy section header
 print_section() {
     local title="$1"

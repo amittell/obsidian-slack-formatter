@@ -4,11 +4,12 @@ import { SlackFormatSettings } from './types/settings.types'; // Corrected impor
  * Default settings for the Slack Formatter plugin
  */
 export const DEFAULT_SETTINGS: SlackFormatSettings = {
-  enableCodeBlocks: true,
-  enableMentions: true,
-  enableEmoji: true,
-  enableTimestampParsing: true,
-  enableSubThreadLinks: true,
+  detectCodeBlocks: true,
+  convertUserMentions: true,
+  replaceEmoji: true,
+  parseSlackTimes: true,
+  highlightThreads: true,
+  convertSlackLinks: true,
   userMapJson: '{}',
   emojiMapJson: JSON.stringify({
     "bufo-ty": "🙏",
@@ -26,11 +27,11 @@ export const DEFAULT_SETTINGS: SlackFormatSettings = {
   maxLines: 5000,
   enablePreviewPane: true,
   enableConfirmationDialog: true,
-  timeZone: '',
+  showSuccessMessage: true,
   collapseThreads: true,
   threadCollapseThreshold: 10,
-  showSuccessMessage: true,
-  frontmatterCssClass: 'slack-conversation', // Default CSS class
-  frontmatterTitle: '# Slack Conversation', // Default title
-  debug: true // Add debug flag, default to false -> RE-ENABLED FOR DEBUGGING
+  frontmatterCssClass: 'slack-conversation',
+  frontmatterTitle: '# Slack Conversation',
+  timeZone: '',
+  debug: true
 };

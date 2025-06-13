@@ -1,9 +1,7 @@
 /**
  * Text processing utilities
  */
-// Removed unused SlackAttachment import
-
-// Removed formatSlackUrls function
+import { Logger } from './logger';
 
 /**
  * Convert code blocks to Markdown format
@@ -39,14 +37,67 @@ export function formatThreadLinks(text: string): string {
     );
 }
  
-// Removed unused formatAttachments function
  
 /**
- * Convert Slack URLs (&lt;url|text&gt;) to Markdown format ([text](url))
+ * Convert Slack URLs to Markdown format with error handling
+ * Handles multiple formats:
+ * - <url|text> -> [text](url)
+ * - <url> -> url
+ * - &lt;url&gt; (HTML encoded)
  */
 export function formatSlackUrlSyntax(text: string): string {
-    // Handle Slack's <url|text> format
-    // Note: Use &lt; and &gt; for matching literal angle brackets if they might be HTML-encoded
-    // Updated regex to handle both raw <...> and encoded &lt;...&gt;
-    return text.replace(/(?:<|&lt;)(https?:\/\/[^|>]+)\|([^>]+)(?:>|&gt;)/g, '[$2]($1)');
+    try {
+        // Handle Slack's <url|text> format (both raw and HTML-encoded)
+        text = text.replace(/(?:<|&lt;)(https?:\/\/[^|>]+)\|([^>]+)(?:>|&gt;)/g, (match, url, displayText) => {
+            try {
+                // Validate URL
+                new URL(url);
+                // Clean and validate display text
+                displayText = displayText.trim();
+                if (!displayText) displayText = 'Link';
+                // Escape any markdown characters in display text
+                displayText = displayText.replace(/[[\]()]/g, '\\$&');
+                return `[${displayText}](${url})`;
+            } catch {
+                // Invalid URL, return original
+                return match;
+            }
+        });
+        
+        // Handle plain <url> format (both raw and HTML-encoded)
+        text = text.replace(/(?:<|&lt;)(https?:\/\/[^>]+)(?:>|&gt;)/g, (match, url) => {
+            try {
+                new URL(url);
+                return url;
+            } catch {
+                return match;
+            }
+        });
+        
+        // Handle malformed URLs (missing protocol)
+        text = text.replace(/(?:<|&lt;)((?:www\.)?[a-zA-Z0-9-]+\.[a-zA-Z]{2,}[^>]*)(?:>|&gt;)/g, (match, url) => {
+            const fullUrl = url.startsWith('www.') ? `https://${url}` : `https://www.${url}`;
+            try {
+                new URL(fullUrl);
+                return fullUrl;
+            } catch {
+                return match;
+            }
+        });
+        
+        // Handle mailto links
+        text = text.replace(/(?:<|&lt;)mailto:([^>]+)(?:>|&gt;)/g, (match, email) => {
+            // Basic email validation
+            if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                return `[${email}](mailto:${email})`;
+            }
+            return match;
+        });
+        
+        return text;
+    } catch (error) {
+        // If anything fails catastrophically, return original text
+        Logger.warn('text-utils', 'formatSlackUrlSyntax error:', error);
+        return text;
+    }
 }

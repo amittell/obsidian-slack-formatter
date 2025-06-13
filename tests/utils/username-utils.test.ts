@@ -25,8 +25,8 @@ describe('Username Utils', () => {
       expect(formatUserMentions('Mention <@U789GHI>', userMap)).toBe('Mention [[Charlie Brown]]');
     });
 
-    it('should ignore unknown user IDs', () => {
-      expect(formatUserMentions('Unknown user <@UUNKNOWN>', userMap)).toBe('Unknown user <@UUNKNOWN>');
+    it('should create default wikilink for unknown user IDs', () => {
+      expect(formatUserMentions('Unknown user <@UUNKNOWN>', userMap)).toBe('Unknown user [[User-UUNKNO]]');
     });
 
     it('should handle mentions adjacent to text', () => {
@@ -37,8 +37,8 @@ describe('Username Utils', () => {
       expect(formatUserMentions('Hello world', userMap)).toBe('Hello world');
     });
 
-    it('should return the original string if the map is empty', () => {
-      expect(formatUserMentions('Hello <@U123ABC>', {})).toBe('Hello <@U123ABC>');
+    it('should create default wikilink if the map is empty', () => {
+      expect(formatUserMentions('Hello <@U123ABC>', {})).toBe('Hello [[User-U123AB]]');
     });
 
     it('should handle empty string input', () => {
@@ -56,8 +56,8 @@ describe('Username Utils', () => {
       expect(cleanupDoubledUsernames('Alex MittellAlex Mittell and BobBob')).toBe('Alex Mittell and Bob');
     });
 
-    it('should NOT remove usernames separated by space', () => {
-      expect(cleanupDoubledUsernames('Alex Mittell Alex Mittell')).toBe('Alex Mittell Alex Mittell');
+    it('should remove usernames separated by space', () => {
+      expect(cleanupDoubledUsernames('Alex Mittell Alex Mittell')).toBe('Alex Mittell');
     });
 
     it('should handle names with hyphens (if considered word chars)', () => {

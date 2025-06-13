@@ -6,7 +6,6 @@ import { UrlProcessor } from '../processors/url-processor';
 import { ThreadLinkProcessor } from '../processors/thread-link-processor';
 import { EmojiProcessor } from '../processors/emoji-processor';
 import { UsernameProcessor } from '../processors/username-processor';
-// import { AttachmentProcessor } from '../processors/attachment-processor'; // Removed unused import
 import { formatDateWithZone, parseSlackTimestamp } from '../../utils/datetime-utils'; // Import parseSlackTimestamp
 // Import ParsedMaps and FormatStrategyType from the centralized types file
 import { ParsedMaps, FormatStrategyType } from '../../types/formatters.types';
@@ -32,15 +31,15 @@ export abstract class BaseFormatStrategy implements FormatStrategy {
 
         // Initialize processors, passing parsed maps and debug flag where needed
         const isDebug = settings.debug ?? false;
-        this.codeBlockProcessor = new CodeBlockProcessor({ enableCodeBlocks: settings.enableCodeBlocks, isDebugEnabled: isDebug });
+        this.codeBlockProcessor = new CodeBlockProcessor({ enableCodeBlocks: settings.detectCodeBlocks, isDebugEnabled: isDebug });
         this.urlProcessor = new UrlProcessor({ isDebugEnabled: isDebug });
-        this.threadLinkProcessor = new ThreadLinkProcessor({ enableThreadLinks: settings.enableSubThreadLinks, isDebugEnabled: isDebug });
+        this.threadLinkProcessor = new ThreadLinkProcessor({ enableThreadLinks: settings.highlightThreads, isDebugEnabled: isDebug });
         // Pass the parsed map and debug flag directly
         this.emojiProcessor = new EmojiProcessor({ emojiMap: this.parsedMaps.emojiMap, isDebugEnabled: isDebug });
         // Pass settings, the parsed userMap, and debug flag directly
         this.usernameProcessor = new UsernameProcessor({
             userMap: this.parsedMaps.userMap,
-            enableMentions: settings.enableMentions,
+            enableMentions: settings.convertUserMentions,
             isDebugEnabled: isDebug
         });
         // Removed attachmentProcessor initialization
@@ -104,6 +103,15 @@ export abstract class BaseFormatStrategy implements FormatStrategy {
                const processedText = processedLines.join('\n');
                if (processedText.trim()) { // Only add if there's non-whitespace content
                    processedTextContent += processedText + '\n';
+               }
+
+               // --- Process Thread Info ---
+               if (message.threadInfo) {
+                   // Format thread info with proper styling
+                   const threadLines = this.formatThreadInfo(message.threadInfo);
+                   for (const line of threadLines) {
+                       processedTextContent += '> ' + line + '\n';
+                   }
                }
 
                // --- Process Reactions (Delegated to subclass) ---
@@ -170,6 +178,71 @@ export abstract class BaseFormatStrategy implements FormatStrategy {
     protected abstract formatReactions(message: SlackMessage): string | null;
 
     /**
+     * Formats thread information (e.g., "5 replies", "View thread").
+     * @param threadInfo The thread information string.
+     * @returns An array of formatted thread info lines.
+     */
+    protected formatThreadInfo(threadInfo: string): string[] {
+        const lines: string[] = [];
+        
+        // Parse thread info to extract components
+        const replyMatch = threadInfo.match(/(\d+)\s+repl(?:y|ies)/i);
+        // Handle both separated and concatenated formats
+        const lastReplyMatch = threadInfo.match(/Last reply\s+(.+?)(?:View thread|$)/i) || 
+                              threadInfo.match(/(\d+\s+(?:days?|months?|hours?|minutes?)\s+ago)View thread/i);
+        const viewThreadMatch = threadInfo.match(/View thread/i);
+        const threadReplyMatch = threadInfo.match(/replied to a thread:\s*(?:"([^"]+)"|(.+?)(?=\s*(?:View thread|Last reply|$)))?/i);
+        
+        // Format thread reply indicator with context if available
+        if (threadReplyMatch) {
+            const context = threadReplyMatch[1] || threadReplyMatch[2];
+            if (context && context.trim()) {
+                lines.push('🧵 **Thread Reply**');
+                lines.push(`   _Replying to: "${context.trim()}"_`);
+            } else {
+                lines.push('🧵 **Thread Reply**');
+            }
+        }
+        
+        // Format thread metadata
+        if (replyMatch || lastReplyMatch || viewThreadMatch) {
+            const parts: string[] = [];
+            
+            if (replyMatch) {
+                const count = replyMatch[1];
+                parts.push(`**${count} ${parseInt(count) === 1 ? 'reply' : 'replies'}**`);
+            }
+            
+            if (lastReplyMatch) {
+                parts.push(`Last reply ${lastReplyMatch[1].trim()}`);
+            }
+            
+            if (parts.length > 0) {
+                lines.push(`📊 ${parts.join(' • ')}`);
+            }
+            
+            // Handle "View thread" link
+            if (viewThreadMatch) {
+                // Check if threadInfo contains a URL for the thread
+                const urlMatch = threadInfo.match(/View thread.*?(https?:\/\/[^\s]+)/);
+                if (urlMatch) {
+                    lines.push(`🔗 [View thread](${urlMatch[1]})`);
+                } else {
+                    // If no URL, just show as text
+                    lines.push('🔗 View thread');
+                }
+            }
+        }
+        
+        // Handle "Also sent to the channel" indicator
+        if (/Also sent to the channel/i.test(threadInfo)) {
+            lines.push('📢 Also sent to the channel');
+        }
+        
+        return lines;
+    }
+
+    /**
      * Helper to get formatted timestamp string, handling potential parsing errors.
      * Relies on the timestamp already being parsed correctly by SlackMessageParser.
      * Re-parses the string using parseSlackTimestamp for robustness against potential parser variations.
@@ -206,5 +279,25 @@ export abstract class BaseFormatStrategy implements FormatStrategy {
     // Replace previous log method with calls to static Logger
     protected log(level: 'debug' | 'info' | 'warn' | 'error', message: string, data?: any): void {
         Logger[level](this.constructor.name, message, data);
+    }
+
+    /**
+     * Update settings and parsed maps
+     */
+    public updateSettings(settings: SlackFormatSettings, parsedMaps: ParsedMaps): void {
+        this.settings = settings;
+        this.parsedMaps = parsedMaps;
+        
+        // Re-initialize processors with new settings
+        const isDebug = settings.debug ?? false;
+        this.codeBlockProcessor = new CodeBlockProcessor({ enableCodeBlocks: settings.detectCodeBlocks, isDebugEnabled: isDebug });
+        this.urlProcessor = new UrlProcessor({ isDebugEnabled: isDebug });
+        this.threadLinkProcessor = new ThreadLinkProcessor({ enableThreadLinks: settings.highlightThreads, isDebugEnabled: isDebug });
+        this.emojiProcessor = new EmojiProcessor({ emojiMap: this.parsedMaps.emojiMap, isDebugEnabled: isDebug });
+        this.usernameProcessor = new UsernameProcessor({
+            userMap: this.parsedMaps.userMap,
+            enableMentions: settings.convertUserMentions,
+            isDebugEnabled: isDebug
+        });
     }
 }

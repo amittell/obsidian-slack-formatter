@@ -24,10 +24,9 @@ async function runBuild() {
     const result = await esbuild.build(buildOptions);
     console.log('Production build complete.');
     if (result.metafile) {
-      const distDir = path.dirname(buildOptions.outfile);
+      // Write metafile to root directory instead of dist
+      const metaPath = 'meta.json';
       try {
-        mkdirSync(distDir, { recursive: true }); // Ensure dist directory exists
-        const metaPath = path.join(distDir, 'meta.json');
         writeFileSync(metaPath, JSON.stringify(result.metafile));
         console.log(`Metafile written to ${metaPath}`);
       } catch (err) {

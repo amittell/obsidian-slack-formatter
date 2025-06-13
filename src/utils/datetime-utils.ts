@@ -204,7 +204,16 @@ function _determineBaseDateAndTimeStr(ts: string, contextDate?: Date | null): { 
 
 
 /**
+ * Gets month index from month name
+ */
+function getMonthIndex(monthStr: string): number {
+    const month = monthStr.toLowerCase();
+    return MONTHS[month] ?? -1;
+}
+
+/**
  * Parses a Slack timestamp string (handling relative/explicit dates and time) into a Date object.
+ * Enhanced to handle more formats including relative dates, day of week, and linked timestamps.
  *
  * @param ts The timestamp string from Slack (e.g., "12:34 PM", "Today at 1:23 PM", "Feb 6th at 7:47 PM").
  * @param contextDate The date context for relative timestamps or year inference. Defaults to the current date if null/undefined.
@@ -214,28 +223,186 @@ export function parseSlackTimestamp(ts: string, contextDate?: Date | null): Date
     if (!ts) return null;
 
     try {
-        const dateAndTime = _determineBaseDateAndTimeStr(ts, contextDate);
-        if (!dateAndTime) {
-            Logger.error('datetime-utils', 'Failed to determine base date/time string', { timestamp: ts });
-            return null;
+        // Remove any surrounding brackets or parentheses
+        const cleaned = ts.trim().replace(/^[\[\(]|[\]\)]$/g, '');
+
+        // Try direct Date parsing first (handles many standard formats)
+        const directParse = new Date(cleaned);
+        if (!isNaN(directParse.getTime())) {
+            return directParse;
         }
 
-        const { baseDate, timeStr } = dateAndTime;
-        const timeParts = _parseTimePart(timeStr);
+    // Handle relative dates first
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
 
-        if (timeParts) {
-            // Combine Base Date and Parsed Time
-            const finalDate = new Date(baseDate); // Use copy of baseDate
-            finalDate.setHours(timeParts.hours, timeParts.minutes, 0, 0);
-            return finalDate;
+    // Handle "Today at Time" format
+    const todayMatch = cleaned.match(/^Today\s+at\s+(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
+    if (todayMatch) {
+        const hours = parseInt(todayMatch[1], 10);
+        const minutes = parseInt(todayMatch[2], 10);
+        const isPM = todayMatch[3]?.toUpperCase() === 'PM';
+        
+        const result = new Date(today);
+        let adjustedHours = hours;
+        
+        if (todayMatch[3]) { // 12-hour format
+            if (isPM && hours !== 12) adjustedHours += 12;
+            else if (!isPM && hours === 12) adjustedHours = 0;
+        }
+        
+        result.setHours(adjustedHours, minutes, 0, 0);
+        return result;
+    }
+
+    // Handle "Yesterday at Time" format
+    const yesterdayMatch = cleaned.match(/^Yesterday\s+at\s+(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
+    if (yesterdayMatch) {
+        const hours = parseInt(yesterdayMatch[1], 10);
+        const minutes = parseInt(yesterdayMatch[2], 10);
+        const isPM = yesterdayMatch[3]?.toUpperCase() === 'PM';
+        
+        const result = new Date(yesterday);
+        let adjustedHours = hours;
+        
+        if (yesterdayMatch[3]) { // 12-hour format
+            if (isPM && hours !== 12) adjustedHours += 12;
+            else if (!isPM && hours === 12) adjustedHours = 0;
+        }
+        
+        result.setHours(adjustedHours, minutes, 0, 0);
+        return result;
+    }
+
+    // Handle day of week formats (e.g., "Wednesday at 8:19 PM", "Monday")
+    const dayOfWeekMatch = cleaned.match(/^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)(?:\s+at\s+(\d{1,2}):(\d{2})\s*(AM|PM)?)?$/i);
+    if (dayOfWeekMatch) {
+        const targetDay = dayOfWeekMatch[1];
+        const hours = dayOfWeekMatch[2] ? parseInt(dayOfWeekMatch[2], 10) : 0;
+        const minutes = dayOfWeekMatch[3] ? parseInt(dayOfWeekMatch[3], 10) : 0;
+        const isPM = dayOfWeekMatch[4]?.toUpperCase() === 'PM';
+        
+        // Find the most recent occurrence of this day
+        const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        const targetDayIndex = daysOfWeek.findIndex(d => d.toLowerCase() === targetDay.toLowerCase());
+        const currentDayIndex = today.getDay();
+        
+        let daysAgo = currentDayIndex - targetDayIndex;
+        if (daysAgo < 0) daysAgo += 7;
+        if (daysAgo === 0) daysAgo = 7; // If it's the same day, assume last week
+        
+        const result = new Date(today);
+        result.setDate(result.getDate() - daysAgo);
+        
+        if (dayOfWeekMatch[2]) { // Has time component
+            let adjustedHours = hours;
+            if (isPM && hours !== 12) adjustedHours += 12;
+            else if (!isPM && hours === 12) adjustedHours = 0;
+            result.setHours(adjustedHours, minutes, 0, 0);
         } else {
-            // Time parsing failed even after date determination
-            Logger.warn('datetime-utils', 'Could not parse time component of the timestamp string', { timestamp: ts, determinedTimeStr: timeStr });
-            return null;
+            result.setHours(0, 0, 0, 0);
+        }
+        
+        return result;
+    }
+
+    // Handle time-only format (e.g., "10:30 AM", "2:45 PM", "14:30")
+    const timeOnlyMatch = cleaned.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
+    if (timeOnlyMatch) {
+        const baseDate = contextDate || today;
+        const hours = parseInt(timeOnlyMatch[1], 10);
+        const minutes = parseInt(timeOnlyMatch[2], 10);
+        const isPM = timeOnlyMatch[3]?.toUpperCase() === 'PM';
+        
+        const result = new Date(baseDate);
+        let adjustedHours = hours;
+        
+        if (timeOnlyMatch[3]) { // 12-hour format
+            if (isPM && hours !== 12) adjustedHours += 12;
+            else if (!isPM && hours === 12) adjustedHours = 0;
+        }
+        
+        result.setHours(adjustedHours, minutes, 0, 0);
+        return result;
+    }
+
+    // Handle "Month Day at Time" format (e.g., "Feb 6th at 7:47 PM", "Feb 25th at 10:39 AM")
+    const monthDayTimeMatch = cleaned.match(/^(\w+)\s+(\d{1,2})(?:st|nd|rd|th)?\s+at\s+(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+    if (monthDayTimeMatch) {
+        const monthStr = monthDayTimeMatch[1];
+        const day = parseInt(monthDayTimeMatch[2], 10);
+        const hours = parseInt(monthDayTimeMatch[3], 10);
+        const minutes = parseInt(monthDayTimeMatch[4], 10);
+        const isPM = monthDayTimeMatch[5].toUpperCase() === 'PM';
+        
+        const year = contextDate ? contextDate.getFullYear() : new Date().getFullYear();
+        const monthIndex = getMonthIndex(monthStr);
+        
+        if (monthIndex !== -1) {
+            let adjustedHours = hours;
+            if (isPM && hours !== 12) adjustedHours += 12;
+            else if (!isPM && hours === 12) adjustedHours = 0;
+            
+            return new Date(year, monthIndex, day, adjustedHours, minutes, 0, 0);
+        }
+    }
+
+    // Handle "Month Day" format without time (e.g., "Jan 15th", "December 25")
+    const monthDayMatch = cleaned.match(/^(\w+)\s+(\d{1,2})(?:st|nd|rd|th)?$/i);
+    if (monthDayMatch) {
+        const monthStr = monthDayMatch[1];
+        const day = parseInt(monthDayMatch[2], 10);
+        const year = contextDate ? contextDate.getFullYear() : new Date().getFullYear();
+        const monthIndex = getMonthIndex(monthStr);
+        
+        if (monthIndex !== -1) {
+            return new Date(year, monthIndex, day, 0, 0, 0, 0);
+        }
+    }
+
+    // Handle linked timestamp format by extracting the visible text
+    const linkedMatch = cleaned.match(/^\[([^\]]+)\]\(https?:\/\/[^\)]+\)$/i);
+    if (linkedMatch) {
+        return parseSlackTimestamp(linkedMatch[1], contextDate);
+    }
+
+    // Handle time with seconds (e.g., "10:30:45 AM")
+    const timeWithSecondsMatch = cleaned.match(/^(\d{1,2}):(\d{2}):(\d{2})\s*(AM|PM)?$/i);
+    if (timeWithSecondsMatch) {
+        const baseDate = contextDate || today;
+        const hours = parseInt(timeWithSecondsMatch[1], 10);
+        const minutes = parseInt(timeWithSecondsMatch[2], 10);
+        const seconds = parseInt(timeWithSecondsMatch[3], 10);
+        const isPM = timeWithSecondsMatch[4]?.toUpperCase() === 'PM';
+        
+        const result = new Date(baseDate);
+        let adjustedHours = hours;
+        
+        if (timeWithSecondsMatch[4]) { // 12-hour format
+            if (isPM && hours !== 12) adjustedHours += 12;
+            else if (!isPM && hours === 12) adjustedHours = 0;
+        }
+        
+        result.setHours(adjustedHours, minutes, seconds, 0);
+        return result;
+    }
+
+        // Try the existing helper functions as fallback
+        const dateAndTime = _determineBaseDateAndTimeStr(cleaned, contextDate);
+        if (dateAndTime) {
+            const { baseDate, timeStr } = dateAndTime;
+            const timeParts = _parseTimePart(timeStr);
+            if (timeParts) {
+                const finalDate = new Date(baseDate);
+                finalDate.setHours(timeParts.hours, timeParts.minutes, 0, 0);
+                return finalDate;
+            }
         }
 
+        return null;
     } catch (e) {
-        Logger.error('datetime-utils', 'Error parsing Slack timestamp string', { timestamp: ts, error: e });
+        Logger.warn('datetime-utils', 'Error parsing Slack timestamp', { timestamp: ts, error: e });
         return null;
     }
 }

@@ -14,11 +14,11 @@ const settingsC1: SlackFormatSettings = { ...DEFAULT_SETTINGS, debug: false }; /
 
 const settingsC2: SlackFormatSettings = { // No Features
     ...DEFAULT_SETTINGS,
-    enableCodeBlocks: false,
-    enableMentions: false,
-    enableEmoji: false,
-    enableTimestampParsing: false,
-    enableSubThreadLinks: false,
+    detectCodeBlocks: false,
+    convertUserMentions: false,
+    replaceEmoji: false,
+    parseSlackTimes: false,
+    highlightThreads: false,
     debug: false,
 };
 

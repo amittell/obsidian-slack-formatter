@@ -1,34 +1,29 @@
 /**
- * Formatter module index
- * Exports all formatter components in an organized manner
+ * Slack Formatter exports
  */
-
-// Main formatter class
 export { SlackFormatter } from './slack-formatter';
 
 // Processors
-// Updated exports for split processors:
-export { CodeBlockProcessor } from './processors/code-block-processor';
-export { UrlProcessor } from './processors/url-processor';
-export { ThreadLinkProcessor } from './processors/thread-link-processor';
-// Removed AttachmentProcessor export
-export { EmojiProcessor } from './processors/emoji-processor';
-export { UsernameProcessor } from './processors/username-processor';
-export { BaseProcessor } from './processors/base-processor'; // Export BaseProcessor
+export * from './processors/base-processor';
+export * from './processors/username-processor';
+export * from './processors/url-processor';
+export * from './processors/code-block-processor';
+export * from './processors/emoji-processor';
+export * from './processors/thread-link-processor';
+export * from './processors/unified-processor';
+export * from './processors/attachment-processor';
 
 // Stages
-export { PreProcessor } from './stages/preprocessor';
-export { FormatDetector } from './stages/format-detector';
-export { SlackMessageParser } from './stages/message-parser'; // Export new parser
-// Removed non-existent MarkdownFormatter export
-export { PostProcessor } from './stages/postprocessor';
- 
-// Strategies
-export { StandardFormatStrategy } from './strategies/standard-format-strategy';
-export { BracketFormatStrategy } from './strategies/bracket-format-strategy';
-export { FormatStrategyFactory } from './strategies/format-strategy-factory';
+export * from './stages/flexible-message-parser';
+export * from './stages/improved-format-detector';
+export * from './stages/preprocessor';
+export * from './stages/postprocessor';
+export * from './stages/format-detector';
+export * from './stages/message-parser';
 
-// Re-export base interfaces and types for convenience
-export type { SlackMessage, FormattedOutput } from '../models';
-export type { ThreadStats, FormatStrategyType, ProcessorResult } from '../types/formatters.types'; // Re-export moved ThreadStats & others
-export type { FormatStrategy } from '../interfaces'; // Export FormatStrategy interface
+// Strategies
+export * from './strategies/base-format-strategy';
+export * from './strategies/standard-format-strategy';
+export * from './strategies/bracket-format-strategy';
+export * from './strategies/mixed-format-strategy';
+export * from './strategies/format-strategy-factory';
