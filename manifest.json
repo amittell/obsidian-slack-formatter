@@ -1,9 +1,9 @@
 {
   "id": "slack-formatter",
   "name": "Slack Paste Formatter",
-  "version": "0.0.6",
+  "version": "0.0.8",
   "minAppVersion": "1.2.0",
-  "description": "Formats copy & pasted Slack coversations with markdown formatting",
+  "description": "Formats copy & pasted Slack conversations with markdown formatting",
   "author": "Alex Mittell",
   "authorUrl": "https://github.com/amittell",
   "isDesktopOnly": true,

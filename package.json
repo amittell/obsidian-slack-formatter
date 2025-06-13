@@ -1,18 +1,28 @@
 {
-  "name": "obsidian-slack-formater",
-  "version": "0.0.1",
+  "name": "obsidian-slack-formatter",
+  "version": "1.0.0",
+  "description": "Format Slack conversations as Obsidian callouts",
+  "type": "module",
+  "sideEffects": false,
   "scripts": {
     "dev": "node esbuild.config.mjs",
-    "build": "node esbuild.config.mjs production"
+    "build": "node esbuild.config.mjs production",
+    "build:fast": "node esbuild.config.mjs production",
+    "test": "jest",
+    "analyze": "node scripts/optimize-build.js"
   },
   "dependencies": {
-    "esbuild": "^0.20.1",
+    "esbuild": "^0.25.1",
+    "esm": "^3.2.25",
     "obsidian": "latest"
   },
   "devDependencies": {
-    "@types/node": "^20.11.0",
+    "@types/jest": "^29.5.14",
+    "@types/node": "^20.17.24",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.3.0",
+    "ts-node": "^10.9.2",
     "tslib": "2.6.2",
-    "typescript": "^5.3.3"
-  },
-  "type": "module"
+    "typescript": "^5.8.2"
+  }
 }

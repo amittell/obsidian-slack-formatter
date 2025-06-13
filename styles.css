@@ -1,0 +1,58 @@
+/* Base modal styles */
+.slack-formatter-modal {
+    width: 500px;
+    height: auto;
+    padding: 20px;
+    border-radius: 8px;
+}
+
+.slack-formatter-modal.preview {
+    width: 80%;
+    height: 80%;
+}
+
+.slack-formatter-modal .button-container {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.slack-formatter-modal .preview-area {
+    width: 100%;
+    height: calc(100% - 120px);
+    min-height: 300px;
+    resize: vertical;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 4px;
+    padding: 12px;
+}
+
+/* Settings tab styles */
+.slack-formatter-settings textarea {
+    width: 100%;
+    height: auto;
+    min-height: 100px;
+    resize: vertical;
+}
+
+/* Message formatting styles */
+.slack-message {
+    margin-bottom: 1em;
+    padding: 8px;
+    border-radius: 4px;
+    background-color: var(--background-primary-alt);
+}
+
+.slack-thread {
+    margin-left: 20px;
+    padding-left: 10px;
+    border-left: 2px solid var(--interactive-accent);
+}
+
+.slack-code-block {
+    background-color: var(--code-background);
+    padding: 8px;
+    border-radius: 4px;
+    font-family: var(--font-monospace);
+}

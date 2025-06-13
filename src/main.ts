@@ -1,1184 +1,338 @@
 /**
- * Formats Slack conversations pasted into Obsidian
- * @version 0.0.6
- * Author: Alex Mittell
+ * Obsidian Slack Formatter Plugin
+ * @version 1.0.0
+ * @author Alex Mittell
+ * @description Formats Slack conversations pasted into Obsidian with support for user mentions,
+ * timestamps, emojis, code blocks, and thread links.
  */
+import { Plugin, Editor, Notice, Menu, MenuItem } from 'obsidian';
+import { SlackFormatter } from './formatter/slack-formatter';
+import { DEFAULT_SETTINGS } from './settings';
+import { SlackFormatSettingTab } from './ui/settings-tab';
+import { ConfirmSlackModal, SlackPreviewModal } from './ui/modals';
+import { SlackFormatSettings } from './types/settings.types'; // Corrected import path
+import { parseJsonMap } from './utils'; // Import the centralized utility
+import { Logger } from './utils/logger';
 
-import {
-  App,
-  Editor,
-  Notice,
-  Modal,
-  Plugin,
-  PluginSettingTab,
-  Setting,
-  TFile,
-  ButtonComponent,
-  TextAreaComponent,
-} from 'obsidian';
-
-interface ThreadStats {
-  messageCount: number;
-  uniqueUsers: number;
-  threadCount: number;
-  dateRange: string;
-  mostActiveUser?: string;
-}
-
-interface SlackFormatSettings {
-  enableCodeBlocks: boolean;
-  enableMentions: boolean;
-  enableEmoji: boolean;
-  enableTimestampParsing: boolean;
-  enableSubThreadLinks: boolean;
-  userMapJson: string;
-  emojiMapJson: string;
-  channelMapJson: string;
-  hotkeyMode: 'cmdShiftV' | 'interceptCmdV';
-  maxLines: number;
-  enablePreviewPane: boolean;
-  enableConfirmationDialog: boolean;
-  timeZone: string;
-  collapseThreads: boolean;
-  threadCollapseThreshold: number;
-}
-
-const DEFAULT_SETTINGS: SlackFormatSettings = {
-  enableCodeBlocks: true,
-  enableMentions: true,
-  enableEmoji: true,
-  enableTimestampParsing: true,
-  enableSubThreadLinks: true,
-  userMapJson: JSON.stringify({ "U123ABCD": "Alice", "U999ZZYY": "Bob" }, null, 2),
-  emojiMapJson: JSON.stringify({ "smile": "😄", "thumbsup": "👍" }, null, 2),
-  channelMapJson: JSON.stringify({ "C01234": "general" }, null, 2),
-  hotkeyMode: 'cmdShiftV',
-  maxLines: 20000,
-  enablePreviewPane: false,
-  enableConfirmationDialog: false,
-  timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-  collapseThreads: true,
-  threadCollapseThreshold: 3
-};
-
+/**
+ * Main plugin class for the Obsidian Slack Formatter.
+ * Handles command registration, settings management, and formatting operations.
+ * @extends {Plugin}
+ */
 export default class SlackFormatPlugin extends Plugin {
-  settings: SlackFormatSettings;
-  userMap: Record<string, string> = {};
-  emojiMap: Record<string, string> = {};
-  channelMap: Record<string, string> = {};
-  detectedDates: Date[] = [];
-  participantSet: Set<string> = new Set();
-  private currentUser: string = '';
-  private currentTime: string = '';
-  private messageLines: string[] = [];
-  private result: string[] = [];
-  private unknownUserActive: boolean = false;
-  private threadInfo: string = '';
-  private currentMessageNumber: number = 0;
-  private threadStats: ThreadStats = {
-    messageCount: 0,
-    uniqueUsers: 0,
-    threadCount: 0,
-    dateRange: '',
-    mostActiveUser: undefined
-  };
-  private userMessageCounts: Record<string, number> = {};
-  private lastKnownUser: string = '';
-  private lastMessageTime: string = '';
-  private isMessageContinuation: boolean = false;
-  private inCodeBlock: boolean = false;
-  private inQuotedBlock: boolean = false;
+  /**
+   * Current plugin settings configuration
+   * @type {SlackFormatSettings}
+   */
+  settings!: SlackFormatSettings; // Corrected type name
+  
+  /**
+   * Slack formatter instance that performs the actual formatting
+   * @type {SlackFormatter}
+   */
+  formatter!: SlackFormatter;
 
-  async onload() {
-    console.log("Loading SlackFormatPlugin...");
+  /**
+   * Called when the plugin is loaded.
+   * Initializes settings, formatter, and registers all commands.
+   * @returns {Promise<void>}
+   */
+  async onload(): Promise<void> {
+    Logger.info('SlackFormatPlugin', 'Loading Slack formatter plugin v1.0.0');
 
-    this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
-    this.parseJsonMaps();
+    // Load settings
+    await this.loadSettings();
+
+    // Initialize formatter
+    this.initFormatter();
+
+    // Add settings tab
     this.addSettingTab(new SlackFormatSettingTab(this.app, this));
 
-    if (this.settings.hotkeyMode === 'cmdShiftV') {
-      this.addCommand({
-        id: 'format-slack-paste',
-        name: 'Format and Paste Slack Thread (Cmd+Shift+V)',
-        hotkeys: [{ modifiers: ['Mod', 'Shift'], key: 'v' }],
-        editorCallback: async (editor: Editor) => {
-          if (this.settings.enablePreviewPane) {
-            new SlackPreviewModal(this.app, this, editor).open();
-            return;
-          }
-          try {
-            const raw = await navigator.clipboard.readText();
-            const formatted = this.formatSlackContent(raw);
-            editor.replaceSelection(formatted);
-          } catch (err) {
-            console.error('Slack Format Plugin Error:', err);
-            new Notice('Failed to process clipboard content.');
-          }
-        }
-      });
-    } else {
-      this.registerEvent(
-        this.app.workspace.on('editor-paste', async (clipboard: string, editor: Editor) => {
-          if (this.isLikelySlack(clipboard)) {
-            if (this.settings.enableConfirmationDialog) {
-              const confirm = await this.askSlackConversion();
-              if (!confirm) return;
-            }
-            if (this.settings.enablePreviewPane) {
-              new SlackPreviewModal(this.app, this, editor, clipboard).open();
-              return false;
-            }
-            const formatted = this.formatSlackContent(clipboard);
-            editor.replaceSelection(formatted);
-            return false;
-          }
-          return true;
-        })
+    // Register commands using helper methods
+    this.registerHotkeyCommand();
+    this.registerPaletteCommand();
+    this.registerContextMenu();
+
+    // Removed 'editor-paste' event listener registration
+    // Removed direct keydown event listener
+  }
+
+  /**
+   * Initialize the formatter with current settings and parsed JSON maps.
+   * Handles parsing errors gracefully and displays notices to the user.
+   * @private
+   * @returns {void}
+   */
+  private initFormatter(): void {
+    try {
+      Logger.info('SlackFormatPlugin', 'Initializing formatter...');
+      let errorOccurred = false;
+      
+      // Parse the JSON maps using the utility function, handling potential nulls
+      const userMapResult = parseJsonMap(this.settings.userMapJson || '{}', 'User Map');
+      const emojiMapResult = parseJsonMap(this.settings.emojiMapJson || '{}', 'Emoji Map');
+      const userMap = userMapResult ?? {};
+      const emojiMap = emojiMapResult ?? {};
+
+      // Show specific notices if parsing failed for any map
+      if (userMapResult === null) {
+          new Notice("Error parsing User Map JSON from settings. Mentions may not work correctly.");
+          errorOccurred = true;
+      }
+      if (emojiMapResult === null) {
+          new Notice("Error parsing Emoji Map JSON from settings. Custom emojis may not work correctly.");
+          errorOccurred = true;
+      }
+      
+      // Create formatter, passing settings and potentially empty maps if parsing failed
+      this.formatter = new SlackFormatter(this.settings, userMap, emojiMap);
+      
+      if (!errorOccurred) {
+          Logger.info('SlackFormatPlugin', 'Slack formatter initialized successfully');
+      } else {
+          Logger.warn('SlackFormatPlugin', 'Slack formatter initialized with potential map parsing errors.');
+      }
+      
+    } catch (error) { // Catch any unexpected errors during initialization itself
+      Logger.error('SlackFormatPlugin', 'Unexpected error during formatter initialization:', error);
+      // Fallback to ensure formatter is always assigned, even if constructor fails unexpectedly
+      this.formatter = new SlackFormatter(
+        { ...this.settings },
+        {}, {}
       );
+      new Notice("Critical Error: Formatter initialization failed unexpectedly. Using default settings.");
     }
-
-    this.addCommand({
-      id: 'format-slack-create-note',
-      name: 'Format Slack & Create Dated Note (YAML Frontmatter)',
-      callback: async () => {
-        if (this.settings.enablePreviewPane) {
-          new SlackPreviewModal(this.app, this, null, null, true).open();
-        } else {
-          try {
-            const raw = await navigator.clipboard.readText();
-            const noteContent = this.buildNoteWithFrontmatter(raw);
-            await this.createUniqueNote(noteContent);
-          } catch (err) {
-            console.error('Slack Format Plugin Error:', err);
-            new Notice("Failed to create Slack note from clipboard text.");
-          }
-        }
-      }
-    });
   }
 
-  onunload() {
-    console.log("Unloading SlackFormatPlugin...");
-  }
+  // Removed local parseJsonMap method (now using utility)
+ 
+  // Removed handlePasteEvent method
 
-private handleMessageStart(line: string): { user: string; time: string; remainder: string } | null {
-    // Try to match a line with just a username
-    const nameOnlyMatch = line.match(/^([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)$/);
-    if (nameOnlyMatch) {
-      return {
-        user: nameOnlyMatch[1],
-        time: '', // Time will be set by the next line
-        remainder: ''
-      };
-    }
-
-    // Handle doubled usernames in DMs (e.g., "AlexAlex")
-    const doubledNameMatch = line.match(/^([A-Z][a-z]+)(?:\1)\s+(\d{1,2}:\d{2}(?:\s?[AaPp]\.?[Mm]\.?)?)/);
-    if (doubledNameMatch) {
-      const remainder = line.substr(doubledNameMatch[0].length).trim();
-      return {
-        user: doubledNameMatch[1],
-        time: doubledNameMatch[2],
-        remainder
-      };
-    }
-
-    // Handle standard message format
-    const messageStartMatch = line.match(/^([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+(\d{1,2}:\d{2}(?:\s?[AaPp]\.?[Mm]\.?)?)/);
-    if (messageStartMatch) {
-      const remainder = line.substr(messageStartMatch[0].length).trim();
-      return {
-        user: messageStartMatch[1],
-        time: messageStartMatch[2],
-        remainder
-      };
-    }
-
-    // Handle timestamp-only lines for message continuation
-    const timeOnlyMatch = line.match(/^(\d{1,2}:\d{2}(?:\s?[AaPp]\.?[Mm]\.?)?)$/);
-    if (timeOnlyMatch && this.lastKnownUser) {
-      return {
-        user: this.lastKnownUser,
-        time: timeOnlyMatch[1],
-        remainder: ''
-      };
-    }
-
-    return null;
-  }
-
-  private parseSlackThreadUrl(url: string): string | null {
-    const re = /archives\/([A-Z0-9]+)\/p(\d+)\.(\d+)/i;
-    const m = url.match(re);
-    if (m) {
-      const channelId = m[1];
-      const tsInt = m[2];
-      const tsFrac = m[3];
-      const chanName = this.channelMap[channelId] || channelId;
-      return `Thread in #${chanName} at ${tsInt}.${tsFrac}`;
-    }
-    return null;
-  }
-
-  private isTimeLine(line: string): boolean {
-    return /^\s*\d{1,2}:\d{2}(?:\s?[AaPp]\.?[Mm]\.?)?\s*$/.test(line);
-  }
-
-  private isDateLine(line: string): boolean {
-    return /\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\b/i.test(line)
-      && /\b\d{1,2},?\s*\d{4}/.test(line);
-  }
-
-  private parseDateLine(line: string): Date | null {
-    const cleaned = line.replace(/(\d+)(st|nd|rd|th)/gi, '$1');
-    const dt = new Date(cleaned);
-    if (isNaN(dt.getTime())) return null;
-    return dt;
-  }
-
-  private parseAndFormatTime(timeStr: string): string {
-    const match = timeStr.match(/(\d{1,2}):(\d{2})(?:\s?([AaPp]\.?[Mm]\.?))?/);
-    if (!match) return timeStr;
-    
-    let [_, hh, mm, ampm] = match;
-    let hour = parseInt(hh, 10);
-    const minute = parseInt(mm, 10);
-
-    if (ampm) {
-      ampm = ampm.toLowerCase().replace('.', '');
-      if (ampm === 'pm' && hour < 12) hour += 12;
-      if (ampm === 'am' && hour === 12) hour = 0;
-    }
-
-    let baseDate: Date;
-    if (this.detectedDates.length > 0) {
-      baseDate = this.detectedDates.reduce((a, b) => (a < b ? a : b));
-    } else {
-      baseDate = new Date();
-    }
-
-    const newDate = new Date(baseDate.getTime());
-    newDate.setHours(hour, minute, 0, 0);
-
-    const userTz = this.settings.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone;
-    return newDate.toLocaleString('en-US', {
-      timeZone: userTz,
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true
-    });
-  }
-
-  private handleSlackMetadataLine(line: string): false | string | undefined {
-    const trimmed = line.trim();
-    
-    // Skip empty lines and metadata
-    if (trimmed === '' || trimmed === 'NEW' || trimmed === '1') return false;
-    
-    // Handle thread metadata
-    if (/(view thread)|(replies?)/i.test(trimmed)) {
-      const replyMatch = trimmed.match(/(\d+)\s+repl(y|ies)/i);
-      if (replyMatch) {
-        const replyCount = parseInt(replyMatch[1], 10);
-        this.threadStats.threadCount++;
-        return `**Thread:** ${replyCount} ${replyCount === 1 ? 'reply' : 'replies'}`;
-      }
-      return false;
-    }
-
-    // Skip "Last reply" or "Last Activity" lines
-    if (/(Last reply)|(Last Activity)/i.test(trimmed)) return false;
-    
-    // Handle duplicated names in DMs
-    const dmNameMatch = trimmed.match(/^([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\1\s+/);
-    if (dmNameMatch) {
-      this.lastKnownUser = dmNameMatch[1];
-      return false;
-    }
-
-    return undefined;
-  }
-
-  private formatThreadInfo(replyCount: number): string {
-    if (this.settings.collapseThreads && replyCount > this.settings.threadCollapseThreshold) {
-      return `>\n> **Thread:** ${replyCount} replies (collapsed)`;
-    }
-    return `>\n> **Thread:** ${replyCount} ${replyCount === 1 ? 'reply' : 'replies'}`;
-  }
-
-  private sanitizeMarkdown(text: string): string {
-    return text
-      .replace(/^#+\s+/gm, '')
-      .replace(/\*\*/g, '')
-      .replace(/\*/g, '')
-      .replace(/^>\s+/gm, '')
-      .replace(/^-\s+/gm, '')
-      .replace(/^([0-9]+\.)\s+/gm, '')
-      .replace(/`([^`]+)`/g, '$1')
-      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1 ($2)');
-  }
-
-  private isDuplicateMessage(message: string): boolean {
-    const lastMessages = this.result.slice(-3);
-    return lastMessages.some(msg => msg === message);
-  }
-
-  private isValidUsername(name: string): boolean {
-    return /^[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*$/.test(name) && 
-           !name.includes('?') &&
-           !name.includes('"') &&
-           !name.includes(':') &&
-           !name.startsWith('Message from') &&
-           !name.includes('replied to');
-  }
-
-  private isSystemMessage(line: string): boolean {
-    return line.includes('joined #') || 
-           line.includes('others joined') || 
-           line.includes('left #') || 
-           line.includes(' left.') ||
-           line.includes('replied to a thread');
-  }
-
-  private resetMessage() {
-    this.currentUser = '';
-    this.currentTime = '';
-    this.messageLines = [];
-    this.unknownUserActive = false;
-    this.threadInfo = '';
-    this.isMessageContinuation = false;
-  }
-
-  private formatLine(line: string): string {
-    if (!line.trim()) return '';
-    
-    if (line.includes('joined #') || line.includes('others joined') || 
-        line.includes('left #') || line.includes(' left.')) {
-      return '';
-    }
-    
-    let output = this.sanitizeMarkdown(line);
-    
-    if (output.trimStart().startsWith('>')) {
-      output = '\\' + output.trimStart();
-    }
-
-    output = output.replace(/<(https?:\/\/[^|>]+)\|([^>]+)>/g, (m, url, text) => {
-      if (this.isSlackFile(url) && this.isImageLink(url)) {
-        return `![${text} (Slack Attachment)](${url})`;
-      } else if (this.isSlackFile(url)) {
-        return `[${text} (Slack Attachment)](${url})`;
-      } else if (this.isImageLink(url)) {
-        return `![${text}](${url})`;
-      }
-      return `[${text}](${url})`;
-    });
-  
-    output = output.replace(/<(https?:\/\/[^>]+)>/g, (m, url) => {
-      const fileName = url.split('/').pop() || url;
-      if (this.isSlackFile(url) && this.isImageLink(url)) {
-        return `![${fileName} (Slack Attachment)](${url})`;
-      } else if (this.isSlackFile(url)) {
-return `[${fileName} (Slack Attachment)](${url})`;
-      } else if (this.isImageLink(url)) {
-        return `![${fileName}](${url})`;
-      }
-      return `[${url}](${url})`;
-    });
-
-    output = output.replace(/<@([A-Z0-9]+)>/gi, (m, userId) => {
-      const mappedUser = this.userMap[userId];
-      return mappedUser ? `[[${mappedUser}]]` : `[[${userId}]]`;
-    });
-
-    if (this.settings.enableMentions) {
-      output = output.replace(/(^|\s)@(\w[\w.-]+)/g, (m, space, uname) => {
-        return `${space}[[${uname}]]`;
-      });
-    }
-
-    if (this.settings.enableEmoji) {
-      output = output.replace(/:([a-z0-9_+\-]+):/gi, (m, code) => {
-        return this.emojiMap[code] ? this.emojiMap[code] : m;
-      });
-    }
-
-    output = output.replace(/(^|[^"!])((https?:\/\/[^\s)]+))/g, (match, prefix, url) => {
-      if (prefix.match(/\]$/)) return match;
-      const fileName = url.split('/').pop() || url;
-      if (this.isSlackFile(url) && this.isImageLink(url)) {
-        return `${prefix}![${fileName} (Slack Attachment)](${url})`;
-      } else if (this.isSlackFile(url)) {
-        return `${prefix}[${fileName} (Slack Attachment)](${url})`;
-      } else if (this.isImageLink(url)) {
-        return `${prefix}![${fileName}](${url})`;
-      }
-      return `${prefix}[${url}](${url})`;
-    });
-
-    output = output.replace(/(^|\s)#(\S+)/g, (match, space, channelWord) => {
-      if (/^C[A-Z0-9]+$/i.test(channelWord)) {
-        const mapped = this.channelMap[channelWord] || channelWord;
-        return `${space}[[#${mapped}]]`;
-      }
-      return `${space}[[#${channelWord}]]`;
-    });
-
-    output = output.replace(/^(?:•|\-\s|\d+\.)\s?/, '- ');
-    output = output.replace(/(?<!\\)>/g, '\\>');
-
-    return output.trimEnd();
-  }
-
-  private flushMessage() {
-    if (this.currentUser && this.currentTime) {
-      // Skip join/leave messages
-      if (this.messageLines.every(line => 
-        line.includes('joined #') || 
-        line.includes('others joined') || 
-        line.includes('left #') || 
-        line.includes(' left.') ||
-        line.trim() === 'joined.' ||
-        line.trim() === 'left.'
-      )) {
-        this.resetMessage();
+  /**
+   * Format text and insert it into the editor.
+   * Handles auto-detection, confirmation dialogs, and preview modes based on settings.
+   * @private
+   * @param {Editor} editor - The Obsidian editor instance
+   * @param {string} text - The text to format
+   * @returns {void}
+   */
+  private formatAndInsert(editor: Editor, text: string): void {
+    try {
+      if (!text) {
+        new Notice("No text to format");
         return;
       }
-
-      const lines = this.messageLines
-        .map(ln => ln.trim())
-        .filter(ln => ln.length > 0 && !this.isSystemMessage(ln));
       
-      if (lines.length > 0) {
-        const formattedBody = lines
-          .map(ln => {
-            const formattedLine = this.formatLine(ln);
-            return formattedLine ? `> ${formattedLine}` : '';
-          })
-          .filter(ln => ln)
-          .join('\n');
-        
-        this.participantSet.add(this.currentUser);
-        this.userMessageCounts[this.currentUser] = (this.userMessageCounts[this.currentUser] || 0) + 1;
-        this.threadStats.messageCount++;
+      Logger.info('SlackFormatPlugin', 'Attempting to format text', text.substring(0, 100) + '...');
 
-        let timeLabel = this.currentTime;
-        if (this.settings.enableTimestampParsing && timeLabel !== '???:??') {
-          timeLabel = this.parseAndFormatTime(timeLabel);
-        }
-
-        // Only wrap in [[]] if it's a valid username
-        const userDisplay = this.isValidUsername(this.currentUser) ? 
-          `[[${this.currentUser}]]` : this.currentUser;
-        
-        let messageBlock = [
-          `>[!note]+ Message from ${userDisplay}`,
-          `> **Time:** ${timeLabel}`,
-          `>`,
-          formattedBody
-        ];
-        
-        if (this.threadInfo) {
-          messageBlock.push(`> ${this.threadInfo}`);
-        }
-
-        const formattedMessage = messageBlock.filter(Boolean).join('\n');
-
-        if (!this.isDuplicateMessage(formattedMessage)) {
-          this.result.push(formattedMessage);
-        }
-      }
-    }
-    this.resetMessage();
-  }
-
-  private isLikelySlack(clipboard: string): boolean {
-    if (/(view thread)|(replies?)/i.test(clipboard)) return true;
-    const lines = clipboard.split('\n');
-    for (let i = 0; i < lines.length - 1; i++) {
-      if (this.isTimeLine(lines[i + 1])) return true;
-    }
-    return false;
-  }
-
-  formatSlackContent(input: string): string {
-    this.detectedDates = [];
-    this.participantSet = new Set();
-    this.result = [];
-    this.threadInfo = '';
-    this.currentMessageNumber = 0;
-    this.threadStats = {
-      messageCount: 0,
-      uniqueUsers: 0,
-      threadCount: 0,
-      dateRange: '',
-      mostActiveUser: undefined
-    };
-    this.userMessageCounts = {};
-    this.lastKnownUser = '';
-    this.lastMessageTime = '';
-    this.isMessageContinuation = false;
-    this.inCodeBlock = false;
-    this.inQuotedBlock = false;
-
-    let lines = input.split('\n');
-    if (lines.length > this.settings.maxLines) {
-      new Notice(`SlackFormatPlugin: Pasted text has ${lines.length} lines, truncating to ${this.settings.maxLines}.`);
-      lines = lines.slice(0, this.settings.maxLines);
-    }
-
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i].trim();
-      
-      if (line === '') continue;
-
-      // Handle code blocks
-      if (this.settings.enableCodeBlocks) {
-        const fenceMatch = line.match(/^```(\w+)?/);
-        if (fenceMatch) {
-          this.flushMessage();
-          if (!this.inCodeBlock) {
-            this.inCodeBlock = true;
-            this.result.push(`\`\`\`${fenceMatch[1] || ''}`.trimEnd());
-            continue;
-          } else {
-            this.inCodeBlock = false;
-            this.result.push('```');
-            continue;
+      // Handle auto-detect mode with confirmation dialog
+      if (this.settings.hotkeyMode === 'interceptCmdV' && this.formatter.isLikelySlack(text)) {
+          if (this.settings.enableConfirmationDialog) {
+              new ConfirmSlackModal(
+                  this.app,
+                  (confirmed) => {
+                      if (confirmed) {
+                          this.performFormatting(editor, text);
+                      }
+                      // If not confirmed, do nothing
+                  }
+              ).open();
+              return; // Wait for modal confirmation
           }
-        }
-        if (this.inCodeBlock) {
-          this.result.push(line);
-          continue;
-        }
+          // If confirmation is disabled, proceed directly
+      } else if (this.settings.hotkeyMode === 'interceptCmdV' && !this.formatter.isLikelySlack(text)) {
+          // If intercept mode is on but text isn't likely Slack, do nothing (allow normal paste)
+          editor.replaceSelection(text); // Perform normal paste
+          return;
       }
+      
+      // Proceed with formatting for cmdShiftV mode or if intercept checks passed
+      this.performFormatting(editor, text);
 
-      const tripleQuote = line.match(/^>>>(.*)/);
-      if (tripleQuote) {
-        this.flushMessage();
-        if (!this.inQuotedBlock) {
-          this.inQuotedBlock = true;
-          const after = tripleQuote[1].trim();
-          if (after) this.result.push(`> ${this.formatLine(after)}`);
+    } catch (error) {
+      Logger.error('SlackFormatPlugin', 'Error in formatAndInsert:', error);
+      new Notice("Error formatting Slack text");
+    }
+  }
+
+  /**
+   * Performs the actual formatting and insertion/preview.
+   * Shows preview modal if enabled, otherwise directly inserts formatted text.
+   * @private
+   * @param {Editor} editor - The Obsidian editor instance
+   * @param {string} text - The text to format
+   * @returns {void}
+   */
+   private performFormatting(editor: Editor, text: string): void {
+    try {
+        // If preview pane is enabled, show the preview first
+        if (this.settings.enablePreviewPane) {
+            new SlackPreviewModal(
+                this.app,
+                text,
+                (formattedText) => {
+                    if (formattedText) {
+                        editor.replaceSelection(formattedText);
+                        if (this.settings.showSuccessMessage) {
+                            new Notice("Slack message formatted!");
+                        }
+                    }
+                },
+                this.formatter // Pass the formatter instance
+            ).open();
         } else {
-          this.inQuotedBlock = false;
+            // Otherwise format directly
+            const formattedText = this.formatter.formatSlackContent(text);
+            editor.replaceSelection(formattedText);
+            if (this.settings.showSuccessMessage) {
+                new Notice("Slack message formatted!");
+            }
         }
-        continue;
-      }
-      if (this.inQuotedBlock) {
-        this.result.push(`> ${this.formatLine(line)}`);
-        continue;
-      }
-
-      // Check for metadata lines
-      const metaHandled = this.handleSlackMetadataLine(line);
-      if (metaHandled === false) {
-        continue;
-      } else if (typeof metaHandled === 'string') {
-        this.threadInfo = metaHandled;
-        continue;
-      }
-
-      // Try to detect message start
-      const messageStart = this.handleMessageStart(line);
-      if (messageStart) {
-        this.flushMessage();
-        this.currentUser = messageStart.user;
-        this.currentTime = messageStart.time;
-        this.lastKnownUser = this.currentUser;
-        this.lastMessageTime = this.currentTime;
-        
-        if (messageStart.remainder) {
-          this.messageLines.push(messageStart.remainder);
-        }
-        continue;
-      }
-
-      // Handle timestamp-only lines
-      const timeOnlyMatch = line.match(/^(\d{1,2}:\d{2}(?:\s?[AaPp]\.?[Mm]\.?)?)\s*$/);
-      if (timeOnlyMatch) {
-        if (this.lastKnownUser && this.currentUser !== this.lastKnownUser) {
-          this.flushMessage();
-          this.currentUser = this.lastKnownUser;
-        }
-        this.currentTime = timeOnlyMatch[1];
-        continue;
-      }
-
-      // If we have a current user or are in a continuation, add the line to current message
-      if (this.currentUser) {
-        this.messageLines.push(line);
-        continue;
-      }
-
-      // If we get here and have a lastKnownUser, treat as continuation
-      if (this.lastKnownUser) {
-        this.currentUser = this.lastKnownUser;
-        this.currentTime = this.lastMessageTime;
-        this.messageLines.push(line);
-        continue;
-      }
-
-      // Fallback for unknown messages
-      if (!this.unknownUserActive) {
-        this.flushMessage();
-        this.currentUser = 'Unknown user';
-        this.currentTime = '???:??';
-        this.unknownUserActive = true;
-      }
-      this.messageLines.push(line);
+    } catch (error) {
+        Logger.error('SlackFormatPlugin', 'Error during performFormatting:', error);
+        new Notice("Error applying Slack formatting.");
     }
+}
 
-    this.flushMessage();
-    if (this.inCodeBlock) {
-      this.result.push('```');
-    }
-
-    // Update thread statistics
-    this.threadStats.uniqueUsers = this.participantSet.size;
-    if (this.detectedDates.length > 0) {
-      const earliest = this.detectedDates.reduce((a, b) => (a < b ? a : b));
-      const latest = this.detectedDates.reduce((a, b) => (a > b ? a : b));
-      this.threadStats.dateRange = `${this.formatDateYMD(earliest)} to ${this.formatDateYMD(latest)}`;
-    }
-    
-    // Find most active user
-    let maxMessages = 0;
-    for (const [user, count] of Object.entries(this.userMessageCounts)) {
-      if (count > maxMessages) {
-        maxMessages = count;
-        this.threadStats.mostActiveUser = user;
-      }
-    }
-
-    return this.result.join('\n\n');
-  }
-
-  private isSlackFile(url: string): boolean {
-    return url.includes('files.slack.com/');
-  }
-
-  private isImageLink(url: string): boolean {
-    return /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(url);
-  }
-
-  private async askSlackConversion(): Promise<boolean> {
-    return new Promise((resolve) => {
-      const dialog = new ConfirmSlackModal(this.app, resolve);
-      dialog.open();
-    });
-  }
-
-  async createUniqueNote(content: string) {
-    const dateStr = new Date().toISOString().slice(0, 10);
-    const baseName = `Slack-${dateStr}.md`;
-    let finalName = baseName;
-    let counter = 1;
-    while (this.app.vault.getAbstractFileByPath(finalName)) {
-      finalName = baseName.replace('.md', `-${counter}.md`);
-      counter++;
-    }
-    const newFile = await this.app.vault.create(finalName, content);
-    await this.app.workspace.getLeaf(true).openFile(newFile as TFile);
-  }
-
-  parseJsonMaps() {
+  /**
+   * Reads text content from the system clipboard.
+   * Handles errors and displays a notice to the user.
+   * @returns The clipboard content as a string, or null if reading fails.
+   */
+  private async getClipboardContent(): Promise<string | null> {
     try {
-      this.userMap = JSON.parse(this.settings.userMapJson);
-    } catch (err) {
-      console.warn("Failed to parse userMap JSON.", err);
-      this.userMap = {};
+      return await navigator.clipboard.readText();
+    } catch (error) {
+      Logger.error('SlackFormatPlugin', 'Error reading clipboard:', error);
+      new Notice("Error reading clipboard content. Check permissions?");
+      return null;
     }
+  }
+
+
+  /**
+   * Format Slack content with YAML frontmatter including thread statistics.
+   * @public
+   * @param {string} text - The Slack text to format
+   * @returns {string} Formatted text with YAML frontmatter
+   */
+  public formatWithFrontmatter(text: string): string {
+    return this.formatter.buildNoteWithFrontmatter(text);
+  }
+
+  /**
+   * Called when the plugin is unloaded.
+   * Cleans up resources and logs the unload event.
+   * @returns {void}
+   */
+  onunload(): void {
+    Logger.info('SlackFormatPlugin', 'Unloading Slack formatter plugin');
+    // No need to manually remove listeners added via registerEvent
+  }
+
+  /**
+   * Load plugin settings from disk.
+   * Falls back to default settings if loading fails.
+   * @returns {Promise<void>}
+   */
+  async loadSettings(): Promise<void> {
     try {
-      this.emojiMap = JSON.parse(this.settings.emojiMapJson);
-    } catch (err) {
-      console.warn("Failed to parse emojiMap JSON.", err);
-      this.emojiMap = {};
-    }
-    try {
-      this.channelMap = JSON.parse(this.settings.channelMapJson);
-    } catch (err) {
-      console.warn("Failed to parse channelMap JSON.", err);
-      this.channelMap = {};
+      this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+    } catch (error) {
+      Logger.error('SlackFormatPlugin', 'Error loading settings:', error);
+      this.settings = { ...DEFAULT_SETTINGS };
     }
   }
 
-  buildNoteWithFrontmatter(rawText: string): string {
-    this.detectedDates = [];
-    this.participantSet = new Set();
-
-    const body = this.formatSlackContent(rawText);
-
-    let earliest: Date | null = null;
-    let latest: Date | null = null;
-    if (this.detectedDates.length > 0) {
-      earliest = this.detectedDates.reduce((a, b) => (a < b ? a : b));
-      latest = this.detectedDates.reduce((a, b) => (a > b ? a : b));
-    } else {
-      earliest = new Date();
-      latest = new Date();
-    }
-    const earliestStr = this.formatDateYMD(earliest);
-    const latestStr = this.formatDateYMD(latest);
-
-    const participants = Array.from(this.participantSet).join(', ');
-    
-    return `---
-participants: [${participants}]
-earliest_date: ${earliestStr}
-latest_date: ${latestStr}
-thread: true
-statistics:
-  message_count: ${this.threadStats.messageCount}
-  unique_users: ${this.threadStats.uniqueUsers}
-  thread_count: ${this.threadStats.threadCount}
-  date_range: ${this.threadStats.dateRange}
-  most_active_user: ${this.threadStats.mostActiveUser || 'N/A'}
----
-
-${body}`;
-  }
-
-  private formatDateYMD(d: Date): string {
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, '0');
-    const dd = String(d.getDate()).padStart(2, '0');
-    return `${yyyy}-${mm}-${dd}`;
-  }
-
-  async saveSettings() {
+  /**
+   * Save plugin settings to disk and reinitialize the formatter.
+   * @returns {Promise<void>}
+   */
+  async saveSettings(): Promise<void> {
     await this.saveData(this.settings);
-  }
-}
-
-class ConfirmSlackModal extends Modal {
-  onResult: (confirmed: boolean) => void;
-
-  constructor(app: App, onResult: (confirmed: boolean) => void) {
-    super(app);
-    this.onResult = onResult;
+    // Re-initialize the formatter with new settings and re-parsed maps
+    this.initFormatter(); 
   }
 
-  onOpen() {
-    const { contentEl } = this;
-    
-    // Clear existing content
-    contentEl.empty();
-    
-    // Add styles to make the modal more prominent
-    this.modalEl.style.width = '400px';
-    this.modalEl.style.padding = '20px';
-    
-    // Create header
-    const header = contentEl.createEl('h2', { 
-      text: 'Slack Text Detected',
-      cls: 'slack-confirm-header'
-    });
-    header.style.marginBottom = '15px';
-    header.style.color = 'var(--text-accent)';
+  // --- Command Registration Methods ---
 
-    // Create description
-    const desc = contentEl.createEl('p', { 
-      text: 'Would you like to convert this Slack text to formatted Markdown?',
-      cls: 'slack-confirm-desc'
-    });
-    desc.style.marginBottom = '20px';
-
-    // Create button container
-    const btnDiv = contentEl.createDiv('modal-button-container');
-    btnDiv.style.display = 'flex';
-    btnDiv.style.justifyContent = 'flex-end';
-    btnDiv.style.gap = '10px';
-
-    // Create buttons
-    const yesBtn = new ButtonComponent(btnDiv)
-      .setButtonText('Yes, Format It')
-      .onClick(() => {
-        this.onResult(true);
-        this.close();
-      });
-
-    const noBtn = new ButtonComponent(btnDiv)
-      .setButtonText('No, Regular Paste')
-      .onClick(() => {
-        this.onResult(false);
-        this.close();
-      });
-
-    // Style buttons
-    yesBtn.buttonEl.style.backgroundColor = 'var(--interactive-accent)';
-    yesBtn.buttonEl.style.color = 'var(--text-on-accent)';
-    noBtn.buttonEl.style.backgroundColor = 'var(--interactive-normal)';
-  }
-
-  onClose() {
-    this.contentEl.empty();
-  }
-}
-
-class SlackPreviewModal extends Modal {
-  plugin: SlackFormatPlugin;
-  editor: Editor | null;
-  rawClipboard?: string;
-  createNoteInstead?: boolean;
-  textArea!: TextAreaComponent;
-  previewEl!: HTMLDivElement;
-
-  constructor(
-    app: App,
-    plugin: SlackFormatPlugin,
-    editor: Editor | null,
-    rawClipboard?: string | null,
-    createNoteInstead?: boolean
-  ) {
-    super(app);
-    this.plugin = plugin;
-    this.editor = editor;
-    this.rawClipboard = rawClipboard || '';
-    this.createNoteInstead = createNoteInstead;
-  }
-
-  async onOpen() {
-    const { contentEl } = this;
-    contentEl.empty();
-
-    // Make modal significantly wider
-    this.modalEl.style.width = 'min(95vw, 1800px)';
-    this.modalEl.style.height = '95vh';
-
-    // Set container styles
-    contentEl.style.display = 'flex';
-    contentEl.style.flexDirection = 'column';
-    contentEl.style.height = '100%';
-    contentEl.style.overflow = 'hidden';
-
-    // Header section
-    const header = contentEl.createDiv('slack-preview-header');
-    header.style.flexShrink = '0';
-    header.style.padding = '1rem';
-    header.style.borderBottom = '1px solid var(--background-modifier-border)';
-    header.style.backgroundColor = 'var(--background-primary)';
-    
-    header.createEl('h2', {
-      text: this.createNoteInstead ? 'Slack → New Note (Preview)' : 'Slack → Preview & Insert'
-    });
-
-    const buttonContainer = header.createDiv('slack-preview-buttons');
-    buttonContainer.style.display = 'flex';
-    buttonContainer.style.gap = '0.5rem';
-    buttonContainer.style.marginTop = '0.5rem';
-
-    new ButtonComponent(buttonContainer)
-      .setButtonText(this.createNoteInstead ? 'Create Note' : 'Insert')
-      .onClick(() => {
-        const raw = this.textArea.getValue();
-        if (this.createNoteInstead) {
-          const content = this.plugin.buildNoteWithFrontmatter(raw);
-          this.plugin.createUniqueNote(content);
-        } else {
-          if (!this.editor) {
-            new Notice('No editor found for insertion.');
-          } else {
-            const formatted = this.plugin.formatSlackContent(raw);
-            this.editor.replaceSelection(formatted);
-          }
+  /**
+   * Register the hotkey command (Cmd/Ctrl+Shift+V) for formatting Slack pastes.
+   * @private
+   * @returns {void}
+   */
+  private registerHotkeyCommand(): void {
+    this.addCommand({
+      id: 'format-slack-paste-hotkey',
+      name: 'Format Slack paste with hotkey',
+      hotkeys: [
+        {
+          modifiers: ["Mod", "Shift"],
+          key: "v",
+        },
+      ],
+      editorCallback: async (editor: Editor) => {
+        const clipboardContent = await this.getClipboardContent();
+        if (clipboardContent !== null) { // Check if reading was successful
+          this.formatAndInsert(editor, clipboardContent);
         }
-        this.close();
-      });
-
-    new ButtonComponent(buttonContainer)
-      .setButtonText('Cancel')
-      .onClick(() => this.close());
-
-    // Main content area
-    const mainContent = contentEl.createDiv('slack-preview-main');
-    mainContent.style.display = 'flex';
-    mainContent.style.gap = '1rem';
-    mainContent.style.flex = '1';
-    mainContent.style.overflow = 'hidden';
-    mainContent.style.padding = '1rem';
-    mainContent.style.minHeight = '0';
-
-    // Input pane (left side)
-    const inputPane = mainContent.createDiv('slack-preview-input');
-    inputPane.style.flex = '1';
-    inputPane.style.display = 'flex';
-    inputPane.style.flexDirection = 'column';
-    inputPane.style.overflow = 'hidden';
-    inputPane.style.minWidth = '0';
-
-    this.textArea = new TextAreaComponent(inputPane);
-    this.textArea.inputEl.style.width = '100%';
-    this.textArea.inputEl.style.height = '100%';
-    this.textArea.inputEl.style.resize = 'none';
-    this.textArea.inputEl.style.padding = '1rem';
-    this.textArea.inputEl.style.border = '1px solid var(--background-modifier-border)';
-    this.textArea.inputEl.style.borderRadius = '4px';
-    this.textArea.inputEl.style.overflow = 'auto';
-
-    // Preview pane (right side)
-    const previewPane = mainContent.createDiv('slack-preview-output');
-    previewPane.style.flex = '1';
-    previewPane.style.overflow = 'hidden';
-    previewPane.style.display = 'flex';
-    previewPane.style.flexDirection = 'column';
-    previewPane.style.minWidth = '0';
-
-    const previewScroll = previewPane.createDiv('preview-scroll-container');
-    previewScroll.style.overflow = 'auto';
-    previewScroll.style.flex = '1';
-    previewScroll.style.padding = '1rem';
-    previewScroll.style.border = '1px solid var(--background-modifier-border)';
-    previewScroll.style.borderRadius = '4px';
-    previewScroll.style.backgroundColor = 'var(--background-secondary)';
-
-    this.previewEl = previewScroll.createDiv('preview-content');
-
-    // Set initial content
-    if (this.rawClipboard) {
-      this.textArea.setValue(this.rawClipboard);
-    } else {
-      try {
-        const clipText = await navigator.clipboard.readText();
-        this.textArea.setValue(clipText);
-      } catch (err) {
-        console.warn('Failed to read clipboard:', err);
-      }
-    }
-
-    this.textArea.inputEl.addEventListener('input', () => {
-      this.updatePreview();
-    });
-
-    this.updatePreview();
-  }
-
-  onClose() {
-    this.contentEl.empty();
-  }
-
-  private updatePreview() {
-    const raw = this.textArea.getValue();
-    let output = this.createNoteInstead ? 
-      this.plugin.buildNoteWithFrontmatter(raw) :
-      this.plugin.formatSlackContent(raw);
-    
-    // Apply syntax highlighting to code blocks
-    output = output.replace(/```(\w+)?\n([\s\S]*?)```/g, (match, lang, code) => {
-      try {
-        return `<pre class="language-${lang || 'text'}">${code}</pre>`;
-      } catch (e) {
-        return match;
+        // Error handling is now inside getClipboardContent
       }
     });
-    
-    this.previewEl.innerHTML = `<pre style="margin: 0; white-space: pre-wrap;">${output}</pre>`;
-  }
-}
-
-class SlackFormatSettingTab extends PluginSettingTab {
-  plugin: SlackFormatPlugin;
-
-  constructor(app: App, plugin: SlackFormatPlugin) {
-    super(app, plugin);
-    this.plugin = plugin;
   }
 
-  display(): void {
-    const { containerEl } = this;
-    containerEl.empty();
+  /**
+   * Register the command palette command for formatting Slack pastes.
+   * @private
+   * @returns {void}
+   */
+  private registerPaletteCommand(): void {
+    this.addCommand({
+      id: 'format-slack',
+      name: 'Format Slack paste',
+      icon: 'clipboard-list',
+      editorCallback: async (editor: Editor) => {
+        const clipboardContent = await this.getClipboardContent();
+        if (clipboardContent !== null) { // Check if reading was successful
+          this.formatAndInsert(editor, clipboardContent);
+        }
+        // Error handling is now inside getClipboardContent
+      }
+    });
+  }
 
-    containerEl.createEl('h2', { text: 'Slack Format Plugin (Callout Style)' });
-
-    new Setting(containerEl)
-      .setName('Hotkey Behavior')
-      .setDesc('Use Cmd+Shift+V or intercept normal Cmd+V if Slack text is detected')
-      .addDropdown(dd => {
-        dd.addOption('cmdShiftV', 'Cmd+Shift+V (default)');
-        dd.addOption('interceptCmdV', 'Intercept Cmd+V');
-        dd.setValue(this.plugin.settings.hotkeyMode);
-        dd.onChange(async (val) => {
-          this.plugin.settings.hotkeyMode = val as 'cmdShiftV' | 'interceptCmdV';
-          await this.plugin.saveSettings();
-          new Notice('Hotkey setting changed. Reload or toggle plugin to apply.');
-        });
-      });
-
-    new Setting(containerEl)
-      .setName('Confirmation Dialog on Intercept')
-      .setDesc('Ask the user if they want to convert Slack text when intercepting Cmd+V.')
-      .addToggle(tg => {
-        tg.setValue(this.plugin.settings.enableConfirmationDialog);
-        tg.onChange(async (val) => {
-          this.plugin.settings.enableConfirmationDialog = val;
-          await this.plugin.saveSettings();
-        });
-      });
-
-    new Setting(containerEl)
-      .setName('Enable Preview Pane')
-      .setDesc('Show a real-time preview modal before inserting Slack text.')
-      .addToggle(tg => {
-        tg.setValue(this.plugin.settings.enablePreviewPane);
-        tg.onChange(async (val) => {
-          this.plugin.settings.enablePreviewPane = val;
-          await this.plugin.saveSettings();
-        });
-      });
-
-    new Setting(containerEl)
-      .setName('Time Zone')
-      .setDesc('Time zone for date/time formatting (e.g., America/New_York)')
-      .addText(text => {
-        text.setValue(this.plugin.settings.timeZone);
-        text.onChange(async (val) => {
-          this.plugin.settings.timeZone = val;
-          await this.plugin.saveSettings();
-        });
-      });
-
-    new Setting(containerEl)
-      .setName('Collapse Long Threads')
-      .setDesc('Automatically collapse threads with many replies')
-      .addToggle(tg => {
-        tg.setValue(this.plugin.settings.collapseThreads);
-        tg.onChange(async (val) => {
-          this.plugin.settings.collapseThreads = val;
-          await this.plugin.saveSettings();
-        });
-      });
-
-    new Setting(containerEl)
-      .setName('Thread Collapse Threshold')
-      .setDesc('Number of replies before collapsing a thread')
-      .addText(text => {
-        text.setValue(String(this.plugin.settings.threadCollapseThreshold));
-        text.onChange(async (val) => {
-          const num = parseInt(val);
-          if (!isNaN(num) && num > 0) {
-            this.plugin.settings.threadCollapseThreshold = num;
-            await this.plugin.saveSettings();
-          }
-        });
-      });
-
-    new Setting(containerEl)
-      .setName('Detect & Preserve Code Blocks')
-      .setDesc('If enabled, lines starting with ``` become code fences.')
-      .addToggle(tg => {
-        tg.setValue(this.plugin.settings.enableCodeBlocks);
-        tg.onChange(async (val) => {
-          this.plugin.settings.enableCodeBlocks = val;
-          await this.plugin.saveSettings();
-        });
-      });
-
-    new Setting(containerEl)
-      .setName('@username => [[username]]')
-      .setDesc('Convert Slack mentions into Obsidian wikilinks.')
-      .addToggle(tg => {
-        tg.setValue(this.plugin.settings.enableMentions);
-        tg.onChange(async (val) => {
-          this.plugin.settings.enableMentions = val;
-          await this.plugin.saveSettings();
-        });
-      });
-
-    new Setting(containerEl)
-      .setName('Convert :emoji: => actual emoji')
-      .setDesc('Use an emoji map to replace Slack :smile: with 😄, etc.')
-      .addToggle(tg => {
-        tg.setValue(this.plugin.settings.enableEmoji);
-        tg.onChange(async (val) => {
-          this.plugin.settings.enableEmoji = val;
-          await this.plugin.saveSettings();
-        });
-      });
-
-    new Setting(containerEl)
-      .setName('Parse Slack Times & Dates')
-      .setDesc('Convert "10:25 AM" into local date/time and detect lines like "Feb 2, 2025".')
-      .addToggle(tg => {
-        tg.setValue(this.plugin.settings.enableTimestampParsing);
-        tg.onChange(async (val) => {
-          this.plugin.settings.enableTimestampParsing = val;
-          await this.plugin.saveSettings();
-        });
-      });
-
-    new Setting(containerEl)
-      .setName('Highlight Slack Threads')
-      .setDesc('If Slack text references "View thread", create a clickable link if URL is present.')
-      .addToggle(tg => {
-        tg.setValue(this.plugin.settings.enableSubThreadLinks);
-        tg.onChange(async (val) => {
-          this.plugin.settings.enableSubThreadLinks = val;
-          await this.plugin.saveSettings();
-        });
-      });
-
-    new Setting(containerEl)
-      .setName('Max lines to process')
-      .setDesc('Truncate Slack paste if it exceeds this limit.')
-      .addText(txt => {
-        txt.setValue(String(this.plugin.settings.maxLines));
-        txt.onChange(async (val) => {
-          const num = parseInt(val, 10);
-          if (!isNaN(num) && num > 0) {
-            this.plugin.settings.maxLines = num;
-            await this.plugin.saveSettings();
-          } else {
-            new Notice('Invalid max lines value.');
-          }
-        });
-      });
-
-    containerEl.createEl('h3', { text: 'Slack User ID → Name Map' });
-    new Setting(containerEl)
-      .setName('User Map (JSON)')
-      .setDesc('Map "<@U123>" => "[[Alice]]". Example: { "U123":"Alice" }')
-      .addTextArea(txt => {
-        txt.setValue(this.plugin.settings.userMapJson);
-        txt.inputEl.rows = 6;
-        txt.inputEl.style.width = '100%';
-        txt.onChange(async (val) => {
-          this.plugin.settings.userMapJson = val;
-          await this.plugin.saveSettings();
-          this.plugin.parseJsonMaps();
-        });
-      });
-
-    containerEl.createEl('h3', { text: 'Slack Channel ID → Channel Name Map' });
-    new Setting(containerEl)
-      .setName('Channel Map (JSON)')
-      .setDesc('Map "#C01234" => "[[#general]]". Example: { "C01234": "general" }')
-      .addTextArea(txt => {
-        txt.setValue(this.plugin.settings.channelMapJson);
-        txt.inputEl.rows = 6;
-        txt.inputEl.style.width = '100%';
-        txt.onChange(async (val) => {
-          this.plugin.settings.channelMapJson = val;
-          await this.plugin.saveSettings();
-          this.plugin.parseJsonMaps();
-        });
-      });
-
-    containerEl.createEl('h3', { text: 'Emoji Map (JSON)' });
-    new Setting(containerEl)
-      .setName('Emoji Map')
-      .setDesc('Map :smile: => actual emoji. Example: { "smile":"😄" }')
-      .addTextArea(txt => {
-        txt.setValue(this.plugin.settings.emojiMapJson);
-        txt.inputEl.rows = 6;
-        txt.inputEl.style.width = '100%';
-        txt.onChange(async (val) => {
-          this.plugin.settings.emojiMapJson = val;
-          await this.plugin.saveSettings();
-          this.plugin.parseJsonMaps();
-        });
-      });
+  /**
+   * Register the editor context menu item for formatting Slack conversations.
+   * Works with both selected text and clipboard content.
+   * @private
+   * @returns {void}
+   */
+  private registerContextMenu(): void {
+    this.registerEvent(
+      this.app.workspace.on(
+        'editor-menu',
+        (menu: Menu, editor: Editor) => {
+          menu.addItem((item: MenuItem) => {
+            item
+              .setTitle('Format as Slack conversation')
+              .setIcon('clipboard-list')
+              .onClick(async () => {
+                const selection = editor.getSelection();
+                if (selection) {
+                  this.formatAndInsert(editor, selection);
+                } else {
+                  // Use the helper method to read clipboard
+                  const clipboardContent = await this.getClipboardContent();
+                  if (clipboardContent !== null) { // Check if reading was successful
+                    this.formatAndInsert(editor, clipboardContent);
+                  }
+                  // Error handling is now inside getClipboardContent
+                }
+              });
+          });
+        }
+      )
+    );
   }
 }

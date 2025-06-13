@@ -1,0 +1,529 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Slack Formatter Validation Samples should correctly format duckcreek-sample.txt 1`] = `
+"> [!slack]+ Message from User3
+> **Time:** 3:31 PM
+> Hey [[user4]] - as an aside, just visited Duck Creek's payments page again. They've now fully baked in emburse as a payments orchestrator - and are calling it Duck Creek Payments.. Whats interesting is that they haven't included our logo (we were in from an acquiring pov) but have included Adyen. Given their book - i find this a touch concerning. I know we can't pursue two strategic partnerships - and that its not the best use of Stripe to be an endpoint in another orchestrator. But considering they are the #2 player, and possibly still #1 on pay-ins, I think we should engage a plats AE to see if we can at least get our payments solution into the platform - as much from a "no disqualification" pov as anything else. Link: https://www.duckcreek.com/wp-content/uploads/2024/1/Duck-Creek-Payments-Solutions.pdf Current users: https://www.duckcreek.com/customer/ C [[user5]] , [[user6]] (edited)
+> 📊 **21 replies** • Last reply 16 days ago
+> 🔗 View thread
+
+> [!slack]+ Message from Unknown User
+> **Time:** 2:48 PM
+> hi team, just noticed this press release that mentions Stripe as a Guidewire partner: https://www.guidewire.com/about/press-center/press-releases/20250110/guidewire-partnerconnect-ecosystem-surpasses-110-cloud-native-integrations Guidewire PartnerConnect Ecosystem Surpasses 110 Cloud-Native Integrations, Enables Insurers to Accelerate Business Growth and Unlock New Opportunities
+> 📊 **2 replies** • Last reply 2 months ago
+> 🔗 View thread
+> :eyes-intensifies: 1 :awesome: 2
+
+---
+
+## Debug Information
+
+### Processing Steps
+- Preprocessed: truncated to 5000 lines
+- Detected format: standard
+- Parsed 9 messages
+
+### Unparsed Content
+
+*All content was successfully parsed*"
+`;
+
+exports[`Slack Formatter Validation Samples should correctly format emoji-channel-sample.txt 1`] = `
+"> [!slack]+ Message from Unknown User
+> **Time:** 3:04 PM
+> wtb :gptn-monster: i.e. cookie monster, but blurple.
+> 👍 1
+
+> [!slack]+ Message from User2
+> **Time:** 12:46 PM
+> Anyone else got beef with :partner: emoji? 👀 Our partner merchant ids are in the format krn:partner:global:account:live:<suffix> so half of the time they get pasted as just "krn:partner:global:account:live" Also noticing the replacement a lot in automated messages since we've a bunch of ruby packages called partner
+> 📊 **4 replies** • Last reply 2 months ago
+> 🔗 View thread
+> :heavy_plus_sign: 1
+
+> [!slack]+ Message from Unknown User
+> **Time:** 2:23 PM
+> :fake-like-1::fake-like-2::fake-like-3:
+> 📊 **14 replies** • Last reply 2 months ago
+> 🔗 View thread
+> :nice-100: 11 :recursive-thumbsup-new: 11 :principle-emojincy-and-focus: 2 :add-bufo: 3 :fake-like-1: 2 :fake-like-2: 2 :fake-like-3: 2
+
+> [!slack]+ Message from User4
+> **Time:** 3:18 PM
+> wtb :bufo-needs-a-hobby: (where bufo looks despondent and/or bored)
+> 🙌 1
+
+> [!slack]+ Message from Unknown User
+> **Time:** 2:23 PM
+> wts: :bufo-clap: is a very low quality emoji for how often it gets used (purely because of bufo/SEO). if someone creates a cleaner version, I'l gladly give up the emoji namespace to them. It is a >p99 bufo according to go/emoji-scoreboard (edited)
+> :til-dark: 4 :bufo-clap: 5 :five-nines: 4
+
+> [!slack]+ Message from User7
+> **Time:** 8:01 PM
+> :big-bless-0::big-bless-0-1: :big-bless-1-0::big-bless-1:
+
+> [!slack]+ Message from Slackbot
+> **Time:** 8:04 PM
+> :big-bless-0::big-bless-0-1: :big-bless-1-0::big-bless-1:
+
+> [!slack]+ Message from User8
+> **Time:** 11:38 AM
+> is there any way to get a dump of all our emojis names, for better searching?
+> 📊 **4 replies** • Last reply 1 month ago
+> 🔗 View thread
+
+> [!slack]+ Message from User9
+> **Time:** 1:58 AM
+> Does anyone have the template for :everythings_fine_parrot: where I can replace the parrot?
+> :subscribe: 1 :bufo-worried-doctor: 1
+
+> [!slack]+ Message from User11
+> **Time:** 1:07 PM
+> Has anyone studied bufo's migration? as I understand it many ex-stripes spread bufo to OpenAI, and Notion… where else? X (formerly Twitter)X (formerly Twitter) Notion ([[NotionHQ]]) on X Last year we launched custom emojis in Notion :chefs-kiss: But how do you add 1.5M custom emojis to a workspace without breaking everything? 🤔 (91 kB) https://x.com/NotionHQ/status/1886846711198572605 9+
+> 📊 **28 replies** • Last reply 12 days ago
+> 🔗 View thread
+> :future-bufos: 4 :copy_that: 1
+
+> [!slack]+ Message from Unknown User
+> **Time:** 6:22 PM
+> went to reference the anikan princess leia me and I was extremely disappointed we don't have a princess leia emoji… I thought we were nerds people :laughing: :starwars2:
+> 📊 **9 replies** • Last reply 1 month ago
+> 🔗 View thread
+> :be-the-emoji-you-want-to-see: 1 :right-meme: 9 :r1-blurple: 1
+
+> [!slack]+ Message from User13
+> **Time:** 6:18 AM
+> Has anyone studied bufo's migration? as I understand it many ex-stripes spread bufo to OpenAI, and Notion… where else? does anyone know which bufo is this? :laughing: image.png
+> :bufo-ages-rapidly-in-the-void: 18
+
+> [!slack]+ Message from User14
+> **Time:** 12:11 PM
+> What in the Slack incident is happening … image.png :bufo寿限無寿限無五劫の擦り切れ海砂利水魚の水行末雲来末風来末食う寝る処に住む処やぶら小路の藪柑子パイポパイポパイポのシューリンガンシューリンガンのグーリンダイグーリンダイのポンポコピーのポンポコナ:
+> 📊 **4 replies** • Last reply 30 days ago
+> 🔗 View thread
+> :bufo-offers-eyes-but-the-provenance-is-disconcerting: 4 :blob-hug-broken-image: 2 :blob-hug-broken-image-r: 1 :bufo-waves-a-fish-around-because-this-smells-fishy-and-he-doesnt-want-his-message-to-be-misconstrued: 1 :thedonutholehasaholeinitscenteritsnotadonutholebutasmallerdonutwithitsownholeourdonutisnotwholeatall: 1 :somebodyoncetoldmetheworldwasgonnarollmeiaintthesharpesttoolintheshedshewaslookingkindofdumbwithherf: 1
+
+> [!slack]+ Message from User15
+> **Time:** 1:58 PM
+> Has anyone studied bufo's migration? as I understand it many ex-stripes spread bufo to OpenAI, and Notion… where else? the github one has bufos that we don't have! https://github.com/knobiknows/all-the-bufo/blob/main/all-the-bufo/bufo-intern.png bufo-intern.png [knobiknows/all-the-bufo](https://github.com/knobiknows/all-the-bufo)knobiknows/all-the-bufo | Added by GitHub (23 kB) https://github.com/knobiknows/all-the-bufo/blob/main/all-the-bufo/bufo-intern.png
+
+> [!slack]+ Message from Unknown User
+> **Time:** 3:59 PM
+> Emojiteam can we remove this? For photosensitivity :thread:
+> 📊 **11 replies** • Last reply 24 days ago
+> 🔗 View thread
+
+> [!slack]+ Message from User17
+> **Time:** 3:04 PM
+> wtb :bufo-cheerleader: / :bufo-cheers-you-on: which is like :bufo-excite: or :doodle-bufo-yay: but with pompoms (animation optional)
+> 📊 **1 reply**
+> :bufo-cheerleader: 6
+
+> [!slack]+ Message from Unknown User
+> **Time:** 1:28 PM
+> :hide-the-pain-bufo: is so cursed
+> 📊 **3 replies** • Last reply 18 days ago
+> 🔗 View thread
+> :cursed: 9 :blursed: 4 :yikes-harold: 5 :lolol: 3
+
+> [!slack]+ Message from User19
+> **Time:** 2:20 PM
+> wtb :private-channel: to use when someone has linked to a private channel you're not in (see screenshot from Slack) (edited)
+> 📊 **7 replies** • Last reply 12 days ago
+> 🔗 View thread
+
+> [!slack]+ Message from Hi Team
+> **Time:** 
+> Is there a table in hubble where I can check who created a emoji? Any help would be appreciated :)
+> 📊 **5 replies** • Last reply 12 days ago
+> 🔗 View thread
+
+> [!slack]+ Message from User14
+> **Time:** 6:57 PM
+> From a fresh Slack instance. It's no way to live. Image from iOS
+> :nice: 5 :nice2: 8 :nice3: 5 👍 7 :nice4: 5 :nice7: 5 :nice6: 5 :nice-1: 5 :nice-brat: 5 :nice-icon: 5 :nice-100: 5 :nice-colors: 6 :nice-nice: 5 :n_ice: 5 :nice-blurple: 5 :nice_i_guess2: 5 :haha-nice: 5 :small-nice: 5 :super-nice: 5 :nice-in-swedish: 5 :party-nice: 4 :double-nice: 4
+
+> [!slack]+ Message from User22
+> **Time:** 2:24 PM
+> 👋 I'm looking for help removing a reactji, specifically looking to retire jira-archreview-ask :jira-archreview-ask: since that forum is deprecated. I cleaned up the go/askbot-sheet to remove the behavior, but the emoji is owned by a former Stripe.
+> 📊 **1 reply**
+
+> [!slack]+ Message from User19
+> **Time:** 10:25 AM
+> wtb :double-ty: (:ty::ty:)
+> 📊 **11 replies** • Last reply 19 hours ago
+> :double-ty: 7
+
+---
+
+## Debug Information
+
+### Processing Steps
+- Preprocessed: truncated to 5000 lines
+- Detected format: standard
+- Parsed 45 messages
+
+### Unparsed Content
+
+*All content was successfully parsed*"
+`;
+
+exports[`Slack Formatter Validation Samples should correctly format fireside-sample.txt 1`] = `
+"> [!slack]+ Message from User1
+> **Time:** 12:00 PM
+> Hi Stripes, here's the agenda for this week's Friday Fireside, with [[user2]] and [[user3]] We'l hear from Archive co-founder & CEO User4 and Co-founder & CTO User5. Archive powers profitable resale programs for apparel and footwear brands. :internet-archive: [[user6]] and [[user7]]
+
+> [!slack]+ Message from Will Update Us on Our Six Key Financial Metrics
+> **Time:** 
+> [[user8]] and [[user9]] from the Money Movement and Storage (MMS) team will demo key payouts features that improve merchant flexibility (and drive liquidity for Stripe) :payouts: Patrick will take us through tabs! :finger-cursor: :bufo-reading: Oh and if you haven't already: make sure to read the 2024 annual letter. See you there!
+> :thankyou4: 4 :friday: 4 :bufo-reading: 7 :bufo-yayy: 2
+
+> [!slack]+ Message from User10
+> **Time:** 11:51 AM
+> channel is open and we'l get start in 10 minutes :blob-dance:
+> :100: 6 :celebration: 4 :bufo-reading: 3 :blob-omg: 4 :cattyping: 3 :bufo-run: 1
+
+> [!slack]+ Message from User11
+> **Time:** 11:59 AM
+> Rare blufo (blurfo?) ED: yeah, :blurfo: (edited)
+> :blurfo: 4 :blurfo-vibe: 9 :bufo-offers-blurfo: 1
+
+> [!slack]+ Message from Benjamin Neuwirth
+> **Time:** 12:02 PM
+> So are these clothes that are returned? Or fully used and then resold?
+> :good-question: 5
+
+> [!slack]+ Message from Eoin Nugent
+> **Time:** 12:03 PM
+> there's a new shuppa startup! (…at least phonetically the same name) https://www.myshuppa.com/ groceries+alcohol in (at least) dublin Shuppa | Instant Grocery Delivery in Dublin Shuppa | Grocery delivery dublin | Wine delivery dublin | App to doorstep in minutes | Download the app & shop today!
+> 👀 1 :open_mouth: 1 :tm: 3
+
+> [!slack]+ Message from Miriam Keil
+> **Time:** 12:08 PM
+> Sounds like you didn't spend your youth thrifting clothes, P. :hehe:
+
+> [!slack]+ Message from Dan Nelson
+> **Time:** 12:09 PM
+> Let's force a reason for this to be on-chain... if I buy a used coat through Archive, I could see the previous owners and we could play the game of "who wore it best".
+> 📊 **1 reply**
+> :chains: 2 :lolol: 9 :rolling_on_the_floor_laughing: 1
+
+> [!slack]+ Message from Anthony Voellm
+> **Time:** 12:09 PM
+> Selling my Tandy Coco2 for a premium!!!! True vintage 1980s 🙂 (edited) Adam O'Donnell This is a fascinating market.
+> 📊 **2 replies** • Last reply 8 days ago
+> 🔗 View thread
+> :equals-equals: 1 :heavy_plus_sign: 4
+
+> [!slack]+ Message from User11
+> **Time:** 12:10 PM
+> economists: did someone say incentives?
+
+> [!slack]+ Message from User1
+> **Time:** 5:19 PM
+> If you missed it, be sure to catch the replay available now on the new StripeTV (with playback speed, chapter markers, and transcript, oh my!) At Friday Fireside This week [[user2]] and [[user3]] hosted and we heard from Archive co-founder & CEO User4 and Co-founder & CTO User5. Archive powers profitable resale programs for apparel and footwear brands :macklemore-thrift-shop: [[user6]] and [[user7]] updated us on our six key financial metrics and the impact of/on GTM :party-chart: [[user8]] and [[user9]] from the Money Movement and Storage (MMS) team demo'd key payouts features that improve merchant flexibility (and drive liquidity for Stripe) :one-million-dollars: Patrick took us through tabs! :finger-cursor: and then we heard from guest User12 on this week's QBR The replay, notes, and audio are up at go/f-stream, go/f-notes and go/f-audio. :bufo-reading: Oh and if you haven't already: make sure to read the 2024 annual letter.
+> :bufo-offers-stripetv: 2 :austin-spin: 1 :bufo-offers-stripetv-in-technicolor: 2
+
+---
+
+## Debug Information
+
+### Processing Steps
+- Detected format: standard
+- Parsed 14 messages
+
+### Unparsed Content
+
+*All content was successfully parsed*"
+`;
+
+exports[`Slack Formatter Validation Samples should correctly format guidewire-sample.txt 1`] = `
+"> [!slack]+ Message from User1
+> **Time:** 10:39 AM
+> We haven't notified them yet [[user2]] , we were hoping to get a more detailed BBG quote from User3 this week (still waiting to hear back). Estimated timeline Endava gave us was min-22weeks from when we kick off the engamement to build all of the integrations we scoped One thing we would like to know [[user2]] is if Guidewire would be able to provide us with development licenses / instances for us to develop against? Endava are saying there is a $25k pass-through license cost from Guidewire to obtain this, which seems excessive and not very in the spirit of a strategic partnership with us. (edited)
+> 📊 **5 replies**
+> 📢 Also sent to the channel
+
+> [!slack]+ Message from User4
+> **Time:** 8:19 PM
+> [[user5]] organized a super positive Insurance Solutioning Workshop with Infosys in the NY office today :rocket::mvp_text:. A more comprehensive update will be coming soon with additional AIs, but we wanted to get this one on your radar quickly [[user1]] [[user6]] since there's a 3/10 target date for a decision on the Guidewire Connector approach in the SteerCo doc: Infosys team showed high interest in our Guidewire Connector integration strategy—they're eager to hold a follow-up meeting to discuss partnering on building for the Marketplace. I know we're close with Endava, but the benefits Infosys mentioned make this worth exploring before gaveling on the build partner decision: They have 200+ Guidewire-certified employees. They already have sandbox instances we'd be able to use for the Connectors without paying to obtain them from Guidewire. They take on contracted liability for ongoing support/maintenance/upgrades of marketplace integrations. The majority of Insurance businesses they've worked with have started with pre-existing Guidewire marketplace integrations before moving on to custom builds. "Land with Guidewire then expand." They agreed to share a list of ~195 current/prospective Insurance users with business cases that Stripe may be able to solve for—we didn't ask about the overlap with Guidewire and can do so when the list is shared. Either way they agreed that driving customer leads our way, whether direct or through Guidewire, would be a key aspect of the partnership. Let me know if I've misrepresented or missed anything (and huge thanks to you and the rest of the team that contributed to the workshop 🙌 [[user7]] [[user8]] [[user9]] [[user10]] [[user11]] ). (edited) 👍👍:skin-tone-4:
+> 🙌 2 ✅ 1
+>
+> c [[user12]] [[user2]] [[user13]] [[user14]] for viz/thoughts/concerns
+
+> [!slack]+ Message from Good to Have Alternatives I Think We Should Definitely at Least Give Infosys a Shot at a Proposal. Can You Make an Intro for Me
+> **Time:** 
+> [[user4]] so we can get the ball rolling on it asap?
+> :yes: 1
+
+> [!slack]+ Message from User14
+> **Time:** 9:44 AM
+> That second bullet is highly insightful. Thank you
+> 🙏 1
+
+> [!slack]+ Message from Looped You Into an Intro
+> **Time:** 
+> [[user1]] !
+> 🙏 1
+
+> [!slack]+ Message from User6
+> **Time:** 3:10 PM
+> Hi all - I spoke to User1 about this earlier. We've already spent weeks working with Endava and Guidewire on this and I hesitate to bring in a new variable at this point. We are recommending Endava due to their deep experience with Stripe and the fact that they have already created the on-prem connector - we believe their ramp will be fast. User1 is working on our final recommendation to be shared XFN early next week. I think there is value in User1 reviewing our planned approach with Infosys to get their take and our A&C team engaging them in our GTM strategy but I don't recommend we ask them to pitch us a proposal at this point
+
+> [!slack]+ Message from Thanks for the Clarity
+> **Time:** 
+> [[user6]] but I think it may cause the wrong expectation with Infosys if we validate our approach with them if we've already decided to go with another partner. They were very eager to have a discussion around the potential of building a connector when [[user4]] proposed it. Shall we rethink having the call? I'd need to think about the way to frame it given they've been asking us to get in front of work like this for them and we were already far along with Endava. Cc [[user5]] [[user10]]
+
+> [!slack]+ Message from User4
+> **Time:** 4:04 PM
+> That works for me, just want to double-confirm that we feel the benefits we gain with Endava outweigh some of the benefits Infosys had mentioned: They have 200+ Guidewire-certified employees. They already have sandbox instances we'd be able to use for the Connectors without paying to obtain them from Guidewire. They take on contracted liability for ongoing support/maintenance/upgrades of marketplace integrations.
+
+> [!slack]+ Message from They Bring a List Of 195 Users
+> **Time:** 
+> As long as we're happy with what Endava offers in comparison (e.g., speed to ramp) and the benefits of going with Endava will drive the ultimate goal of expanding our customer pipeline, then I'm peaceful with the decision. I think there is value in User1 reviewing our planned approach with Infosys to get their take and our A&C team engaging them in our GTM strategy Whichever we're going with, I think we should still have the quick follow-up call with Infosys, since it will not even include their offshore Guidewire development team next week (it will be more information-trading rather than validation/proposal of any solution, which [[user1]] [[user6]] I think you still may find intriguing). More than anything, my hope is that we don't lose momentum on the partnership in general, as we already know it's leading us to 3 named user workshops and a list of 195 other Insurance businesses. [[user7]] let me know if I'm thinking about it the wrong way, but a discussion on the topic of connectors doesn't come with an obligation or an expectation—we can do the quick discovery and then come back and say "let's focus on direct to start because we have the demand". (edited)
+> :bufo-clap: 1
+
+> [!slack]+ Message from User8
+> **Time:** 4:11 PM
+> One more chime in here - is there a world in which we use both? Does the GW work need to be exclusive? (edited)
+
+> [!slack]+ Message from User4
+> **Time:** 4:33 PM
+> I'm down to sync in a bit if it's helpful for us all to connect briefly on this topic! Would just like to understand a little more about decisions and next steps and context I might have missed from separate threads, and then happy to disagree and commit if needed! One more chime in here - is there a world in which we use both? Does the GW work need to be exclusive? For Connectors it's probably best to go with one for the suite, but then we could use other partners like Infosys for the custom Guidewire integrations with users.
+> :100: 2
+>
+> Let me know if you're free to connect this afternoon real quick [[user6]] [[user1]] [[user7]] [[user8]] , feels like we can quickly get on the same page and move forward all with shared context
+>
+> User1 and I just caught up, here's a recap: Most importantly, User1 flagged that the benefit of speed we get from Endava is partially because they're in our LDAP, they're in our JIRA, we have an SoW with them—basically, all the legal/logistical/admin details are already taken care of, they're fully integrated. [[user7]] [[user9]] do you know if Infosys is already set up with us in the same way from any prior engagement? If not, we'l have to go through contracting, legal redlines, provisioning, permissions, etc ... this process will push us far past the June 30th integration deadline. If this is the case, the Connector discussion is a moot point and we keep focus on Guidewire-to-user direct. If there are no admin roadblocks and Infosys is fully contracted and in our systems, then User1 is open to a quick discussion if they can get it scheduled ASAP next week, just in case they bring something to the table that blows Endava out of the water. We've already stressed in the email thread that we're on a major time crunch to make a decision; we'l be sure to stress this in the meeting as well in order to set clear expectations. We will highlight that, Connector or not, we're committed to continuing discovery with them on non-Marketplace Guidewire-to-user integrations. The direct opportunities with Travelers, MassMutual, and The Hartford are still very much something we want to pursue, and we also have no shortage of Guidewire-to-user opportunities that could use the expertise of a dedicated partner if there's a fit.
+
+> [!slack]+ Message from Infosys Does Not Have These Contractual Agreements in Place
+> **Time:** 
+> [[user4]] let's talk strategy on this on Monday. There's some history here
+> :ack-sg2: 1 👍 1
+
+---
+
+## Debug Information
+
+### Processing Steps
+- Preprocessed: truncated to 5000 lines
+- Detected format: standard
+- Parsed 28 messages
+
+### Unparsed Content
+
+*All content was successfully parsed*"
+`;
+
+exports[`Slack Formatter Validation Samples should correctly format multi-person-dm-sample.txt 1`] = `
+"> [!slack]+ Message from User1
+> **Time:** 3:13 PM
+> Hello chaps! Happy March! Wanted to get your feedback on my update Guidewire doc here https://docs.google.com/document/d/1l0LcYAZxgSNDNCNTmZaOBvVuyTt4fosZu6Lr49PXxWs/edit?tab=t.0 Google Docs
+
+> [!slack]+ Message from Unknown User
+> **Time:** 
+> Guidewire–Stripe Connector: Consolidated Strategy & Decision Document Google Doc The part im missing is customer validation - are you guys able to help me out with some customer demand that I can list for these connectors?
+>
+> hi [[user1]]
+
+> [!slack]+ Message from User1
+> **Time:** 3:14 PM
+> You too dude! Hope you're not too sick! My whole household had Norovirus last week, fun times (edited)
+>
+> works to a point, noro there's no point even trying to fight it
+
+> [!slack]+ Message from User3
+> **Time:** 3:20 PM
+> Cheers gentlemen!
+
+> [!slack]+ Message from I Will Take a Look at the Doc
+> **Time:** 
+> [[user1]]
+
+> [!slack]+ Message from Dont Get Too Hung Up on Costs Those Are Under Negotiation
+> **Time:** 
+> it'l be toward the lower end of the range I gave
+> 👍 1
+
+> [!slack]+ Message from User1
+> **Time:** 3:22 PM
+> feel free to drop comments on it, it's a WIP 👍👍:skin-tone-4:
+
+---
+
+## Debug Information
+
+### Processing Steps
+- Preprocessed: truncated to 5000 lines
+- Detected format: standard
+- Parsed 22 messages
+
+### Unparsed Content
+
+*All content was successfully parsed*"
+`;
+
+exports[`Slack Formatter Validation Samples should correctly format test-content.txt 1`] = `
+"> [!slack]+ Message from Alex Mittell
+> **Time:** 7:47 PM
+> Hey all, I've been annoyed for a while by trying to copy and paste Slack conversations into Obsidian 'nicely' so I knocked up a quick plug-in to make it easier. Does anyone know if / how I can get this added to the internal Stripe Obsidian plug-in repo?BTW you can grab it [here](https://github.com/amittell/obsidian-slack-formatter) if you want to try it, feedback and suggestions welcome this version is pretty rough and ready! 🤠 [ ![IMG_5205.png](https://files.slack.com/files-tmb/T0181S17H6Z-F08BS9PP539-ca5b017000/img_5205_720.png) ](https://files.slack.com/files-pri/T0181S17H6Z-F08BS9PP539/img_5205.png) [](https://files.slack.com/files-pri/T0181S17H6Z-F08BS9PP539/download/img_5205.png?origin_team=E0181S17H6Z) [ ![IMG_3606.png](https://files.slack.com/files-tmb/T0181S17H6Z-F08C072EZK8-ac7a0cbdc5/img_3606_720.png) ](https://files.slack.com/files-pri/T0181S17H6Z-F08C072EZK8/img_3606.png) [](https://files.slack.com/files-pri/T0181S17H6Z-F08C072EZK8/download/img_3606.png?origin_team=E0181S17H6Z) [ ![IMG_8424.png](https://files.slack.com/files-tmb/T0181S17H6Z-F08BS9Q78RM-064de9aca6/img_8424_720.png) ](https://files.slack.com/files-pri/T0181S17H6Z-F08BS9Q78RM/img_8424.png) [](https://files.slack.com/files-pri/T0181S17H6Z-F08BS9Q78RM/download/img_8424.png?origin_team=E0181S17H6Z) [ ![IMG_3729.png](https://files.slack.com/files-tmb/T0181S17H6Z-F08C6RCG6HG-f8200610bb/img_3729_720.png) ](https://files.slack.com/files-pri/T0181S17H6Z-F08C6RCG6HG/img_3729.png) [](https://files.slack.com/files-pri/T0181S17H6Z-F08C6RCG6HG/download/img_3729.png?origin_team=E0181S17H6Z) amittell/obsidian-slack-formatter 📎 4 files
+
+> [!slack]+ Message from TypeScript
+> **Time:** 
+> Last updated
+
+> [!slack]+ Message from 1 Minutes Ago
+> **Time:** 
+> ![](https://ca.slack-edge.com/E0181S17H6Z-UL85BJW1W-903f5432c8dd-48) 📎 _Added by GitHub_
+> 📊 **13 replies**
+> 🤩 27 😍 5
+
+> [!slack]+ Message from Phillip Edgington![](https://slack Imgs.com/?c=1&o1=gu&url=https%3a%2f%2femoji.slack Edge.com%2ft0181s17h6z%2fgo Llm Logo%2fb9434a1da22de0f3.png)
+> **Time:** 8:01 PM
+> you can make a PR here [https://git.corp.stripe.com/stripe-private-oss-forks/obsidian-plugins](https://git.corp.stripe.com/stripe-private-oss-forks/obsidian-plugins) and tag obsidian-reviewers for a review ![](https://ca.slack-edge.com/E0181S17H6Z-U07JC6P29UM-67fda94224a3-48)
+> 🙏 1
+
+> [!slack]+ Message from Alex Mittell
+> **Time:** 9:02 PM
+> Thanks [@phillipedgington](https://stripe.slack.com/team/UL85BJW1W). I already found a bug with DM threads. I'l make s PR when I've fixed that. 😭 ![](https://ca.slack-edge.com/E0181S17H6Z-U01GHRRFF33-10f9cb2cdee9-48)
+
+> [!slack]+ Message from Clement Miao![](https://a.slack Edge.com/production Standard Emoji Assets/14.0/apple Large/26d4.png)
+> **Time:** 8:25 AM
+> this is AMAZING omg [8:26](https://stripe.slack.com/archives/C039S5CGKEJ/p1738934765553959?thread_ts=1738889253.251969&cid=C039S5CGKEJ) even if a bit buggy, this is going to be great ![](https://ca.slack-edge.com/E0181S17H6Z-U06JYDE02GY-a46bd4440a89-48)
+
+> [!slack]+ Message from Trajan McGill
+> **Time:** 9:18 AM
+> Yeah, this is going to be fantastic. [9:18](https://stripe.slack.com/archives/C039S5CGKEJ/p1738937929874099?thread_ts=1738889253.251969&cid=C039S5CGKEJ) So, first attempt was copying and pasting this very thread, and looks good, but it doesn't seem to detect where all the messages start and end. I get one big message containing the first three messages. [9:23](https://stripe.slack.com/archives/C039S5CGKEJ/p1738938227881789?thread_ts=1738889253.251969&cid=C039S5CGKEJ) Curious how the clipboard works on Slack copies; are there image objects along with the text, where eventually we could get pasted embedded images to just paste right in there, too? ![](https://ca.slack-edge.com/E0181S17H6Z-U03LKBAKQNM-beebd2750dc4-48)
+> 🤔 1
+
+> [!slack]+ Message from David Brownman
+> **Time:** 1:31 PM
+> [@alexm](https://stripe.slack.com/team/U07JC6P29UM) [@phillipedgington](https://stripe.slack.com/team/UL85BJW1W) FYI our rule (so far) is that we can use stripe-employee developed plugins straight from the "store", so i'm not sure you need the \`private-oss-forks\` PR if you don't want it [1:31](https://stripe.slack.com/archives/C039S5CGKEJ/p1738953082490149?thread_ts=1738889253.251969&cid=C039S5CGKEJ) either way, seriously cool plugin! ![](https://ca.slack-edge.com/E0181S17H6Z-UL85BJW1W-903f5432c8dd-48)
+> 👍 1 🙏 1
+
+> [!slack]+ Message from Oh Interesting
+> **Time:** 
+> [1:31](https://stripe.slack.com/archives/C039S5CGKEJ/p1738953107321319?thread_ts=1738889253.251969&cid=C039S5CGKEJ)
+
+> [!slack]+ Message from Nice
+> **Time:** 
+> ![Image](https://ca.slack-edge.com/E0181S17H6Z-U07JC6P29UM-67fda94224a3-48)
+
+> [!slack]+ Message from Alex Mittell
+> **Time:** 10:52 PM
+> I've updated the pluggin to handle DM conversation imports. Need to run a whole bunch of other slack copy and pastes through it I'm sure there are more cases I haven't accounted for, what you get in a raw copy and paste is limited but might be able to preserve the images that come over in it. The intercept cmd+V is currently non-functional I know about that one. 👍
+
+> [!slack]+ Message from 1
+> **Time:** 
+> ![Image](https://ca.slack-edge.com/E0181S17H6Z-U06JYDE02GY-a46bd4440a89-48)
+
+> [!slack]+ Message from Trajan McGill
+> **Time:** 8:39 AM
+> Hi [@alexm](https://stripe.slack.com/team/U07JC6P29UM), thanks for your work on this! Having installed the latest version (0.0.6), I'm having a bit of trouble making it paste as expected. I tried selecting all the messages in one entire thread in Slack, copying, and then using Cmd-shift-V to paste into Obsidian, and got nothing whatsoever as output. Hitting just Cmd-V does paste the usual badly formatted stuff, so I know it's in the clipboard. Then I tried doing the same with this very thread, and found that it did paste, but only about the last half of the thread. Any thoughts?
+
+---
+
+## Debug Information
+
+### Processing Steps
+- Detected format: standard
+- Parsed 15 messages
+
+### Unparsed Content
+
+*All content was successfully parsed*"
+`;
+
+exports[`Slack Formatter Validation Samples should correctly format test-new-content.txt 1`] = `
+"> [!slack]+ Message from Unknown User
+> **Time:** 
+> ![Image](https://ca.slack-edge.com/E0181S17H6Z-U02V3H43GGZ-f7b4fc673f58-48)
+
+> [!slack]+ Message from Byron Luk![](https://a.slack Edge.com/production Standard Emoji Assets/14.0/apple Large/26d4.png)
+> **Time:** 12:35 PM
+> anyone know of anything where I can paste in a google doc link and it'l automatically format into a pretty link? I imagine the tricky thing is figuring out the auth part ![](https://ca.slack-edge.com/E0181S17H6Z-U075VC5F3NU-35bc89188f66-24)![](https://ca.slack-edge.com/E0181S17H6Z-U02V3H43GGZ-f7b4fc673f58-24)![](https://ca.slack-edge.com/E0181S17H6Z-U05HJRSHNTX-c5b5ecc1153d-24)![](https://ca.slack-edge.com/E0181S17H6Z-U038CNCLHCZ-0ff3cbcf92d8-24)![](https://ca.slack-edge.com/E0181S17H6Z-U9JV10CPL-31e6700f3725-24)1 replies ![](https://ca.slack-edge.com/E0181S17H6Z-U08259UD15M-907f74cf0e77-48)
+> 📊 Last reply today at 12:24 PM
+> 🔗 View thread
+
+> [!slack]+ Message from Jared Nichols
+> **Time:** 12:49 PM
+> how are folks backing up their obsidian folder? ![](https://ca.slack-edge.com/E0181S17H6Z-U05LSMKHGPR-f8f54914eab7-24)![](https://ca.slack-edge.com/E0181S17H6Z-U08259UD15M-907f74cf0e77-24)![](https://ca.slack-edge.com/E0181S17H6Z-U067PP687UN-6f80d0b2b232-24)![](https://ca.slack-edge.com/E0181S17H6Z-U05HJRSHNTX-c5b5ecc1153d-24)![](https://ca.slack-edge.com/E0181S17H6Z-UL85BJW1W-903f5432c8dd-24)
+> 📊 **12 replies** • Last reply 8 days ago
+> 🔗 View thread
+> :google-drive: 15 :git: 4
+
+> [!slack]+ Message from Unknown User
+> **Time:** 
+> ![Image](https://ca.slack-edge.com/E0181S17H6Z-U07QPUFADEW-24659c838012-48)
+
+> [!slack]+ Message from Paul Branzburg
+> **Time:** 10:37 AM
+> Interested in querying my Obsidian vault with Gemini, which doesn't seem to support Markdown very well. Does anyone know a way of converting the vault to e.g. a single Google Doc, or uploading the entire thing to [https://notebooklm.google.com/](https://notebooklm.google.com/)? ![](https://ca.slack-edge.com/E0181S17H6Z-U069XJPRN6T-81d92fec1f7e-24)![](https://ca.slack-edge.com/E0181S17H6Z-U07JC6P29UM-67fda94224a3-24)2 replies
+> 📊 Last reply 7 days ago
+> 🔗 View thread
+
+> [!slack]+ Message from Unknown User
+> **Time:** 
+> ![Image](https://ca.slack-edge.com/E0181S17H6Z-U07JC6P29UM-67fda94224a3-48)
+
+> [!slack]+ Message from Alex Mittell
+> **Time:** 10:10 AM
+> Made another thing mostly for myself but thought I'd share here incase anyone else finds it useful. Basic functionality is it searches all notes in the vault for the tag #tasks and the Tasks plugin format for tasks \`- [ ]\` (customization of both available in settings) then presents them as a dynamically updating ToDo list in the side pane, which also allows you to check/uncheck tasks in your notes. Completed notes are moved to the bottom. You can activate the side pane with the checkbox icon on the left side-bar or with the hotkey (defined in settings). Suggestions welcome!Oh, not relevant for Stripe Vault's due to policy, but also support mobile (for those personal todo lists)[https://github.com/amittell/obsidian-dynamic-todo-list/](https://github.com/amittell/obsidian-dynamic-todo-list/)Current backlog: - Make an option to allow task note to be identified by filename or note header, currently only filename is supported. - Add a folder base include/exclude filter. - Sort better sorting of tagged task notes, allow the user to sort by created and last updated, make the default a setting. - Archiving of completed notes - don't show completed notes older than X date for 'last updated'. (edited) [ ![IMG_9696.png](https://files.slack.com/files-tmb/T0181S17H6Z-F08E78WLLDP-9d563d6668/img_9696_720.png) ](https://files.slack.com/files-pri/T0181S17H6Z-F08E78WLLDP/img_9696.png) [ ![IMG_6792.png](https://files.slack.com/files-tmb/T0181S17H6Z-F08DUM8P09G-85f5bbdf15/img_6792_720.png) ](https://files.slack.com/files-pri/T0181S17H6Z-F08DUM8P09G/img_6792.png) amittell/obsidian-dynamic-todo-list 📎 2 files
+
+> [!slack]+ Message from TypeScript
+> **Time:** 
+> Last updated
+
+> [!slack]+ Message from 34 Minutes Ago
+> **Time:** 
+> ![](https://ca.slack-edge.com/E0181S17H6Z-U08259UD15M-907f74cf0e77-24)![](https://ca.slack-edge.com/E0181S17H6Z-U07JC6P29UM-67fda94224a3-24)![](https://ca.slack-edge.com/E0181S17H6Z-U05HJRSHNTX-c5b5ecc1153d-24)![](https://ca.slack-edge.com/E0181S17H6Z-U01GHRRFF33-10f9cb2cdee9-24)17 replies ![](https://ca.slack-edge.com/E0181S17H6Z-U07JC6P29UM-67fda94224a3-48) 📎 _Added by GitHub_
+> 📊 Last reply 1 day ago
+> 🔗 View thread
+> ❤️ 1
+
+> [!slack]+ Message from Alex Mittell
+> **Time:** 10:39 AM
+> Mobile: IMG_6888.PNG [ ![IMG_6888.PNG](https://files.slack.com/files-tmb/T0181S17H6Z-F08DX9FTD6G-10f94e1fc4/img_6888_720.png) ](https://files.slack.com/files-pri/T0181S17H6Z-F08DX9FTD6G/img_6888.png) ![](https://ca.slack-edge.com/E0181S17H6Z-U03N3KKPXMK-b0fdd954f5fb-24)![](https://ca.slack-edge.com/E0181S17H6Z-U07JC6P29UM-67fda94224a3-24)1 replies
+> 📊 Last reply 3 days ago
+> 🔗 View thread
+
+> [!slack]+ Message from Unknown User
+> **Time:** 
+> ![Image](https://ca.slack-edge.com/E0181S17H6Z-U07JC6P29UM-67fda94224a3-48)
+
+> [!slack]+ Message from Alex Mittell
+> **Time:** 11:00 PM
+> Released a new version that's generally much nicer, available [here](https://github.com/amittell/obsidian-dynamic-todo-list/releases/tag/0.0.2).
+
+> [!slack]+ Message from Yesterday
+> **Time:** Yesterday
+> ![Image](https://ca.slack-edge.com/E0181S17H6Z-U02SEFK651N-963f2e849b7f-48)
+
+> [!slack]+ Message from Adil Sadik![](https://a.slack Edge.com/production Standard Emoji Assets/14.0/apple Large/1f5d3 Fe0f.png)
+> **Time:** 9:49 AM
+> good news! obsidian is now free for commercial use!
+
+> [!slack]+ Message from Img 7300
+> **Time:** 
+> [ ![IMG_7300](https://files.slack.com/files-tmb/T0181S17H6Z-F08E8BQ0GPL-599f7a9ab4/img_7300_720.png) ](https://files.slack.com/files-pri/T0181S17H6Z-F08E8BQ0GPL/img_7300.png) ![](https://ca.slack-edge.com/E0181S17H6Z-U077717GWNR-0e36f3a1b2be-24)![](https://ca.slack-edge.com/E0181S17H6Z-U01GHRRFF33-10f9cb2cdee9-24)![](https://ca.slack-edge.com/E0181S17H6Z-UKWNG9Q4S-f10b0f6e4a8d-24)![](https://ca.slack-edge.com/E0181S17H6Z-UL85BJW1W-903f5432c8dd-24)![](https://ca.slack-edge.com/E0181S17H6Z-U03LKBAKQNM-beebd2750dc4-24) ![](https://ca.slack-edge.com/E0181S17H6Z-U01GHRRFF33-10f9cb2cdee9-48)
+> 📊 **16 replies** • Last reply today at 8:25 AM
+> 🔗 View thread
+> :bufo-wow: 17 :obsidian-intensifies: 14 :obsidian-gemmy: 1
+
+> [!slack]+ Message from Clement Miao![](https://a.slack Edge.com/production Standard Emoji Assets/14.0/apple Large/26d4.png)
+> **Time:** 12:12 PM
+> oh cool we're jade tier supporters :jade: [https://obsidian.md/enterprise/](https://obsidian.md/enterprise/)
+
+---
+
+## Debug Information
+
+### Processing Steps
+- Preprocessed: truncated to 5000 lines
+- Detected format: standard
+- Parsed 18 messages
+
+### Unparsed Content
+
+*All content was successfully parsed*"
+`;
