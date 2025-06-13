@@ -10,7 +10,8 @@ import type { SlackFormatSettings } from '../../types/settings.types';
 import type { ParsedMaps } from '../../types/formatters.types';
 
 /**
- * Processing step configuration
+ * Processing step configuration.
+ * Defines a single transformation step in the processing pipeline.
  */
 interface ProcessingStep {
     name: string;
@@ -21,13 +22,27 @@ interface ProcessingStep {
 }
 
 /**
- * Unified content processor that handles all text transformations
- * with proper error handling and fallbacks
+ * Unified content processor that handles all text transformations.
+ * Orchestrates multiple processors in a defined pipeline order with
+ * proper error handling and fallback strategies for each step.
+ * 
+ * Processing order:
+ * 1. Code blocks - Preserve code formatting
+ * 2. Attachments - Handle file and link preview metadata
+ * 3. URLs - Convert Slack URL format to Markdown
+ * 4. User mentions - Convert @mentions to wikilinks
+ * 5. Emoji - Replace emoji codes with Unicode
+ * 6. Thread links - Highlight thread references
  */
 export class UnifiedProcessor {
     private readonly steps: ProcessingStep[];
     // Remove instance logger - use static methods instead
 
+    /**
+     * Creates a new UnifiedProcessor instance.
+     * Initializes all sub-processors and defines the processing pipeline.
+     * @param {SlackFormatSettings} settings - Plugin settings configuration
+     */
     constructor(private settings: SlackFormatSettings) {
         // Initialize all processors
         const urlProcessor = new UrlProcessor();
@@ -100,7 +115,12 @@ export class UnifiedProcessor {
     }
 
     /**
-     * Process content through the unified pipeline
+     * Process content through the unified pipeline.
+     * Applies each enabled processor in sequence with error handling.
+     * @param {string} text - The text to process
+     * @param {ParsedMaps} parsedMaps - User and emoji mappings
+     * @param {boolean} [debug=false] - Enable debug logging
+     * @returns {string} Processed text with all transformations applied
      */
     process(text: string, parsedMaps: ParsedMaps, debug = false): string {
         if (!text) return '';
@@ -152,7 +172,11 @@ export class UnifiedProcessor {
     }
 
     /**
-     * Fallback: Preserve code fences without full parsing
+     * Fallback: Preserve code fences without full parsing.
+     * Simple regex-based preservation when the full parser fails.
+     * @private
+     * @param {string} text - The text to process
+     * @returns {string} Text with code fences preserved
      */
     private preserveCodeFences(text: string): string {
         // Simple preservation of triple backticks
@@ -162,7 +186,11 @@ export class UnifiedProcessor {
     }
 
     /**
-     * Fallback: Simplify Slack URLs to basic markdown
+     * Fallback: Simplify Slack URLs to basic markdown.
+     * Handles both <url|text> and <url> formats.
+     * @private
+     * @param {string} text - The text to process
+     * @returns {string} Text with simplified URL formatting
      */
     private simplifyUrls(text: string): string {
         // Handle <url|text> format
@@ -175,7 +203,11 @@ export class UnifiedProcessor {
     }
 
     /**
-     * Fallback: Simplify user mentions
+     * Fallback: Simplify user mentions.
+     * Converts user IDs to generic @user and @mentions to wikilinks.
+     * @private
+     * @param {string} text - The text to process
+     * @returns {string} Text with simplified user mentions
      */
     private simplifyUserMentions(text: string): string {
         // Remove user IDs, keep just @
@@ -188,14 +220,18 @@ export class UnifiedProcessor {
     }
 
     /**
-     * Update settings
+     * Update processor settings.
+     * @param {SlackFormatSettings} settings - New settings configuration
+     * @returns {void}
      */
     updateSettings(settings: SlackFormatSettings): void {
         this.settings = settings;
     }
 
     /**
-     * Get processing statistics
+     * Get processing statistics.
+     * Returns the enabled/disabled state of each processing step.
+     * @returns {{ [key: string]: boolean }} Map of step names to enabled states
      */
     getStats(): { [key: string]: boolean } {
         const stats: { [key: string]: boolean } = {};

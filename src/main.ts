@@ -1,9 +1,9 @@
 /**
  * Obsidian Slack Formatter Plugin
  * @version 1.0.0
- * Author: Alex Mittell
- * 
- * Formats Slack conversations pasted into Obsidian
+ * @author Alex Mittell
+ * @description Formats Slack conversations pasted into Obsidian with support for user mentions,
+ * timestamps, emojis, code blocks, and thread links.
  */
 import { Plugin, Editor, Notice, Menu, MenuItem } from 'obsidian';
 import { SlackFormatter } from './formatter/slack-formatter';
@@ -14,10 +14,29 @@ import { SlackFormatSettings } from './types/settings.types'; // Corrected impor
 import { parseJsonMap } from './utils'; // Import the centralized utility
 import { Logger } from './utils/logger';
 
+/**
+ * Main plugin class for the Obsidian Slack Formatter.
+ * Handles command registration, settings management, and formatting operations.
+ * @extends {Plugin}
+ */
 export default class SlackFormatPlugin extends Plugin {
+  /**
+   * Current plugin settings configuration
+   * @type {SlackFormatSettings}
+   */
   settings!: SlackFormatSettings; // Corrected type name
+  
+  /**
+   * Slack formatter instance that performs the actual formatting
+   * @type {SlackFormatter}
+   */
   formatter!: SlackFormatter;
 
+  /**
+   * Called when the plugin is loaded.
+   * Initializes settings, formatter, and registers all commands.
+   * @returns {Promise<void>}
+   */
   async onload(): Promise<void> {
     Logger.info('SlackFormatPlugin', 'Loading Slack formatter plugin v1.0.0');
 
@@ -40,7 +59,10 @@ export default class SlackFormatPlugin extends Plugin {
   }
 
   /**
-   * Initialize the formatter with current settings
+   * Initialize the formatter with current settings and parsed JSON maps.
+   * Handles parsing errors gracefully and displays notices to the user.
+   * @private
+   * @returns {void}
    */
   private initFormatter(): void {
     try {
@@ -88,7 +110,12 @@ export default class SlackFormatPlugin extends Plugin {
   // Removed handlePasteEvent method
 
   /**
-   * Format text and insert it into the editor
+   * Format text and insert it into the editor.
+   * Handles auto-detection, confirmation dialogs, and preview modes based on settings.
+   * @private
+   * @param {Editor} editor - The Obsidian editor instance
+   * @param {string} text - The text to format
+   * @returns {void}
    */
   private formatAndInsert(editor: Editor, text: string): void {
     try {
@@ -130,7 +157,12 @@ export default class SlackFormatPlugin extends Plugin {
   }
 
   /**
-   * Performs the actual formatting and insertion/preview
+   * Performs the actual formatting and insertion/preview.
+   * Shows preview modal if enabled, otherwise directly inserts formatted text.
+   * @private
+   * @param {Editor} editor - The Obsidian editor instance
+   * @param {string} text - The text to format
+   * @returns {void}
    */
    private performFormatting(editor: Editor, text: string): void {
     try {
@@ -180,17 +212,30 @@ export default class SlackFormatPlugin extends Plugin {
 
 
   /**
-   * Format with YAML frontmatter
+   * Format Slack content with YAML frontmatter including thread statistics.
+   * @public
+   * @param {string} text - The Slack text to format
+   * @returns {string} Formatted text with YAML frontmatter
    */
   public formatWithFrontmatter(text: string): string {
     return this.formatter.buildNoteWithFrontmatter(text);
   }
 
+  /**
+   * Called when the plugin is unloaded.
+   * Cleans up resources and logs the unload event.
+   * @returns {void}
+   */
   onunload(): void {
     Logger.info('SlackFormatPlugin', 'Unloading Slack formatter plugin');
     // No need to manually remove listeners added via registerEvent
   }
 
+  /**
+   * Load plugin settings from disk.
+   * Falls back to default settings if loading fails.
+   * @returns {Promise<void>}
+   */
   async loadSettings(): Promise<void> {
     try {
       this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
@@ -200,6 +245,10 @@ export default class SlackFormatPlugin extends Plugin {
     }
   }
 
+  /**
+   * Save plugin settings to disk and reinitialize the formatter.
+   * @returns {Promise<void>}
+   */
   async saveSettings(): Promise<void> {
     await this.saveData(this.settings);
     // Re-initialize the formatter with new settings and re-parsed maps
@@ -208,6 +257,11 @@ export default class SlackFormatPlugin extends Plugin {
 
   // --- Command Registration Methods ---
 
+  /**
+   * Register the hotkey command (Cmd/Ctrl+Shift+V) for formatting Slack pastes.
+   * @private
+   * @returns {void}
+   */
   private registerHotkeyCommand(): void {
     this.addCommand({
       id: 'format-slack-paste-hotkey',
@@ -228,6 +282,11 @@ export default class SlackFormatPlugin extends Plugin {
     });
   }
 
+  /**
+   * Register the command palette command for formatting Slack pastes.
+   * @private
+   * @returns {void}
+   */
   private registerPaletteCommand(): void {
     this.addCommand({
       id: 'format-slack',
@@ -243,6 +302,12 @@ export default class SlackFormatPlugin extends Plugin {
     });
   }
 
+  /**
+   * Register the editor context menu item for formatting Slack conversations.
+   * Works with both selected text and clipboard content.
+   * @private
+   * @returns {void}
+   */
   private registerContextMenu(): void {
     this.registerEvent(
       this.app.workspace.on(

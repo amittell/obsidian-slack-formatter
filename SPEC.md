@@ -1,8 +1,43 @@
 # Obsidian Slack Formatter - Technical Specification
-Last Updated: March 27, 2025
+Last Updated: January 18, 2025
 
 ## Overview
 The Obsidian Slack Formatter is a plugin for [Obsidian](https://obsidian.md) that transforms raw Slack conversation text into formatted Markdown callouts. It handles user messages, timestamps, formatting, mentions, emojis, code blocks, threads, and other Slack-specific elements.
+
+## Project Structure
+
+```
+obsidian-slack-formatter/
+├── src/                      # Source code
+│   ├── formatter/           # Core formatting logic
+│   │   ├── processors/      # Content processors
+│   │   ├── stages/          # Processing pipeline stages
+│   │   └── strategies/      # Format strategies
+│   ├── types/               # TypeScript type definitions
+│   ├── ui/                  # UI components (modals, settings)
+│   ├── utils/               # Utility functions
+│   ├── interfaces.ts        # Core interfaces
+│   ├── main.ts             # Plugin entry point
+│   ├── models.ts           # Data models
+│   └── settings.ts         # Default settings
+├── tests/                   # Test suites
+│   ├── integration/        # Integration tests
+│   ├── utils/              # Unit tests for utilities
+│   └── validation/         # Sample validation tests
+├── main.js                 # Built plugin file (git-ignored)
+├── manifest.json           # Obsidian plugin manifest
+├── package.json            # NPM package configuration
+├── tsconfig.json           # TypeScript configuration
+├── esbuild.config.mjs      # Build configuration
+├── jest.config.mjs         # Test configuration
+├── styles.css              # Plugin styles
+├── CLAUDE.md              # AI assistant instructions
+├── README.md              # User documentation
+├── SPEC.md                # This technical specification
+└── LICENSE                # MIT license
+```
+
+Note: Build artifacts, logs, test outputs, and other temporary files are excluded from version control via `.gitignore`.
 
 ## Architecture
 
@@ -17,19 +52,24 @@ The Obsidian Slack Formatter is a plugin for [Obsidian](https://obsidian.md) tha
 2.  **SlackFormatter** (`src/formatter/slack-formatter.ts`)
     -   Implements `ISlackFormatter`.
     -   Serves as the main facade for the formatting system.
-    -   Coordinates the processing pipeline: `PreProcessor` -> `FormatDetector` -> `SlackMessageParser` -> `FormatStrategy` -> `PostProcessor`.
-    -   Uses `FormatStrategyFactory` to get the appropriate formatting strategy.
-    -   Manages settings, parsed maps (`ParsedMaps`), and caches last results (`lastFormattedContent`, `lastThreadStats`).
+    -   Coordinates the processing pipeline: `PreProcessor` -> `ImprovedFormatDetector` -> `FlexibleMessageParser` -> content processing -> `FormatStrategy` -> `PostProcessor`.
+    -   Manages strategies directly (no factory pattern currently used).
+    -   Includes `UnifiedProcessor` for content transformation.
+    -   Manages settings, parsed maps (`ParsedMaps`), and caches last results.
     -   Provides methods like `formatSlackContent`, `isLikelySlack`, `getThreadStats`, `buildNoteWithFrontmatter`, `updateSettings`.
 
-3.  **SlackMessageParser** (`src/formatter/stages/message-parser.ts`)
-    -   Parses preprocessed text line-by-line into an array of `SlackMessage` objects.
-    -   Identifies message boundaries, usernames, timestamps, reactions, thread indicators, etc.
-    -   Maintains date context during parsing.
+3.  **FlexibleMessageParser** (`src/formatter/stages/flexible-message-parser.ts`)
+    -   Multi-pass parser using pattern scoring and probability-based detection.
+    -   Three-pass approach: identify blocks, refine boundaries, extract metadata.
+    -   Parses text into an array of `SlackMessage` objects.
+    -   Uses pattern scoring instead of rigid regex matching for flexibility.
+    -   Maintains date context and handles various Slack export formats.
 
-4.  **FormatDetector** (`src/formatter/stages/format-detector.ts`)
-    -   Detects the likely format of the Slack paste (e.g., 'standard', 'bracket') based on patterns.
-    -   Provides `isLikelySlack` for quick checks.
+4.  **ImprovedFormatDetector** (`src/formatter/stages/improved-format-detector.ts`)
+    -   Detects the format using pattern scoring and probability-based analysis.
+    -   Supports 'standard', 'bracket', and 'mixed' formats.
+    -   Analyzes first 50 lines for pattern density.
+    -   Provides `isLikelySlack` for quick detection using multiple indicators.
 
 5.  **PreProcessor** (`src/formatter/stages/preprocessor.ts`)
     -   Performs initial cleanup and normalization of the raw input text.
@@ -47,28 +87,29 @@ The Obsidian Slack Formatter is a plugin for [Obsidian](https://obsidian.md) tha
     -   Provides abstract methods (`formatHeader`, `formatReactions`) for strategy-specific parts.
 
 9.  **Concrete Format Strategies** (`src/formatter/strategies/*.ts`)
-    -   **StandardFormatStrategy**: Handles "Username [timestamp]" format.
-    -   **BracketFormatStrategy**: Handles "[timestamp] Username" format.
+    -   **StandardFormatStrategy**: Handles "Username timestamp" format.
+    -   **BracketFormatStrategy**: Handles "[Message from username]" format.
+    -   **MixedFormatStrategy**: Handles documents with multiple formats.
     -   Extend `BaseFormatStrategy` and implement abstract methods.
 
 10. **FormatStrategyFactory** (`src/formatter/strategies/format-strategy-factory.ts`)
-    -   Singleton factory for creating and retrieving `FormatStrategy` instances.
-    -   Registers strategy constructors (`registerStrategy`).
-    -   Instantiates strategies on demand (`getStrategyByType`), injecting dependencies (`settings`, `parsedMaps`).
-    -   Updates dependencies when settings change (`updateDependencies`).
+    -   Factory for creating and retrieving `FormatStrategy` instances.
+    -   Currently not actively used - strategies are instantiated directly in `SlackFormatter`.
+    -   Supports registration and on-demand instantiation of strategies.
 
 11. **Processor Interfaces & Base Class** (`src/formatter/processors/base-processor.ts`)
     - Defines the `Processor` interface (`process`).
     - Provides `BaseProcessor` for common functionality (optional).
 
 12. **Specialized Processors** (`src/formatter/processors/*.ts`)
-    -   Perform specific transformations on `SlackMessage` objects during the formatting stage within a strategy.
-    -   **CodeBlockProcessor**: Formats code blocks.
-    -   **EmojiProcessor**: Handles emoji codes and reaction formatting.
+    -   Perform specific transformations on text content.
+    -   **UnifiedProcessor**: Orchestrates all processors in correct order.
+    -   **CodeBlockProcessor**: Detects and formats code blocks.
+    -   **EmojiProcessor**: Handles emoji codes, URLs, and reaction formatting.
     -   **ThreadLinkProcessor**: Formats thread reply links.
-    -   **UrlProcessor**: Formats URLs.
-    -   **UsernameProcessor**: Formats usernames and mentions using `userMap`.
-    -   *(Note: `AttachmentProcessor` and `DateTimeProcessor` were removed).*
+    -   **UrlProcessor**: Converts Slack URL syntax to Markdown.
+    -   **UsernameProcessor**: Formats usernames and converts mentions to wikilinks.
+    -   **AttachmentProcessor**: Handles file uploads and link previews.
 
 13. **UI Components** (`src/ui/*.ts`)
     -   **ConfirmSlackModal**: Modal dialog for confirming Slack text conversion.
@@ -102,11 +143,12 @@ export class SlackMessage {
 #### Settings Interface (`src/types/settings.types.ts`)
 ```typescript
 export interface SlackFormatSettings {
-  enableCodeBlocks: boolean;
-  enableMentions: boolean;
-  enableEmoji: boolean;
-  enableTimestampParsing: boolean;
-  enableSubThreadLinks: boolean;
+  detectCodeBlocks: boolean;
+  convertUserMentions: boolean;
+  replaceEmoji: boolean;
+  parseSlackTimes: boolean;
+  highlightThreads: boolean;
+  convertSlackLinks: boolean;
   userMapJson: string; // JSON string
   emojiMapJson: string; // JSON string
   hotkeyMode: 'cmdShiftV' | 'interceptCmdV';
@@ -119,7 +161,7 @@ export interface SlackFormatSettings {
   showSuccessMessage: boolean;
   frontmatterCssClass: string;
   frontmatterTitle: string;
-  debug: boolean;
+  debug?: boolean;
 }
 ```
 
@@ -137,7 +179,7 @@ export interface ThreadStats {
   messageCount: number;
   uniqueUsers: number;
   threadReplies?: number;
-  formatStrategy: string; // Type identifier ('standard', 'bracket', 'unknown', 'error')
+  formatStrategy?: string; // Type identifier ('standard', 'bracket', 'mixed', 'fallback')
   processingTime?: number;
   mostActiveUser?: string;
 }
@@ -148,7 +190,7 @@ export interface ThreadStats {
 2.  Call `initFormatter`.
     -   Parse `userMapJson` and `emojiMapJson` using `parseJsonMap` utility. Handle errors.
     -   Create `SlackFormatter` instance, passing `settings` and the parsed maps.
-    -   `SlackFormatter` constructor initializes its components (`Parser`, `Detector`, `Pre/PostProcessors`, `StrategyFactory`) and registers strategies.
+    -   `SlackFormatter` constructor initializes its components (`FlexibleMessageParser`, `ImprovedFormatDetector`, `UnifiedProcessor`, `Pre/PostProcessors`, and strategies).
 3.  Add `SlackFormatSettingTab` to Obsidian.
 4.  Register commands (hotkey, palette) and context menu listener.
 
@@ -158,38 +200,44 @@ The message processing follows these steps:
 
 1.  **Preprocessing (`PreProcessor.process`)**
     -   Input: Raw Slack text.
-    -   Actions: Initial cleanup (e.g., normalize line endings), truncate lines based on `maxLines`.
-    -   Output: Cleaned text.
+    -   Actions: Initial cleanup, truncate lines based on `maxLines`.
+    -   Output: Cleaned text with metadata about modifications.
 
-2.  **Format Detection (`FormatDetector.detectFormat`)**
+2.  **Format Detection (`ImprovedFormatDetector.detectFormat`)**
     -   Input: Preprocessed text.
-    -   Actions: Analyze text patterns to determine the likely format ('standard', 'bracket', or 'unknown').
+    -   Actions: Pattern scoring analysis to determine format ('standard', 'bracket', or 'mixed').
     -   Output: `FormatStrategyType`.
 
-3.  **Strategy Retrieval (`FormatStrategyFactory.getStrategyByType`)**
-    -   Input: Detected `FormatStrategyType`.
-    -   Actions: Get or instantiate the required strategy, injecting dependencies (`settings`, `parsedMaps`).
-    -   Output: `FormatStrategy` instance or `null`.
-
-4.  **Parsing (`SlackMessageParser.parse`)**
+3.  **Message Parsing (`FlexibleMessageParser.parse`)**
     -   Input: Preprocessed text.
-    -   Actions: Parse text line-by-line into `SlackMessage` objects. Identify usernames, timestamps, reactions, text content, thread markers, etc.
+    -   Actions: Multi-pass parsing with pattern scoring.
+    -   Three passes: identify blocks, refine boundaries, extract metadata.
     -   Output: `SlackMessage[]`.
 
+4.  **Content Processing (`UnifiedProcessor` applied to each message)**
+    -   Input: Message text from parsed messages.
+    -   Actions: Apply processors in order:
+        - Code blocks (preserve formatting)
+        - Attachments (handle file/link metadata)
+        - URLs (convert Slack syntax)
+        - User mentions (convert to wikilinks)
+        - Emoji (replace codes with Unicode)
+        - Thread links (highlight references)
+    -   Output: Processed message text.
+
 5.  **Formatting (`FormatStrategy.formatToMarkdown`)**
-    -   Input: `SlackMessage[]`.
-    -   Actions (within `BaseFormatStrategy` and concrete implementations):
-        -   Iterate through `SlackMessage` objects.
-        -   Call strategy-specific methods (e.g., `formatHeader`).
-        -   Apply sequence of `Processor` instances (`UsernameProcessor`, `EmojiProcessor`, `UrlProcessor`, etc.) to message text.
-        -   Format reactions (using `EmojiProcessor`).
-        -   Assemble the final Markdown string for each message.
+    -   Input: Processed `SlackMessage[]`.
+    -   Actions: Apply strategy-specific formatting for headers, reactions, and layout.
     -   Output: Formatted Markdown string.
 
 6.  **Postprocessing (`PostProcessor.process`)**
-    -   Input: Formatted Markdown string from the strategy.
-    -   Actions: Final cleanup (e.g., trim whitespace).
-    -   Output: Final Markdown string to be inserted into the editor.
+    -   Input: Formatted Markdown string.
+    -   Actions: Final cleanup and normalization.
+    -   Output: Final Markdown string.
+
+7.  **Error Handling**
+    -   Fallback formatting creates warning callout with original content.
+    -   All processors have individual error handling with fallbacks.
 
 ## Performance Optimizations
 
@@ -202,7 +250,7 @@ The message processing follows these steps:
 
 1.  **Additional Strategy Implementations**: Support more Slack export/copy formats.
 2.  **Enhanced Threading**: Collapsible threads, metadata preservation.
-3.  **Attachment Handling**: Currently out of scope. Attachment/file link formatting was removed due to complexity and lack of robust parsing.
+3.  **Enhanced Attachment Handling**: Basic support exists via `AttachmentProcessor`. Could be expanded for richer file/image previews.
 4.  **Integration Improvements**: Dynamic linking, custom CSS.
 5.  **Performance Profiling**: Optimization for very large conversations, regex tuning.
 6.  **Testing**: Expand unit and integration tests, especially for the parser and processors.

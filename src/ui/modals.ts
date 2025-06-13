@@ -176,7 +176,7 @@ export class SlackPreviewModal extends BaseModal {
                 this.formattedText,
                 this.previewContainer,
                 '',
-                null as any
+                this
             );
             
         } catch (error) {

@@ -5,7 +5,8 @@ import { Logger } from '../../utils/logger';
 import { cleanupDoubledUsernames } from '../../utils/username-utils';
 
 /**
- * Pattern scoring weights for identifying message boundaries
+ * Pattern scoring weights for identifying message boundaries.
+ * Each score is a probability value between 0 and 1.
  */
 interface PatternScore {
     isUsername: number;
@@ -17,7 +18,8 @@ interface PatternScore {
 }
 
 /**
- * Message block representing a potential message
+ * Message block representing a potential message during parsing.
+ * Contains extracted metadata and content lines.
  */
 interface MessageBlock {
     startLine: number;
@@ -32,7 +34,8 @@ interface MessageBlock {
 }
 
 /**
- * Parser context for multi-pass parsing
+ * Parser context maintained throughout the multi-pass parsing process.
+ * Tracks state, extracted blocks, and debug information.
  */
 interface ParserContext {
     lines: string[];
@@ -42,7 +45,14 @@ interface ParserContext {
 }
 
 /**
- * Flexible message parser that uses pattern scoring and multi-pass parsing
+ * Flexible message parser that uses pattern scoring and multi-pass parsing.
+ * Implements a three-pass approach:
+ * 1. Identify message blocks based on pattern scores
+ * 2. Refine blocks by analyzing context and merging
+ * 3. Extract reactions and metadata from content
+ * 
+ * Supports multiple Slack export formats through probabilistic pattern matching
+ * rather than rigid regex rules.
  */
 export class FlexibleMessageParser {
     // Remove instance logger - use static methods instead
@@ -104,7 +114,11 @@ export class FlexibleMessageParser {
     };
 
     /**
-     * Main entry point for parsing
+     * Main entry point for parsing Slack conversation text.
+     * Executes multi-pass parsing to extract structured messages.
+     * @param {string} text - Raw Slack conversation text
+     * @param {boolean} [isDebugEnabled] - Enable debug logging
+     * @returns {SlackMessage[]} Array of parsed Slack messages
      */
     parse(text: string, isDebugEnabled?: boolean): SlackMessage[] {
         const context: ParserContext = {
@@ -130,7 +144,13 @@ export class FlexibleMessageParser {
     }
 
     /**
-     * First pass: Identify potential message blocks
+     * First pass: Identify potential message blocks.
+     * Scans lines to find message boundaries based on pattern scores.
+     * Handles date separators, metadata lines, and message headers.
+     * @private
+     * @param {ParserContext} context - Parser context to update
+     * @param {boolean} [isDebugEnabled] - Enable debug logging
+     * @returns {void}
      */
     private identifyMessageBlocks(context: ParserContext, isDebugEnabled?: boolean): void {
         let currentBlock: MessageBlock | null = null;
@@ -256,7 +276,13 @@ export class FlexibleMessageParser {
     }
 
     /**
-     * Second pass: Refine blocks by looking at context
+     * Second pass: Refine blocks by looking at context.
+     * Handles split timestamps, merges continuation blocks, and adjusts boundaries.
+     * Identifies and corrects common parsing errors from the first pass.
+     * @private
+     * @param {ParserContext} context - Parser context to update
+     * @param {boolean} [isDebugEnabled] - Enable debug logging
+     * @returns {void}
      */
     private refineBlocks(context: ParserContext, isDebugEnabled?: boolean): void {
         for (let i = 0; i < context.blocks.length; i++) {
@@ -376,7 +402,13 @@ export class FlexibleMessageParser {
     }
 
     /**
-     * Third pass: Extract reactions and thread metadata
+     * Third pass: Extract reactions and thread metadata.
+     * Removes metadata from content and populates reaction/thread properties.
+     * Handles various reaction formats and thread indicators.
+     * @private
+     * @param {ParserContext} context - Parser context to update
+     * @param {boolean} [isDebugEnabled] - Enable debug logging
+     * @returns {void}
      */
     private extractReactionsAndMetadata(context: ParserContext, isDebugEnabled?: boolean): void {
         for (const block of context.blocks) {
@@ -481,7 +513,12 @@ export class FlexibleMessageParser {
     }
 
     /**
-     * Score a line to determine what it might be
+     * Score a line to determine what it might be.
+     * Calculates probability scores for different line types.
+     * @private
+     * @param {string} line - The line to score
+     * @param {ParserContext} context - Current parser context
+     * @returns {PatternScore} Probability scores for different patterns
      */
     private scoreLine(line: string, context: ParserContext): PatternScore {
         const score: PatternScore = {
@@ -524,7 +561,11 @@ export class FlexibleMessageParser {
     }
 
     /**
-     * Score how likely a line is to be a username
+     * Score how likely a line is to be a username.
+     * Applies various heuristics to distinguish usernames from content.
+     * @private
+     * @param {string} line - The line to score
+     * @returns {number} Probability score between 0 and 1
      */
     private scoreUsername(line: string): number {
         let maxScore = 0;
@@ -587,7 +628,11 @@ export class FlexibleMessageParser {
     }
 
     /**
-     * Score how likely a line is to be a timestamp
+     * Score how likely a line is to be a timestamp.
+     * Checks various timestamp formats including linked timestamps.
+     * @private
+     * @param {string} line - The line to score
+     * @returns {number} Probability score between 0 and 1
      */
     private scoreTimestamp(line: string): number {
         let maxScore = 0;
@@ -608,7 +653,11 @@ export class FlexibleMessageParser {
     }
 
     /**
-     * Score how likely a line contains both user and time
+     * Score how likely a line contains both user and time.
+     * Checks for combined username/timestamp patterns.
+     * @private
+     * @param {string} line - The line to score
+     * @returns {number} Probability score between 0 and 1
      */
     private scoreUserAndTime(line: string): number {
         let maxScore = 0;
@@ -623,7 +672,11 @@ export class FlexibleMessageParser {
     }
 
     /**
-     * Score how likely a line is a date separator
+     * Score how likely a line is a date separator.
+     * Identifies date headers that separate conversation days.
+     * @private
+     * @param {string} line - The line to score
+     * @returns {number} Probability score between 0 and 1
      */
     private scoreDateSeparator(line: string): number {
         for (const pattern of this.patterns.dateSeparator) {
@@ -635,7 +688,11 @@ export class FlexibleMessageParser {
     }
 
     /**
-     * Score how likely a line is metadata
+     * Score how likely a line is metadata.
+     * Identifies thread info, reactions, and other non-content lines.
+     * @private
+     * @param {string} line - The line to score
+     * @returns {number} Probability score between 0 and 1
      */
     private scoreMetadata(line: string): number {
         for (const pattern of this.patterns.metadata) {
@@ -647,7 +704,13 @@ export class FlexibleMessageParser {
     }
 
     /**
-     * Extract header information from a line
+     * Extract header information from a line.
+     * Parses username and timestamp from message headers.
+     * @private
+     * @param {string} line - The header line to parse
+     * @param {MessageBlock} block - The block to update with extracted info
+     * @param {ParserContext} context - Current parser context
+     * @returns {void}
      */
     private extractHeaderInfo(line: string, block: MessageBlock, context: ParserContext): void {
         // Try combined patterns first
@@ -693,7 +756,11 @@ export class FlexibleMessageParser {
     }
 
     /**
-     * Clean username by removing emojis and artifacts
+     * Clean username by removing emojis and artifacts.
+     * Handles doubled usernames, emoji codes, and formatting artifacts.
+     * @private
+     * @param {string} username - Raw username string
+     * @returns {string} Cleaned username or 'Unknown User'
      */
     private cleanUsername(username: string): string {
         let cleaned = username;
@@ -715,7 +782,11 @@ export class FlexibleMessageParser {
     }
 
     /**
-     * Extract reactions from a line
+     * Extract reactions from a line.
+     * Parses emoji:count pairs in various formats.
+     * @private
+     * @param {string} line - The line to parse for reactions
+     * @returns {SlackReaction[]} Array of extracted reactions
      */
     private extractReactions(line: string): SlackReaction[] {
         const reactions: SlackReaction[] = [];
@@ -747,7 +818,12 @@ export class FlexibleMessageParser {
     }
 
     /**
-     * Update date context from date separator
+     * Update date context from date separator.
+     * Parses date headers to maintain temporal context for messages.
+     * @private
+     * @param {string} line - The date separator line
+     * @param {ParserContext} context - Parser context to update
+     * @returns {void}
      */
     private updateDateContext(line: string, context: ParserContext): void {
         for (const pattern of this.patterns.dateSeparator) {
@@ -764,7 +840,12 @@ export class FlexibleMessageParser {
     }
 
     /**
-     * Convert blocks to SlackMessage objects
+     * Convert blocks to SlackMessage objects.
+     * Final step that transforms parsed blocks into structured messages.
+     * @private
+     * @param {ParserContext} context - Parser context with blocks
+     * @param {boolean} [isDebugEnabled] - Enable debug logging
+     * @returns {SlackMessage[]} Array of structured Slack messages
      */
     private convertBlocksToMessages(context: ParserContext, isDebugEnabled?: boolean): SlackMessage[] {
         const messages: SlackMessage[] = [];

@@ -3,11 +3,28 @@ import { formatUserMentions, cleanupDoubledUsernames, formatUsername } from '../
 import type { ProcessorResult } from '../../types/formatters.types';
 import { Logger } from '../../utils/logger'; // Import Logger
 
+/**
+ * Processor for handling Slack user mentions and username formatting.
+ * Converts user IDs to display names and formats mentions as wikilinks.
+ * @extends {BaseProcessor<string>}
+ */
 export class UsernameProcessor extends BaseProcessor<string> {
+  /** Map of user IDs to display names */
   private userMap: Record<string, string>;
+  
+  /** Whether to convert @mentions to [[wikilinks]] */
   private enableMentions: boolean;
+  
+  /** Debug mode flag */
   private isDebugEnabled: boolean; // Added property
 
+  /**
+   * Creates a new UsernameProcessor instance.
+   * @param {Object} options - Configuration options
+   * @param {Record<string, string>} [options.userMap={}] - User ID to name mappings
+   * @param {boolean} [options.enableMentions=true] - Enable mention formatting
+   * @param {boolean} [options.isDebugEnabled=false] - Enable debug logging
+   */
   constructor(options: { userMap?: Record<string, string>; enableMentions?: boolean; isDebugEnabled?: boolean } = {}) { // Updated constructor signature
     super();
     this.userMap = options.userMap ?? {};
@@ -15,6 +32,14 @@ export class UsernameProcessor extends BaseProcessor<string> {
     this.isDebugEnabled = options.isDebugEnabled ?? false; // Added initialization
   }
 
+  /**
+   * Process a line to handle username formatting and mentions.
+   * Performs two operations:
+   * 1. Cleans up doubled usernames (e.g., "JohnJohn" -> "John")
+   * 2. Converts user mentions to wikilinks if enabled
+   * @param {string} line - The line to process
+   * @returns {ProcessorResult} Processed content with formatted usernames
+   */
   process(line: string): ProcessorResult {
     try {
       let content = line;
@@ -50,6 +75,12 @@ export class UsernameProcessor extends BaseProcessor<string> {
     }
   }
 
+  /**
+   * Format a username for display.
+   * Delegates to formatUsername utility for consistent formatting.
+   * @param {string} username - The username to format
+   * @returns {string} Formatted username or original on error
+   */
   formatDisplayName(username: string): string {
     try {
       return formatUsername(username);
@@ -60,11 +91,20 @@ export class UsernameProcessor extends BaseProcessor<string> {
     }
   }
 
+  /**
+   * Update the user ID to display name mapping.
+   * @param {Record<string, string>} newMap - New user ID to name mappings
+   * @returns {void}
+   */
   updateUserMap(newMap: Record<string, string>): void {
     this.userMap = newMap;
   }
 
-  // Added method to update debug flag if needed
+  /**
+   * Update the debug flag for logging.
+   * @param {boolean} isDebugEnabled - New debug flag value
+   * @returns {void}
+   */
   updateDebugFlag(isDebugEnabled: boolean): void {
       this.isDebugEnabled = isDebugEnabled;
   }

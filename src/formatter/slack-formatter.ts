@@ -18,24 +18,55 @@ import { MixedFormatStrategy } from './strategies/mixed-format-strategy';
 import { BaseFormatStrategy } from './strategies/base-format-strategy';
 
 /**
- * Improved SlackFormatter with flexible parsing and better error handling
+ * Main formatter class that orchestrates the Slack-to-Markdown conversion process.
+ * Implements a multi-stage pipeline with format detection, parsing, processing, and formatting.
+ * Includes caching for performance and comprehensive error handling with fallback formatting.
+ * @implements {ISlackFormatter}
  */
 export class SlackFormatter implements ISlackFormatter {
+    /** Plugin settings configuration */
     private settings: SlackFormatSettings;
+    
+    /** Parsed user and emoji mappings */
     private parsedMaps: ParsedMaps;
+    
+    /** Message parser for extracting structured data from raw text */
     private parser: FlexibleMessageParser;
+    
+    /** Format detector for identifying Slack export formats */
     private formatDetector: ImprovedFormatDetector;
+    
+    /** Unified processor for content transformation */
     private unifiedProcessor: UnifiedProcessor;
+    
+    /** Preprocessor for input validation and line truncation */
     private preprocessor: PreProcessor;
+    
+    /** Postprocessor for final cleanup and normalization */
     private postprocessor: PostProcessor;
+    
+    /** Map of formatting strategies by format type */
     private strategies: Map<string, BaseFormatStrategy>;
     
     // Cache for performance
+    /** Cached input string for performance optimization */
     private lastInput: string | null = null;
+    
+    /** Cached output string for performance optimization */
     private lastOutput: string | null = null;
+    
+    /** Cached thread statistics from last formatting operation */
     private lastStats: ThreadStats | null = null;
+    
+    /** Debug mode flag for verbose logging and debug output */
     private debugMode: boolean;
 
+    /**
+     * Creates a new SlackFormatter instance.
+     * @param {SlackFormatSettings} settings - Plugin settings configuration
+     * @param {Record<string, string>} userMap - Mapping of user IDs to display names
+     * @param {Record<string, string>} emojiMap - Mapping of emoji codes to Unicode characters
+     */
     constructor(
         settings: SlackFormatSettings,
         userMap: Record<string, string>,
@@ -60,14 +91,21 @@ export class SlackFormatter implements ISlackFormatter {
     }
 
     /**
-     * Check if text is likely from Slack
+     * Check if text is likely from Slack based on pattern detection.
+     * Uses the ImprovedFormatDetector for probability-based scoring.
+     * @param {string} text - The text to analyze
+     * @returns {boolean} True if text appears to be from Slack
      */
     isLikelySlack(text: string): boolean {
         return this.formatDetector.isLikelySlack(text);
     }
 
     /**
-     * Main formatting method with improved error handling
+     * Main formatting method that processes Slack content through the full pipeline.
+     * Includes caching, error handling, and fallback formatting.
+     * @param {string} input - Raw Slack conversation text
+     * @returns {string} Formatted Markdown content
+     * @throws {Error} Caught internally and handled with fallback formatting
      */
     formatSlackContent(input: string): string {
         if (!input) return '';
@@ -144,7 +182,9 @@ export class SlackFormatter implements ISlackFormatter {
     }
 
     /**
-     * Get thread statistics
+     * Get statistics from the last formatting operation.
+     * Returns cached stats or default values if no formatting has occurred.
+     * @returns {ThreadStats} Thread statistics including message count, users, and format
      */
     getThreadStats(): ThreadStats {
         return this.lastStats || {
@@ -155,7 +195,10 @@ export class SlackFormatter implements ISlackFormatter {
     }
 
     /**
-     * Build note with frontmatter
+     * Build a complete note with YAML frontmatter including thread statistics.
+     * Formats the content and prepends metadata for Obsidian.
+     * @param {string} text - Raw Slack conversation text
+     * @returns {string} Complete note with frontmatter and formatted content
      */
     buildNoteWithFrontmatter(text: string): string {
         const formatted = this.formatSlackContent(text);
@@ -181,7 +224,11 @@ export class SlackFormatter implements ISlackFormatter {
     }
 
     /**
-     * Update settings and dependencies
+     * Update formatter settings and parsed maps.
+     * Propagates changes to all components and clears the cache.
+     * @param {SlackFormatSettings} settings - New settings configuration
+     * @param {ParsedMaps} parsedMaps - New user and emoji mappings
+     * @returns {void}
      */
     updateSettings(settings: SlackFormatSettings, parsedMaps: ParsedMaps): void {
         this.settings = settings;
@@ -204,7 +251,12 @@ export class SlackFormatter implements ISlackFormatter {
     }
 
     /**
-     * Calculate thread statistics
+     * Calculate statistics from parsed messages.
+     * @private
+     * @param {SlackMessage[]} messages - Array of parsed Slack messages
+     * @param {string} formatStrategy - The format strategy used
+     * @param {number} processingTime - Time taken to process in milliseconds
+     * @returns {ThreadStats} Calculated thread statistics
      */
     private calculateStats(messages: SlackMessage[], formatStrategy: string, processingTime: number): ThreadStats {
         const users = new Set<string>();
@@ -229,7 +281,13 @@ export class SlackFormatter implements ISlackFormatter {
     }
 
     /**
-     * Add debug information to the output
+     * Add debug information section to the formatted output.
+     * Includes processing steps and unparsed content for troubleshooting.
+     * @private
+     * @param {string} content - The formatted content
+     * @param {string[]} debugInfo - Array of debug messages from processing
+     * @param {SlackMessage[]} messages - Array of successfully parsed messages
+     * @returns {string} Content with appended debug section
      */
     private addDebugInfo(content: string, debugInfo: string[], messages: SlackMessage[]): string {
         const debugSection = [
@@ -268,7 +326,12 @@ export class SlackFormatter implements ISlackFormatter {
     }
 
     /**
-     * Fallback formatting when parsing fails
+     * Fallback formatting when normal parsing fails.
+     * Creates a warning callout with the original content and error details.
+     * @private
+     * @param {string} input - The original input that failed to parse
+     * @param {any} error - The error that occurred during parsing
+     * @returns {string} Fallback formatted content with error information
      */
     private fallbackFormat(input: string, error: any): string {
         Logger.warn('SlackFormatter', 'Using fallback formatting');

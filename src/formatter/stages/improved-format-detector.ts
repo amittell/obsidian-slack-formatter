@@ -2,7 +2,8 @@ import type { FormatStrategyType } from '../../types/formatters.types';
 import { Logger } from '../../utils/logger';
 
 /**
- * Pattern weights for format detection scoring
+ * Pattern weights for format detection scoring.
+ * Contains normalized scores for each format type and overall confidence.
  */
 interface FormatScore {
     standard: number;
@@ -12,7 +13,11 @@ interface FormatScore {
 }
 
 /**
- * Improved format detector using pattern scoring
+ * Improved format detector using pattern scoring.
+ * Analyzes Slack conversation text to determine the export format
+ * (standard, bracket, or mixed) through probabilistic pattern matching.
+ * This approach is more flexible than rigid regex matching and handles
+ * variations in Slack export formats.
  */
 export class ImprovedFormatDetector {
     private readonly patterns = {
@@ -52,7 +57,10 @@ export class ImprovedFormatDetector {
     };
 
     /**
-     * Detects the format strategy based on pattern scoring
+     * Detects the format strategy based on pattern scoring.
+     * Analyzes the first 50 lines to determine the most likely format.
+     * @param {string} content - The Slack conversation content to analyze
+     * @returns {FormatStrategyType} The detected format type ('standard', 'bracket', or 'mixed')
      */
     detectFormat(content: string): FormatStrategyType {
         if (!content || typeof content !== 'string') {
@@ -79,7 +87,11 @@ export class ImprovedFormatDetector {
     }
 
     /**
-     * Scores content for different format patterns
+     * Scores content for different format patterns.
+     * Counts pattern matches and normalizes scores based on content density.
+     * @private
+     * @param {string} content - The content to score
+     * @returns {FormatScore} Normalized scores for each format type
      */
     private scoreContent(content: string): FormatScore {
         const lines = content.split('\n').slice(0, 50); // Analyze first 50 lines
@@ -156,7 +168,11 @@ export class ImprovedFormatDetector {
     }
 
     /**
-     * Quick check if text is likely from Slack
+     * Quick check if text is likely from Slack.
+     * Uses multiple pattern indicators to determine if content appears to be
+     * from a Slack conversation export.
+     * @param {string} text - The text to check
+     * @returns {boolean} True if text appears to be from Slack
      */
     isLikelySlack(text: string): boolean {
         if (!text) return false;

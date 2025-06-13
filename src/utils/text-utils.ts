@@ -1,10 +1,15 @@
 /**
- * Text processing utilities
+ * Text processing utilities for Slack message formatting.
+ * Handles code blocks, thread links, and URL conversions.
+ * @module text-utils
  */
 import { Logger } from './logger';
 
 /**
- * Convert code blocks to Markdown format
+ * Convert code blocks to Markdown format.
+ * Ensures proper triple-backtick formatting with language specifiers.
+ * @param {string} text - The text containing potential code blocks
+ * @returns {string} Text with properly formatted Markdown code blocks
  */
 export function formatCodeBlocks(text: string): string {
     const lines = text.split('\n');
@@ -27,7 +32,10 @@ export function formatCodeBlocks(text: string): string {
 }
 
 /**
- * Process thread links with proper formatting
+ * Process thread links with proper formatting.
+ * Converts "View thread: <url>" to Markdown link format.
+ * @param {string} text - The text containing thread links
+ * @returns {string} Text with thread links converted to [View thread](url)
  */
 export function formatThreadLinks(text: string): string {
     // Make the space after the colon optional using \s*
@@ -39,11 +47,20 @@ export function formatThreadLinks(text: string): string {
  
  
 /**
- * Convert Slack URLs to Markdown format with error handling
+ * Convert Slack URLs to Markdown format with error handling.
  * Handles multiple formats:
  * - <url|text> -> [text](url)
  * - <url> -> url
  * - &lt;url&gt; (HTML encoded)
+ * - mailto: links
+ * - Malformed URLs (missing protocol)
+ * 
+ * @param {string} text - The text containing Slack-formatted URLs
+ * @returns {string} Text with URLs converted to Markdown format
+ * @example
+ * formatSlackUrlSyntax("<https://example.com|Example>") // "[Example](https://example.com)"
+ * formatSlackUrlSyntax("<https://example.com>") // "https://example.com"
+ * formatSlackUrlSyntax("&lt;mailto:user@example.com&gt;") // "[user@example.com](mailto:user@example.com)"
  */
 export function formatSlackUrlSyntax(text: string): string {
     try {

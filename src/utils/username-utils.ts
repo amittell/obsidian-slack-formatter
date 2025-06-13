@@ -1,11 +1,22 @@
 /**
- * Username handling utilities with improved error handling
+ * Username handling utilities for Slack user mentions and formatting.
+ * Provides functions for converting Slack user mentions to Obsidian wikilinks,
+ * cleaning up doubled usernames, and formatting usernames for display.
+ * @module username-utils
  */
 import { Logger } from './logger';
 
 /**
- * Replace Slack user mentions with wiki links
- * Handles multiple formats and provides fallbacks
+ * Replace Slack user mentions with wiki links.
+ * Handles multiple mention formats:
+ * - <@U123ABC> - User ID format
+ * - @username - Direct mention format
+ * - <@username> - Username without ID
+ * - <!channel>, <!here>, <!everyone> - Special mentions
+ * 
+ * @param {string} text - The text containing user mentions
+ * @param {Record<string, string>} userMap - Map of user IDs to display names
+ * @returns {string} Text with mentions converted to [[wikilinks]] or **bold** for special mentions
  */
 export function formatUserMentions(text: string, userMap: Record<string, string>): string {
     try {
@@ -79,8 +90,11 @@ export function formatUserMentions(text: string, userMap: Record<string, string>
 }
 
 /**
- * Sanitize username for use in wiki links
- * Removes characters that are invalid in Obsidian links
+ * Sanitize username for use in wiki links.
+ * Removes characters that are invalid in Obsidian links.
+ * @private
+ * @param {string} username - The username to sanitize
+ * @returns {string} Sanitized username safe for wiki links (max 100 chars)
  */
 function sanitizeForWikiLink(username: string): string {
     return username
@@ -91,8 +105,14 @@ function sanitizeForWikiLink(username: string): string {
 }
  
 /**
- * Clean up immediately doubled usernames/names (e.g., "Alex MittellAlex Mittell" -> "Alex Mittell").
- * Enhanced to handle more edge cases
+ * Clean up immediately doubled usernames/names.
+ * Handles various duplication patterns:
+ * - "Alex MittellAlex Mittell" -> "Alex Mittell"
+ * - "JohnJohn" -> "John"
+ * - Case-insensitive duplicates
+ * 
+ * @param {string} text - The text containing potential doubled usernames
+ * @returns {string} Text with doubled usernames cleaned up
  */
 export function cleanupDoubledUsernames(text: string): string {
     try {
@@ -127,7 +147,16 @@ export function cleanupDoubledUsernames(text: string): string {
 }
 
 /**
- * Format username for display (improved title casing)
+ * Format username for display with improved title casing.
+ * Preserves existing camelCase patterns and applies smart title casing.
+ * Handles underscores, hyphens, and common prepositions.
+ * 
+ * @param {string} username - The username to format
+ * @returns {string} Formatted username with proper casing
+ * @example
+ * formatUsername("john_doe") // "John Doe"
+ * formatUsername("johnDoe") // "johnDoe" (preserves camelCase)
+ * formatUsername("JOHN-DOE") // "John Doe"
  */
 export function formatUsername(username: string): string {
     try {
@@ -161,8 +190,15 @@ export function formatUsername(username: string): string {
 }
 
 /**
- * Extract username from various formats
- * E.g., "John Doe :emoji:" -> "John Doe"
+ * Extract username from various formats.
+ * Removes emoji codes, Unicode emoji, and trailing punctuation.
+ * 
+ * @param {string} text - The text containing a username with potential decorations
+ * @returns {string} Clean username or "Unknown User" if empty
+ * @example
+ * extractUsername("John Doe :smile:") // "John Doe"
+ * extractUsername("Jane 👋") // "Jane"
+ * extractUsername("User123!!!") // "User123"
  */
 export function extractUsername(text: string): string {
     try {
