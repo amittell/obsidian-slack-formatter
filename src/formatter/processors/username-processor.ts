@@ -41,6 +41,12 @@ export class UsernameProcessor extends BaseProcessor<string> {
    * @returns {ProcessorResult} Processed content with formatted usernames
    */
   process(line: string): ProcessorResult {
+    // Validate input
+    const validationResult = this.validateStringInput(line);
+    if (validationResult) {
+      return validationResult;
+    }
+
     try {
       let content = line;
       let modified = false;

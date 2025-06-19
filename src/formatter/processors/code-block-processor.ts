@@ -14,6 +14,12 @@ export class CodeBlockProcessor extends BaseProcessor<string> {
   }
 
   process(line: string): ProcessorResult {
+    // Validate input
+    const validationResult = this.validateStringInput(line);
+    if (validationResult) {
+      return validationResult;
+    }
+
     if (!this.enableCodeBlocks) {
       return { content: line, modified: false };
     }

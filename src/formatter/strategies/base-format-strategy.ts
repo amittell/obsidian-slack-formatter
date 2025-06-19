@@ -11,6 +11,30 @@ import { formatDateWithZone, parseSlackTimestamp } from '../../utils/datetime-ut
 import { ParsedMaps, FormatStrategyType } from '../../types/formatters.types';
 import { Logger } from '../../utils/logger'; // Import the new Logger
 
+/**
+ * Custom error types for specific timestamp processing errors
+ */
+class TimestampParsingError extends Error {
+    constructor(message: string, public timestamp: string) {
+        super(message);
+        this.name = 'TimestampParsingError';
+    }
+}
+
+class TimestampFormattingError extends Error {
+    constructor(message: string, public timestamp: string) {
+        super(message);
+        this.name = 'TimestampFormattingError';
+    }
+}
+
+class RegexError extends Error {
+    constructor(message: string, public pattern: string, public input: string) {
+        super(message);
+        this.name = 'RegexError';
+    }
+}
+
 // Removed local ParsedMaps type definition
 
 export abstract class BaseFormatStrategy implements FormatStrategy {
@@ -194,11 +218,12 @@ export abstract class BaseFormatStrategy implements FormatStrategy {
         const threadReplyMatch = threadInfo.match(/replied to a thread:\s*(?:"([^"]+)"|(.+?)(?=\s*(?:View thread|Last reply|$)))?/i);
         
         // Format thread reply indicator with context if available
-        if (threadReplyMatch) {
-            const context = threadReplyMatch[1] || threadReplyMatch[2];
-            if (context && context.trim()) {
+        if (threadReplyMatch && threadReplyMatch.length > 0) {
+            const context = (threadReplyMatch[1] && threadReplyMatch[1].trim()) || 
+                           (threadReplyMatch[2] && threadReplyMatch[2].trim());
+            if (context) {
                 lines.push('🧵 **Thread Reply**');
-                lines.push(`   _Replying to: "${context.trim()}"_`);
+                lines.push(`   _Replying to: "${context}"_`);
             } else {
                 lines.push('🧵 **Thread Reply**');
             }
@@ -208,12 +233,12 @@ export abstract class BaseFormatStrategy implements FormatStrategy {
         if (replyMatch || lastReplyMatch || viewThreadMatch) {
             const parts: string[] = [];
             
-            if (replyMatch) {
+            if (replyMatch && replyMatch[1]) {
                 const count = replyMatch[1];
                 parts.push(`**${count} ${parseInt(count) === 1 ? 'reply' : 'replies'}**`);
             }
             
-            if (lastReplyMatch) {
+            if (lastReplyMatch && lastReplyMatch[1]) {
                 parts.push(`Last reply ${lastReplyMatch[1].trim()}`);
             }
             
@@ -225,7 +250,7 @@ export abstract class BaseFormatStrategy implements FormatStrategy {
             if (viewThreadMatch) {
                 // Check if threadInfo contains a URL for the thread
                 const urlMatch = threadInfo.match(/View thread.*?(https?:\/\/[^\s]+)/);
-                if (urlMatch) {
+                if (urlMatch && urlMatch[1]) {
                     lines.push(`🔗 [View thread](${urlMatch[1]})`);
                 } else {
                     // If no URL, just show as text
@@ -252,27 +277,84 @@ export abstract class BaseFormatStrategy implements FormatStrategy {
             return ''; // Or some default like 'Time unknown'
         }
         try {
-            // 1. Try parsing as ISO string first (most likely format from parser)
+            // 1. Handle Slack timestamp formats (e.g., "Feb 6th at 7:47 PM", "[Feb 6th at 7:47 PM](url)")
             if (typeof message.timestamp === 'string') {
-                const potentialDate = new Date(message.timestamp);
-                if (!isNaN(potentialDate.getTime())) {
-                    // Valid ISO date found, format it
-                    return formatDateWithZone(potentialDate, this.settings.timeZone);
+                let timestampToFormat: string;
+                
+                // First, check if it's a linked timestamp format and extract the timestamp part
+                try {
+                    const linkedTimestampMatch = message.timestamp.match(/\[([^\]]+)\]\(https?:\/\/[^)]+\)/);
+                    timestampToFormat = (linkedTimestampMatch && linkedTimestampMatch[1]) ? linkedTimestampMatch[1] : message.timestamp;
+                } catch (regexError) {
+                    throw new RegexError(
+                        'Failed to extract timestamp from linked format',
+                        '\\[([^\\]]+)\\]\\(https?:\\/\\/[^)]+\\)',
+                        message.timestamp
+                    );
+                }
+                
+                // Try parsing with parseSlackTimestamp utility which handles various Slack formats
+                let parsedDate: Date | null;
+                try {
+                    parsedDate = parseSlackTimestamp(timestampToFormat, message.date);
+                } catch (parseError) {
+                    throw new TimestampParsingError(
+                        `Failed to parse timestamp: ${parseError instanceof Error ? parseError.message : 'Unknown parsing error'}`,
+                        timestampToFormat
+                    );
+                }
+                
+                if (parsedDate && !isNaN(parsedDate.getTime())) {
+                    // Successfully parsed, format it
+                    try {
+                        return formatDateWithZone(parsedDate, this.settings.timeZone);
+                    } catch (formatError) {
+                        throw new TimestampFormattingError(
+                            `Failed to format timestamp: ${formatError instanceof Error ? formatError.message : 'Unknown formatting error'}`,
+                            timestampToFormat
+                        );
+                    }
                 } else {
-                    // Not a valid ISO date (likely contains emoji or non-standard text)
-                    this.log('debug', `Timestamp is not ISO, returning original: ${message.timestamp}`);
-                    return message.timestamp; // Return original string directly
+                    // Could not parse - return the cleaned timestamp string
+                    this.log('debug', `Could not parse timestamp, returning cleaned original: ${timestampToFormat}`);
+                    return timestampToFormat;
                 }
             } else {
                  // Handle cases where timestamp is not a string (shouldn't happen with current parser logic, but safety)
                  this.log('warn', `Timestamp is not a string: ${typeof message.timestamp}`);
                  return 'Invalid Timestamp Type';
             }
-            // Fallback logic (parseSlackTimestamp) and final else block removed as non-ISO strings are returned directly above
-        } catch (tsError) {
-            this.log('warn', `Error formatting timestamp: ${tsError}`, { timestamp: message.timestamp });
-            // Fallback to the original string representation if Date parsing/formatting fails
-            return typeof message.timestamp === 'string' ? message.timestamp : 'Invalid Date';
+        } catch (error) {
+            if (error instanceof RegexError) {
+                this.log('error', `Regex error in timestamp processing: ${error.message}`, { 
+                    pattern: error.pattern, 
+                    input: error.input,
+                    timestamp: message.timestamp 
+                });
+                // For regex errors, return the original timestamp
+                return typeof message.timestamp === 'string' ? message.timestamp : 'Invalid Date';
+            } else if (error instanceof TimestampParsingError) {
+                this.log('warn', `Timestamp parsing error: ${error.message}`, { 
+                    timestamp: error.timestamp,
+                    originalTimestamp: message.timestamp
+                });
+                // For parsing errors, return the cleaned timestamp string
+                return error.timestamp;
+            } else if (error instanceof TimestampFormattingError) {
+                this.log('warn', `Timestamp formatting error: ${error.message}`, { 
+                    timestamp: error.timestamp,
+                    originalTimestamp: message.timestamp
+                });
+                // For formatting errors, return the parsed but unformatted timestamp
+                return error.timestamp;
+            } else {
+                // Fallback for any other unexpected errors
+                this.log('error', `Unexpected error formatting timestamp: ${error instanceof Error ? error.message : 'Unknown error'}`, { 
+                    timestamp: message.timestamp,
+                    errorType: error instanceof Error ? error.constructor.name : typeof error
+                });
+                return typeof message.timestamp === 'string' ? message.timestamp : 'Invalid Date';
+            }
         }
     }
 

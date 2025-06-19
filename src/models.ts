@@ -11,10 +11,10 @@ import type { SlackReaction } from './types/messages.types';
  */
 export class SlackMessage {
   /**
-   * Username of the message sender. Defaults to "Unknown user".
+   * Username of the message sender. Defaults to "Unknown User".
    * Populated by the parser when a username line is identified.
    */
-  username: string = "Unknown user";
+  username: string = 'Unknown User';
 
   /**
    * The timestamp string, ideally ISO format after parsing, or the original string on failure.

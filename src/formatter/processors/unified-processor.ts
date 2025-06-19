@@ -7,7 +7,7 @@ import { ThreadLinkProcessor } from './thread-link-processor';
 import { AttachmentProcessor } from './attachment-processor';
 import { Logger } from '../../utils/logger';
 import type { SlackFormatSettings } from '../../types/settings.types';
-import type { ParsedMaps } from '../../types/formatters.types';
+import type { ParsedMaps, ProcessorResult } from '../../types/formatters.types';
 
 /**
  * Processing step configuration.
@@ -34,7 +34,7 @@ interface ProcessingStep {
  * 5. Emoji - Replace emoji codes with Unicode
  * 6. Thread links - Highlight thread references
  */
-export class UnifiedProcessor {
+export class UnifiedProcessor extends BaseProcessor<string> {
     private readonly steps: ProcessingStep[];
     // Remove instance logger - use static methods instead
 
@@ -44,8 +44,10 @@ export class UnifiedProcessor {
      * @param {SlackFormatSettings} settings - Plugin settings configuration
      */
     constructor(private settings: SlackFormatSettings) {
+        super();
         // Initialize all processors
         const urlProcessor = new UrlProcessor();
+        const usernameProcessor = new UsernameProcessor();
         const codeBlockProcessor = new CodeBlockProcessor();
         const emojiProcessor = new EmojiProcessor();
         const threadLinkProcessor = new ThreadLinkProcessor();
@@ -115,14 +117,30 @@ export class UnifiedProcessor {
 
     /**
      * Process content through the unified pipeline.
+     * This method is called by the BaseProcessor framework.
+     * @param {string} input - The text to process
+     * @returns {ProcessorResult<string>} Processed result with modification status
+     */
+    process(input: string): ProcessorResult<string> {
+        // For backward compatibility, delegate to the original method
+        const result = this.processWithMaps(input, { userMap: {}, emojiMap: {} }, false);
+        return { content: result, modified: result !== input };
+    }
+
+    /**
+     * Process content through the unified pipeline with maps.
      * Applies each enabled processor in sequence with error handling.
      * @param {string} text - The text to process
      * @param {ParsedMaps} parsedMaps - User and emoji mappings
      * @param {boolean} [debug=false] - Enable debug logging
      * @returns {string} Processed text with all transformations applied
      */
-    process(text: string, parsedMaps: ParsedMaps, debug = false): string {
-        if (!text) return '';
+    processWithMaps(text: string, parsedMaps: ParsedMaps, debug = false): string {
+        // Validate input
+        const validationResult = this.validateStringInput(text);
+        if (validationResult) {
+            return validationResult.content;
+        }
 
         let processed = text;
         const debugInfo: string[] = [];

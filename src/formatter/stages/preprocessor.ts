@@ -2,6 +2,15 @@ import { BaseProcessor } from '../processors/base-processor';
 // Removed imports for cleanSlackText, sanitizeInput
 // import { cleanupDoubledUsernames } from '../../utils/username-utils'; // This was already commented/removed previously, keeping it out.
 import type { ProcessorResult } from '../../types/formatters.types';
+import { duplicateDetectionService } from '../../utils/duplicate-detection-service';
+
+/**
+ * Configuration constants for message pattern detection
+ */
+const MESSAGE_START_PATTERNS = [
+    /^[A-Za-z\s]+\s+\[.+\]\(https?:\/\/.+\)/,  // Username with linked timestamp
+    /^[A-Za-z\s]+\s+\d{1,2}:\d{2}\s*(?:AM|PM)?/  // Username with time
+];
 
 export class PreProcessor extends BaseProcessor<string> {
     private maxLines: number;
@@ -49,6 +58,14 @@ export class PreProcessor extends BaseProcessor<string> {
             sanitized = processedContent.trim();
             if (sanitized !== processedContent) modified = true;
             processedContent = sanitized;
+            
+            // 2.5. Remove duplicate content blocks
+            const deduplicated = duplicateDetectionService.removeDuplicateBlocks(processedContent, MESSAGE_START_PATTERNS);
+            if (deduplicated !== processedContent) {
+                modified = true;
+                processedContent = deduplicated;
+                this.log('info', 'Removed duplicate content blocks');
+            }
 
             // 3. Truncate if exceeds max lines
             const lines = processedContent.split('\n');
@@ -78,4 +95,5 @@ export class PreProcessor extends BaseProcessor<string> {
     updateMaxLines(maxLines: number): void {
         this.maxLines = maxLines;
     }
+    
 }

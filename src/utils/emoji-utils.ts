@@ -194,8 +194,15 @@ function convertSlackEmojiUrl(url: string, emojiName: string | null, emojiMap: R
 export function replaceEmoji(text: string, emojiMap: Record<string, string>): string {
     const mergedMap = { ...DEFAULT_EMOJI_MAP, ...emojiMap };
     
-    // First, handle Slack emoji with image URLs: ![:emoji:](url)
-    let result = text.replace(/!\[:([a-zA-Z0-9_+-]+):\]\(([^)]+)\)/g, (match, emojiName, url) => {
+    // First, fix broken Slack URLs that have spaces
+    let result = text.replace(/https:\/\/slack\s+imgs\.com/gi, 'https://slack-imgs.com');
+    result = result.replace(/https:\/\/([ae])\.slack\s+edge\.com/gi, 'https://$1.slack-edge.com');
+    result = result.replace(/https:\/\/emoji\.slack\s+edge\.com/gi, 'https://emoji.slack-edge.com');
+    result = result.replace(/production\s+standard\s+emoji\s+assets/gi, 'production-standard-emoji-assets');
+    result = result.replace(/apple\s+large/gi, 'apple-large');
+    
+    // Then, handle Slack emoji with image URLs: ![:emoji:](url)
+    result = result.replace(/!\[:([a-zA-Z0-9_+-]+):\]\(([^)]+)\)/g, (match, emojiName, url) => {
         return convertSlackEmojiUrl(url, emojiName, emojiMap);
     });
     

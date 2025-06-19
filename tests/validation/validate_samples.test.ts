@@ -29,7 +29,7 @@ const formatter = new SlackFormatter(settings, userMap, emojiMap);
 // Describe block for Jest
 describe('Slack Formatter Validation Samples', () => {
     if (sampleFiles.length === 0) {
-        test.only('should skip tests because no sample files were found', () => {
+        test.skip('should skip tests because no sample files were found', () => {
             console.warn(`No sample files found in ${samplesDir}. Skipping validation tests.`);
             expect(true).toBe(true); // Dummy assertion to make Jest happy
         });

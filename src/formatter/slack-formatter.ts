@@ -3,13 +3,48 @@ import { ParsedMaps, ThreadStats } from '../types/formatters.types';
 import { SlackFormatSettings } from '../types/settings.types';
 import { SlackMessage } from '../models';
 import { Logger } from '../utils/logger';
+import { duplicateDetectionService } from '../utils/duplicate-detection-service';
+import { validateFormatterOutput } from '../utils/validation-utils';
+
+/**
+ * Configuration constants for debug output formatting and input validation
+ */
+const DEBUG_LINES_LIMIT = 50;
+const MIN_MESSAGE_LENGTH = 10;
+const MIN_TOTAL_LINES = 10;
+
+/**
+ * Performance protection constants
+ */
+const PERFORMANCE_LIMITS = {
+    /** Maximum input size in characters (5MB) */
+    MAX_INPUT_SIZE: 5 * 1024 * 1024,
+    /** Maximum number of lines to process */
+    MAX_LINES: 50000,
+    /** Warn threshold for large inputs (1MB) */
+    WARN_SIZE_THRESHOLD: 1024 * 1024,
+    /** Line count warning threshold */
+    WARN_LINES_THRESHOLD: 10000,
+    /** Chunk size for processing large inputs (100KB) */
+    CHUNK_SIZE: 100 * 1024,
+    /** Maximum processing time per chunk (milliseconds) */
+    MAX_CHUNK_PROCESSING_TIME: 5000,
+    /** Minimum delay between chunks to prevent UI freezing (milliseconds) */
+    CHUNK_DELAY: 10,
+    /** Chunk count threshold for progress reporting */
+    PROGRESS_REPORTING_THRESHOLD: 10,
+    /** Maximum cache size for input + output combined (2MB) */
+    MAX_CACHE_SIZE: 2 * 1024 * 1024
+} as const;
 
 // Import new components
 import { FlexibleMessageParser } from './stages/flexible-message-parser';
+import { IntelligentMessageParser } from './stages/intelligent-message-parser';
 import { ImprovedFormatDetector } from './stages/improved-format-detector';
 import { UnifiedProcessor } from './processors/unified-processor';
 import { PreProcessor } from './stages/preprocessor';
 import { PostProcessor } from './stages/postprocessor';
+import { MessageContinuationProcessor } from './processors/message-continuation-processor';
 
 // Import strategies
 import { StandardFormatStrategy } from './strategies/standard-format-strategy';
@@ -33,6 +68,9 @@ export class SlackFormatter implements ISlackFormatter {
     /** Message parser for extracting structured data from raw text */
     private parser: FlexibleMessageParser;
     
+    /** Intelligent message parser using structural analysis */
+    private intelligentParser: IntelligentMessageParser;
+    
     /** Format detector for identifying Slack export formats */
     private formatDetector: ImprovedFormatDetector;
     
@@ -44,6 +82,9 @@ export class SlackFormatter implements ISlackFormatter {
     
     /** Postprocessor for final cleanup and normalization */
     private postprocessor: PostProcessor;
+    
+    /** Message continuation processor for merging split messages */
+    private continuationProcessor: MessageContinuationProcessor;
     
     /** Map of formatting strategies by format type */
     private strategies: Map<string, BaseFormatStrategy>;
@@ -72,22 +113,24 @@ export class SlackFormatter implements ISlackFormatter {
         userMap: Record<string, string>,
         emojiMap: Record<string, string>
     ) {
-        this.settings = settings;
+        this.settings = settings || {};
         this.parsedMaps = { userMap, emojiMap };
-        this.debugMode = settings.debug || false;
+        this.debugMode = settings?.debug || false;
         
         // Initialize components
         this.parser = new FlexibleMessageParser();
+        this.intelligentParser = new IntelligentMessageParser(this.settings, { userMap, emojiMap });
         this.formatDetector = new ImprovedFormatDetector();
-        this.unifiedProcessor = new UnifiedProcessor(settings);
-        this.preprocessor = new PreProcessor(settings.maxLines);
+        this.unifiedProcessor = new UnifiedProcessor(this.settings);
+        this.preprocessor = new PreProcessor(settings?.maxLines || 1000);
         this.postprocessor = new PostProcessor();
+        this.continuationProcessor = new MessageContinuationProcessor();
         
         // Initialize strategies
         this.strategies = new Map();
-        this.strategies.set('standard', new StandardFormatStrategy(settings, this.parsedMaps));
-        this.strategies.set('bracket', new BracketFormatStrategy(settings, this.parsedMaps));
-        this.strategies.set('mixed', new MixedFormatStrategy(settings, this.parsedMaps));
+        this.strategies.set('standard', new StandardFormatStrategy(this.settings, this.parsedMaps));
+        this.strategies.set('bracket', new BracketFormatStrategy(this.settings, this.parsedMaps));
+        this.strategies.set('mixed', new MixedFormatStrategy(this.settings, this.parsedMaps));
     }
 
     /**
@@ -101,21 +144,172 @@ export class SlackFormatter implements ISlackFormatter {
     }
 
     /**
-     * Main formatting method that processes Slack content through the full pipeline.
-     * Includes caching, error handling, and fallback formatting.
-     * @param {string} input - Raw Slack conversation text
-     * @returns {string} Formatted Markdown content
-     * @throws {Error} Caught internally and handled with fallback formatting
+     * Validates input size to prevent performance issues with extremely large texts.
+     * Provides warnings for large inputs and rejects inputs that exceed safe limits.
+     * @param {string} input - Input text to validate
+     * @returns {string | null} Error message if input is too large, null if valid
+     * @private
      */
-    formatSlackContent(input: string): string {
-        if (!input) return '';
+    private validateInputSize(input: string): string | null {
+        const inputSize = input.length;
+        const lineCount = input.split('\n').length;
         
-        // Check cache
-        if (input === this.lastInput && this.lastOutput !== null) {
-            Logger.debug('SlackFormatter', 'Using cached result');
-            return this.lastOutput;
+        // Check for extremely large inputs that could cause performance issues
+        if (inputSize > PERFORMANCE_LIMITS.MAX_INPUT_SIZE) {
+            const sizeMB = (inputSize / (1024 * 1024)).toFixed(2);
+            const maxMB = (PERFORMANCE_LIMITS.MAX_INPUT_SIZE / (1024 * 1024)).toFixed(2);
+            Logger.error('SlackFormatter', `Input too large: ${sizeMB}MB exceeds maximum of ${maxMB}MB`, {
+                inputSize,
+                maxSize: PERFORMANCE_LIMITS.MAX_INPUT_SIZE
+            });
+            return `❌ **Input too large**: ${sizeMB}MB exceeds maximum limit of ${maxMB}MB.\n\nPlease break the content into smaller chunks or reduce the text size.`;
         }
         
+        // Check for too many lines
+        if (lineCount > PERFORMANCE_LIMITS.MAX_LINES) {
+            Logger.error('SlackFormatter', `Too many lines: ${lineCount} exceeds maximum of ${PERFORMANCE_LIMITS.MAX_LINES}`, {
+                lineCount,
+                maxLines: PERFORMANCE_LIMITS.MAX_LINES
+            });
+            return `❌ **Too many lines**: ${lineCount} lines exceeds maximum limit of ${PERFORMANCE_LIMITS.MAX_LINES}.\n\nPlease reduce the content or split into smaller sections.`;
+        }
+        
+        // Warn for large but acceptable inputs
+        if (inputSize > PERFORMANCE_LIMITS.WARN_SIZE_THRESHOLD) {
+            const sizeMB = (inputSize / (1024 * 1024)).toFixed(2);
+            Logger.warn('SlackFormatter', `Large input detected: ${sizeMB}MB - processing may be slow`, {
+                inputSize,
+                warnThreshold: PERFORMANCE_LIMITS.WARN_SIZE_THRESHOLD
+            });
+        }
+        
+        if (lineCount > PERFORMANCE_LIMITS.WARN_LINES_THRESHOLD) {
+            Logger.warn('SlackFormatter', `Large line count detected: ${lineCount} lines - processing may be slow`, {
+                lineCount,
+                warnThreshold: PERFORMANCE_LIMITS.WARN_LINES_THRESHOLD
+            });
+        }
+        
+        // Input is within acceptable limits
+        return null;
+    }
+
+    /**
+     * FUTURE ENHANCEMENT: Processes large input text in chunks to prevent UI freezing.
+     * 
+     * NOTE: This method is intentionally not called anywhere in the codebase.
+     * It serves as a framework for future implementation when async processing
+     * is needed throughout the formatting pipeline. Currently, the formatter
+     * operates synchronously, but this method demonstrates how chunked processing
+     * could be implemented to handle very large inputs without blocking the UI.
+     * 
+     * Uses memory-efficient streaming approach to avoid storing all results in memory.
+     * @param {string} input - Large input text to process in chunks
+     * @returns {Promise<string>} Formatted content from all processed chunks
+     * @private
+     * @unused This is placeholder code for future enhancement
+     */
+    private async processInChunks(input: string): Promise<string> {
+        // NOTE: This is a conceptual framework for future implementation
+        // It would require async/await support throughout the formatting pipeline
+        
+        try {
+            const chunks: string[] = [];
+            
+            // Split input into manageable chunks by line boundaries
+            let currentChunk = '';
+            const lines = input.split('\n');
+            
+            for (const line of lines) {
+                if (currentChunk.length + line.length > PERFORMANCE_LIMITS.CHUNK_SIZE) {
+                    if (currentChunk) {
+                        chunks.push(currentChunk);
+                        currentChunk = '';
+                    }
+                }
+                currentChunk += (currentChunk ? '\n' : '') + line;
+            }
+            
+            if (currentChunk) {
+                chunks.push(currentChunk);
+            }
+            
+            Logger.info('SlackFormatter', `Processing ${chunks.length} chunks for large input`, {
+                inputSize: input.length,
+                chunkCount: chunks.length,
+                avgChunkSize: Math.round(input.length / chunks.length)
+            });
+            
+            // Memory-efficient streaming approach: process chunks one at a time
+            // and build result incrementally to avoid storing all chunks in memory
+            let result = '';
+            
+            // Process each chunk with rate limiting
+            for (let i = 0; i < chunks.length; i++) {
+                const chunk = chunks[i];
+                const startTime = Date.now();
+                
+                try {
+                    // Process chunk using internal pipeline to avoid infinite recursion
+                    const chunkResult = this.formatSlackContentInternal(chunk);
+                    
+                    // Append to result immediately instead of storing in array
+                    if (result) {
+                        result += '\n\n---\n\n';
+                    }
+                    result += chunkResult;
+                    
+                    const processingTime = Date.now() - startTime;
+                    
+                    // Add delay if processing was too fast to prevent UI blocking
+                    if (processingTime < PERFORMANCE_LIMITS.CHUNK_DELAY && i < chunks.length - 1) {
+                        await new Promise(resolve => setTimeout(resolve, PERFORMANCE_LIMITS.CHUNK_DELAY));
+                    }
+                    
+                    // Report progress for large operations
+                    if (chunks.length > PERFORMANCE_LIMITS.PROGRESS_REPORTING_THRESHOLD) {
+                        Logger.debug('SlackFormatter', `Processed chunk ${i + 1}/${chunks.length} (${processingTime}ms)`, {
+                            progress: Math.round(((i + 1) / chunks.length) * 100)
+                        });
+                    }
+                    
+                } catch (chunkError) {
+                    Logger.error('SlackFormatter', `Error processing chunk ${i + 1}/${chunks.length}`, {
+                        chunkIndex: i,
+                        chunkSize: chunk.length,
+                        error: chunkError instanceof Error ? chunkError.message : 'Unknown error'
+                    });
+                    
+                    // Add fallback result for failed chunk directly to result
+                    if (result) {
+                        result += '\n\n---\n\n';
+                    }
+                    result += `<!-- Chunk ${i + 1} failed to process: ${chunkError instanceof Error ? chunkError.message : 'Unknown error'} -->\n\n${chunk}`;
+                }
+            }
+            
+            return result;
+            
+        } catch (error) {
+            Logger.error('SlackFormatter', 'Critical error in processInChunks', {
+                inputSize: input.length,
+                error: error instanceof Error ? error.message : 'Unknown error'
+            });
+            
+            // Fallback to non-chunked processing
+            Logger.info('SlackFormatter', 'Falling back to non-chunked processing due to error');
+            return this.formatSlackContentInternal(input);
+        }
+    }
+
+    /**
+     * Internal formatting method that processes content without input size validation or chunking.
+     * Used by processInChunks to avoid infinite recursion.
+     * @param {string} input - Raw Slack conversation text (pre-validated)
+     * @returns {string} Formatted Markdown content
+     * @private
+     */
+    private formatSlackContentInternal(input: string): string {
         try {
             const startTime = Date.now();
             const debugInfo: string[] = [];
@@ -123,22 +317,44 @@ export class SlackFormatter implements ISlackFormatter {
             // 1. Preprocessing
             const preprocessed = this.preprocessor.process(input);
             if (preprocessed.modified) {
-                debugInfo.push(`Preprocessed: truncated to ${this.settings.maxLines} lines`);
+                debugInfo.push(`Preprocessed: truncated to ${this.settings?.maxLines || 1000} lines`);
             }
             
             // 2. Format detection
             const formatType = this.formatDetector.detectFormat(preprocessed.content);
             debugInfo.push(`Detected format: ${formatType}`);
             
-            // 3. Parse messages
-            const messages = this.parser.parse(preprocessed.content, this.debugMode);
-            debugInfo.push(`Parsed ${messages.length} messages`);
+            // 3. Parse messages with intelligent parser as primary
+            let messages = this.intelligentParser.parse(preprocessed.content, this.debugMode);
+            let parsingMethod = 'intelligent';
+            
+            // Use flexible parser as fallback if intelligent parser produces poor results
+            if (this.shouldUseFallbackParser(messages, preprocessed.content)) {
+                messages = this.parser.parse(preprocessed.content, this.debugMode);
+                parsingMethod = 'flexible-fallback';
+                debugInfo.push(`Switched to flexible parser as fallback`);
+            }
+            
+            // Remove duplicate messages that might occur from malformed input
+            messages = duplicateDetectionService.deduplicateMessages(messages, this.debugMode);
+            
+            // Merge continuation messages (Unknown User with timestamps)
+            const beforeMergeCount = messages.length;
+            const continuationResult = this.continuationProcessor.process(messages);
+            messages = continuationResult.content;
+            const afterMergeCount = messages.length;
+            
+            if (continuationResult.modified && beforeMergeCount !== afterMergeCount) {
+                debugInfo.push(`Merged ${beforeMergeCount - afterMergeCount} continuation messages`);
+            }
+            
+            debugInfo.push(`Parsed ${messages.length} messages (${parsingMethod})`);
             
             // 4. Process message content
             const processedMessages = messages.map(msg => {
                 const processed = { ...msg };
                 if (processed.text) {
-                    processed.text = this.unifiedProcessor.process(
+                    processed.text = this.unifiedProcessor.processWithMaps(
                         processed.text,
                         this.parsedMaps,
                         this.debugMode
@@ -163,20 +379,85 @@ export class SlackFormatter implements ISlackFormatter {
                 formatted = this.addDebugInfo(formatted, debugInfo, messages);
             }
             
-            // Calculate stats
-            const endTime = Date.now();
-            this.lastStats = this.calculateStats(messages, formatType, endTime - startTime);
+            // Validate output before returning
+            const validation = validateFormatterOutput(processedMessages);
+            if (!validation.isValid) {
+                Logger.warn('SlackFormatter', 'Validation issues found in output', {
+                    unknownUsers: validation.unknownUsers.unknownUserCount,
+                    structureIssues: validation.structure.issues.length
+                });
+                
+                if (this.debugMode) {
+                    // Add validation warnings to debug info
+                    const validationWarnings = [
+                        ...validation.unknownUsers.issues,
+                        ...validation.structure.issues
+                    ];
+                    if (validationWarnings.length > 0) {
+                        formatted += '\n\n### ⚠️ Validation Warnings\n';
+                        formatted += validationWarnings.map(w => `- ${w}`).join('\n');
+                    }
+                }
+            }
             
-            // Update cache
-            this.lastInput = input;
-            this.lastOutput = formatted;
+            // Calculate stats (but don't update global state for chunks)
+            const endTime = Date.now();
+            const stats = this.calculateStats(processedMessages, formatType, endTime - startTime);
             
             return formatted;
             
         } catch (error) {
-            Logger.error('SlackFormatter', 'Error formatting content', error);
+            Logger.error('SlackFormatter', 'Error formatting content (internal)', {
+                message: error instanceof Error ? error.message : String(error),
+                stack: error instanceof Error ? error.stack : undefined
+            });
             
             // Fallback formatting
+            return this.fallbackFormat(input, error);
+        }
+    }
+
+    /**
+     * Main formatting method that processes Slack content through the full pipeline.
+     * Includes caching, error handling, and input size validation.
+     * @param {string} input - Raw Slack conversation text
+     * @returns {string} Formatted Markdown content
+     * @throws {Error} Caught internally and handled with fallback formatting
+     */
+    formatSlackContent(input: string): string {
+        if (!input) return '';
+        
+        // Validate input size for performance protection
+        const validationResult = this.validateInputSize(input);
+        if (validationResult !== null) {
+            return validationResult;
+        }
+        
+        // Check cache
+        if (input === this.lastInput && this.lastOutput !== null) {
+            Logger.debug('SlackFormatter', 'Using cached result');
+            return this.lastOutput;
+        }
+        
+        // Clear any previous output to prevent duplication
+        this.lastOutput = null;
+        
+        try {
+            // Use internal method for actual processing
+            const formatted = this.formatSlackContentInternal(input);
+            
+            // Update cache with size management
+            this.updateCache(input, formatted);
+            
+            return formatted;
+            
+        } catch (error) {
+            Logger.error('SlackFormatter', 'Error in formatSlackContent', error);
+            
+            // Clear cache to prevent returning partial/invalid results
+            this.lastInput = null;
+            this.lastOutput = null;
+            
             return this.fallbackFormat(input, error);
         }
     }
@@ -225,6 +506,35 @@ export class SlackFormatter implements ISlackFormatter {
     }
 
     /**
+     * Update cache with size management to prevent memory issues.
+     * Clears cache if combined size exceeds the limit.
+     * @private
+     * @param {string} input - The input string to cache
+     * @param {string} output - The output string to cache
+     * @returns {void}
+     */
+    private updateCache(input: string, output: string): void {
+        // Calculate combined size of new cache entries
+        const cacheSize = input.length + output.length;
+        
+        // Clear cache if it would exceed the limit
+        if (cacheSize > PERFORMANCE_LIMITS.MAX_CACHE_SIZE) {
+            Logger.info('SlackFormatter', 'Cache size would exceed limit, not caching', {
+                inputSize: input.length,
+                outputSize: output.length,
+                limit: PERFORMANCE_LIMITS.MAX_CACHE_SIZE
+            });
+            this.lastInput = null;
+            this.lastOutput = null;
+            return;
+        }
+        
+        // Update cache
+        this.lastInput = input;
+        this.lastOutput = output;
+    }
+
+    /**
      * Update formatter settings and parsed maps.
      * Propagates changes to all components and clears the cache.
      * @param {SlackFormatSettings} settings - New settings configuration
@@ -234,11 +544,17 @@ export class SlackFormatter implements ISlackFormatter {
     updateSettings(settings: SlackFormatSettings, parsedMaps: ParsedMaps): void {
         this.settings = settings;
         this.parsedMaps = parsedMaps;
-        this.debugMode = settings.debug || false;
+        this.debugMode = settings?.debug || false;
         
         // Update components
         this.unifiedProcessor.updateSettings(settings);
-        this.preprocessor.updateMaxLines(settings.maxLines);
+        this.preprocessor.updateMaxLines(settings?.maxLines || 1000);
+        
+        // Update parsers with new settings
+        // FlexibleMessageParser is stateless, so recreate it
+        this.parser = new FlexibleMessageParser();
+        // IntelligentMessageParser has updateSettings method
+        this.intelligentParser.updateSettings(settings, parsedMaps);
         
         // Update strategies
         this.strategies.forEach(strategy => {
@@ -314,9 +630,9 @@ export class SlackFormatter implements ISlackFormatter {
         
         if (unparsedLines.length > 0) {
             debugSection.push('```');
-            debugSection.push(...unparsedLines.slice(0, 50)); // Limit to 50 lines
-            if (unparsedLines.length > 50) {
-                debugSection.push(`... and ${unparsedLines.length - 50} more lines`);
+            debugSection.push(...unparsedLines.slice(0, DEBUG_LINES_LIMIT)); // Limit to DEBUG_LINES_LIMIT lines
+            if (unparsedLines.length > DEBUG_LINES_LIMIT) {
+                debugSection.push(`... and ${unparsedLines.length - DEBUG_LINES_LIMIT} more lines`);
             }
             debugSection.push('```');
         } else {
@@ -380,5 +696,54 @@ export class SlackFormatter implements ISlackFormatter {
         };
         
         return output.join('\n');
+    }
+
+    /**
+     * Determine whether to use the flexible parser as fallback instead of the intelligent parser.
+     * Analyzes the quality of parsing results to decide if fallback is needed.
+     * @private
+     * @param {SlackMessage[]} messages - Messages parsed by intelligent parser
+     * @param {string} content - Original content
+     * @returns {boolean} True if flexible parser should be used as fallback
+     */
+    private shouldUseFallbackParser(messages: SlackMessage[], content: string): boolean {
+        // Count lines in original content (excluding empty lines)
+        const totalLines = content.split('\n').filter(line => line.trim()).length;
+        
+        // If no messages were parsed, try flexible parser as fallback
+        if (messages.length === 0) {
+            return true;
+        }
+        
+        // Check for obviously bad parsing results
+        const badIndicators = [
+            // Too many very short messages (likely fragmented)
+            messages.filter(m => m.text && m.text.length < MIN_MESSAGE_LENGTH).length / messages.length > 0.5,
+            
+            // Messages with single-character usernames (likely misidentified)
+            messages.filter(m => m.username && m.username.length <= 2).length > 0,
+            
+            // Messages with obviously wrong usernames (numbers, metadata)
+            messages.filter(m => m.username && /^\d+$|^(Language|TypeScript|Last updated)$/i.test(m.username)).length > 0,
+            
+            // Too many messages relative to content (over-fragmentation)
+            totalLines > MIN_TOTAL_LINES && messages.length > totalLines * 0.8,
+            
+            // Messages with no content (empty messages shouldn't be created)
+            messages.filter(m => !m.text || m.text.trim() === '').length > 0
+        ];
+        
+        // Use flexible parser fallback if any bad indicators are present
+        const shouldSwitch = badIndicators.some(indicator => indicator);
+        
+        if (this.debugMode && shouldSwitch) {
+            Logger.debug('SlackFormatter', 'Switching to flexible parser due to poor intelligent parser results', {
+                messageCount: messages.length,
+                totalLines,
+                badIndicators: badIndicators.map((indicator, i) => ({ index: i, active: indicator }))
+            }, true);
+        }
+        
+        return shouldSwitch;
     }
 }

@@ -54,6 +54,11 @@ export function isValidJson(str: string): boolean {
         JSON.parse(str);
         return true;
     } catch (e) {
+        // Log the error in debug mode for troubleshooting
+        Logger.debug('json-utils', 'Invalid JSON detected', { 
+            error: e instanceof Error ? e.message : String(e),
+            input: str.length > 100 ? str.substring(0, 100) + '...' : str
+        });
         return false;
     }
 }

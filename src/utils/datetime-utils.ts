@@ -28,14 +28,14 @@ export function parseDate(dateStr: string): Date | null {
 
     // Try YYYY-MM-DD format first
     const ymdMatch = cleanedDateStr.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
-    if (ymdMatch) {
+    if (ymdMatch && ymdMatch[1] && ymdMatch[2] && ymdMatch[3]) {
         year = parseInt(ymdMatch[1], 10);
         monthIndex = parseInt(ymdMatch[2], 10) - 1; // Adjust month to 0-index
         day = parseInt(ymdMatch[3], 10);
     } else {
         // Try Month Day, Year or Month Day formats
         const yearMatch = cleanedDateStr.match(/,\s*(\d{4})$/);
-        if (yearMatch) {
+        if (yearMatch && yearMatch[1]) {
             year = parseInt(yearMatch[1], 10);
         } else {
             // Assume current year if no year is specified
@@ -44,7 +44,7 @@ export function parseDate(dateStr: string): Date | null {
 
         // Extract month and day
         const monthDayMatch = cleanedDateStr.match(MONTH_DAY_REGEX);
-        if (monthDayMatch) {
+        if (monthDayMatch && monthDayMatch[1] && monthDayMatch[2]) {
             const monthName = monthDayMatch[1]?.toLowerCase();
             if (monthName && MONTHS.hasOwnProperty(monthName)) {
                 monthIndex = MONTHS[monthName];
@@ -126,7 +126,7 @@ export function formatDateWithZone(date: Date, timeZone?: string): string {
 function _parseTimePart(timeStr: string): { hours: number; minutes: number } | null {
     // Regex: Matches H:MM, HH:MM, H:MM:SS, HH:MM:SS with optional space and AM/PM. Anchored to start/end.
     const timeMatch = timeStr.match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*([AP]M)$/i); // Requires AM/PM
-    if (timeMatch) {
+    if (timeMatch && timeMatch[1] && timeMatch[2] && timeMatch[3]) {
         let hours = parseInt(timeMatch[1], 10);
         const minutes = parseInt(timeMatch[2], 10);
         const ampm = timeMatch[3].toUpperCase();
@@ -173,7 +173,7 @@ function _determineBaseDateAndTimeStr(ts: string, contextDate?: Date | null): { 
     // Handle Explicit Dates (e.g., "Feb 6th at 7:47 PM", "Mar 10, 2024 at ...")
     // Regex captures: 1=Month+Day(+Ordinal), 2=Year (optional), 3=Time part (optional)
     const dateMatch = timeStr.match(/^(\w+\s+\d+(?:st|nd|rd|th)?)(?:,\s*(\d{4}))?(?:\s+at\s+(.*))?/i);
-    if (dateMatch) {
+    if (dateMatch && dateMatch[1]) {
         const potentialDatePart = dateMatch[1]; // e.g., "Feb 6th"
         const yearStr = dateMatch[2]; // e.g., "2024" or undefined
         const possibleTimePart = dateMatch[3]; // e.g., "7:47 PM" or undefined
@@ -239,7 +239,7 @@ export function parseSlackTimestamp(ts: string, contextDate?: Date | null): Date
 
     // Handle "Today at Time" format
     const todayMatch = cleaned.match(/^Today\s+at\s+(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
-    if (todayMatch) {
+    if (todayMatch && todayMatch[1] && todayMatch[2]) {
         const hours = parseInt(todayMatch[1], 10);
         const minutes = parseInt(todayMatch[2], 10);
         const isPM = todayMatch[3]?.toUpperCase() === 'PM';
@@ -258,7 +258,7 @@ export function parseSlackTimestamp(ts: string, contextDate?: Date | null): Date
 
     // Handle "Yesterday at Time" format
     const yesterdayMatch = cleaned.match(/^Yesterday\s+at\s+(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
-    if (yesterdayMatch) {
+    if (yesterdayMatch && yesterdayMatch[1] && yesterdayMatch[2]) {
         const hours = parseInt(yesterdayMatch[1], 10);
         const minutes = parseInt(yesterdayMatch[2], 10);
         const isPM = yesterdayMatch[3]?.toUpperCase() === 'PM';
@@ -277,7 +277,7 @@ export function parseSlackTimestamp(ts: string, contextDate?: Date | null): Date
 
     // Handle day of week formats (e.g., "Wednesday at 8:19 PM", "Monday")
     const dayOfWeekMatch = cleaned.match(/^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)(?:\s+at\s+(\d{1,2}):(\d{2})\s*(AM|PM)?)?$/i);
-    if (dayOfWeekMatch) {
+    if (dayOfWeekMatch && dayOfWeekMatch[1]) {
         const targetDay = dayOfWeekMatch[1];
         const hours = dayOfWeekMatch[2] ? parseInt(dayOfWeekMatch[2], 10) : 0;
         const minutes = dayOfWeekMatch[3] ? parseInt(dayOfWeekMatch[3], 10) : 0;
@@ -309,7 +309,7 @@ export function parseSlackTimestamp(ts: string, contextDate?: Date | null): Date
 
     // Handle time-only format (e.g., "10:30 AM", "2:45 PM", "14:30")
     const timeOnlyMatch = cleaned.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
-    if (timeOnlyMatch) {
+    if (timeOnlyMatch && timeOnlyMatch[1] && timeOnlyMatch[2]) {
         const baseDate = contextDate || today;
         const hours = parseInt(timeOnlyMatch[1], 10);
         const minutes = parseInt(timeOnlyMatch[2], 10);
@@ -329,7 +329,7 @@ export function parseSlackTimestamp(ts: string, contextDate?: Date | null): Date
 
     // Handle "Month Day at Time" format (e.g., "Feb 6th at 7:47 PM", "Feb 25th at 10:39 AM")
     const monthDayTimeMatch = cleaned.match(/^(\w+)\s+(\d{1,2})(?:st|nd|rd|th)?\s+at\s+(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
-    if (monthDayTimeMatch) {
+    if (monthDayTimeMatch && monthDayTimeMatch[1] && monthDayTimeMatch[2] && monthDayTimeMatch[3] && monthDayTimeMatch[4] && monthDayTimeMatch[5]) {
         const monthStr = monthDayTimeMatch[1];
         const day = parseInt(monthDayTimeMatch[2], 10);
         const hours = parseInt(monthDayTimeMatch[3], 10);
@@ -350,7 +350,7 @@ export function parseSlackTimestamp(ts: string, contextDate?: Date | null): Date
 
     // Handle "Month Day" format without time (e.g., "Jan 15th", "December 25")
     const monthDayMatch = cleaned.match(/^(\w+)\s+(\d{1,2})(?:st|nd|rd|th)?$/i);
-    if (monthDayMatch) {
+    if (monthDayMatch && monthDayMatch[1] && monthDayMatch[2]) {
         const monthStr = monthDayMatch[1];
         const day = parseInt(monthDayMatch[2], 10);
         const year = contextDate ? contextDate.getFullYear() : new Date().getFullYear();
@@ -363,13 +363,13 @@ export function parseSlackTimestamp(ts: string, contextDate?: Date | null): Date
 
     // Handle linked timestamp format by extracting the visible text
     const linkedMatch = cleaned.match(/^\[([^\]]+)\]\(https?:\/\/[^\)]+\)$/i);
-    if (linkedMatch) {
+    if (linkedMatch && linkedMatch[1]) {
         return parseSlackTimestamp(linkedMatch[1], contextDate);
     }
 
     // Handle time with seconds (e.g., "10:30:45 AM")
     const timeWithSecondsMatch = cleaned.match(/^(\d{1,2}):(\d{2}):(\d{2})\s*(AM|PM)?$/i);
-    if (timeWithSecondsMatch) {
+    if (timeWithSecondsMatch && timeWithSecondsMatch[1] && timeWithSecondsMatch[2] && timeWithSecondsMatch[3]) {
         const baseDate = contextDate || today;
         const hours = parseInt(timeWithSecondsMatch[1], 10);
         const minutes = parseInt(timeWithSecondsMatch[2], 10);

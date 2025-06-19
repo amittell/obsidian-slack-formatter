@@ -33,5 +33,5 @@ export const DEFAULT_SETTINGS: SlackFormatSettings = {
   frontmatterCssClass: 'slack-conversation',
   frontmatterTitle: '# Slack Conversation',
   timeZone: '',
-  debug: true
+  debug: false
 };

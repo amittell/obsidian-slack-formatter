@@ -30,6 +30,12 @@ export class UrlProcessor extends BaseProcessor<string> {
    * @returns {ProcessorResult} Processed content with Markdown-formatted URLs
    */
   process(line: string): ProcessorResult {
+    // Validate input
+    const validationResult = this.validateStringInput(line);
+    if (validationResult) {
+      return validationResult;
+    }
+
     try {
       // Call the utility function
       const withUrls = formatSlackUrlSyntax(line);

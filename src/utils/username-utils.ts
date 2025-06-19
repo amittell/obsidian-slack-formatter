@@ -5,6 +5,7 @@
  * @module username-utils
  */
 import { Logger } from './logger';
+import { removeAllEmoji } from './emoji-utils';
 
 /**
  * Replace Slack user mentions with wiki links.
@@ -160,18 +161,43 @@ export function cleanupDoubledUsernames(text: string): string {
  */
 export function formatUsername(username: string): string {
     try {
+        // Handle empty string input - return as-is
+        if (!username || username.trim().length === 0) {
+            return username;
+        }
+        
+        // First, clean up doubled usernames
+        let cleaned = cleanupDoubledUsernames(username);
+        
+        // Remove all emojis (including custom Slack emoji images, codes, and Unicode)
+        cleaned = removeAllEmoji(cleaned);
+        
+        // Remove URLs (both markdown and plain)
+        cleaned = cleaned.replace(/!\[.*?\]\(.*?\)/g, ''); // Remove image links
+        cleaned = cleaned.replace(/\[.*?\]\(.*?\)/g, ''); // Remove markdown links
+        cleaned = cleaned.replace(/https?:\/\/[^\s]+/g, ''); // Remove plain URLs
+        
+        // Remove any remaining URL artifacts or special characters
+        cleaned = cleaned.replace(/[<>]/g, ''); // Remove angle brackets
+        cleaned = cleaned.replace(/\|/g, ' '); // Replace pipes with spaces
+        
+        // Remove trailing punctuation
+        cleaned = cleaned.replace(/[.,;:!?]+$/, '');
+        
         // Clean and trim
-        const trimmed = username.trim().replace(/^[_\s-]+|[_\s-]+$/g, '');
-        if (!trimmed) return '';
+        cleaned = cleaned.trim().replace(/^[_\s-]+|[_\s-]+$/g, '');
+        
+        // If cleaning removed everything from a non-empty input, return fallback
+        if (!cleaned) return 'Unknown User';
         
         // Preserve camelCase and existing capitalization patterns
-        if (/[a-z][A-Z]/.test(trimmed)) {
+        if (/[a-z][A-Z]/.test(cleaned)) {
             // Has camelCase, just clean it up
-            return trimmed.replace(/[_-]+/g, ' ');
+            return cleaned.replace(/[_-]+/g, ' ').trim();
         }
         
         // Otherwise apply title casing
-        return trimmed
+        return cleaned
             .split(/[_\s-]+/)
             .filter(part => part.length > 0)
             .map((part, index) => {

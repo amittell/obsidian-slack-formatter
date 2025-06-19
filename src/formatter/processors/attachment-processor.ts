@@ -40,6 +40,12 @@ export class AttachmentProcessor extends BaseProcessor<string> {
      * Process attachment-related content
      */
     process(text: string): ProcessorResult<string> {
+        // Validate input
+        const validationResult = this.validateStringInput(text);
+        if (validationResult) {
+            return validationResult;
+        }
+
         try {
             let processed = text;
             let modified = false;

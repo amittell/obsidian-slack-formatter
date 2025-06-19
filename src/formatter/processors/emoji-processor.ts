@@ -34,6 +34,12 @@ export class EmojiProcessor extends BaseProcessor<string> {
    * @returns {ProcessorResult} Processed content and modification flag
    */
   process(line: string): ProcessorResult {
+    // Validate input
+    const validationResult = this.validateStringInput(line);
+    if (validationResult) {
+      return validationResult;
+    }
+
     try {
       const processed = replaceEmoji(line, this.emojiMap);
       const modified = processed !== line;
