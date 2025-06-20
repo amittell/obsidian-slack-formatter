@@ -129,7 +129,7 @@ function extractEmojiCodepointFromUrl(url: string): string | null {
     // https://a.slack-edge.com/production-standard-emoji-assets/14.0/apple-large/26d4.png
     // https://a.slack-edge.com/production-standard-emoji-assets/14.0/apple-small/1f64f@2x.png
     const match = url.match(/production-standard-emoji-assets\/[\d.]+\/[^/]+\/([a-f0-9-]+)(?:@\d+x)?\.png/);
-    return match ? match[1] : null;
+    return match && match[1] ? match[1] : null;
 }
 
 /**
@@ -316,7 +316,7 @@ export function extractEmojiCodes(text: string): string[] {
     if (customMatches) {
         customMatches.forEach(match => {
             const codeMatch = match.match(/!\[:([a-zA-Z0-9_+-]+):\]/);
-            if (codeMatch) codes.push(codeMatch[1]);
+            if (codeMatch && codeMatch[1]) codes.push(codeMatch[1]);
         });
     }
     
@@ -325,7 +325,7 @@ export function extractEmojiCodes(text: string): string[] {
     if (brokenImageMatches) {
         brokenImageMatches.forEach(match => {
             const nameMatch = match.match(/\/([a-zA-Z0-9_+-]+)\/[^)]+\)$/);
-            if (nameMatch) codes.push(nameMatch[1]);
+            if (nameMatch && nameMatch[1]) codes.push(nameMatch[1]);
         });
     }
     
