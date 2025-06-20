@@ -284,7 +284,7 @@ export abstract class BaseFormatStrategy implements FormatStrategy {
                 // First, check if it's a linked timestamp format and extract the timestamp part
                 try {
                     const linkedTimestampMatch = message.timestamp.match(/\[([^\]]+)\]\(https?:\/\/[^)]+\)/);
-                    timestampToFormat = (linkedTimestampMatch && linkedTimestampMatch[1]) ? linkedTimestampMatch[1] : message.timestamp;
+                    timestampToFormat = (linkedTimestampMatch?.[1]) ? linkedTimestampMatch[1] : message.timestamp;
                 } catch (regexError) {
                     throw new RegexError(
                         'Failed to extract timestamp from linked format',
