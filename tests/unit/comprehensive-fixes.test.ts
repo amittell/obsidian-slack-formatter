@@ -148,7 +148,7 @@ Zoom Call
 All of these should be content, not separate messages.`;
 
         const parser = new IntelligentMessageParser();
-        const messages = parser.parse(input, true); // Enable debug to see what's happening
+        const messages = parser.parse(input);
         
         console.log('\n=== FALSE POSITIVES TEST OUTPUT ===');
         console.log('Number of messages:', messages.length);

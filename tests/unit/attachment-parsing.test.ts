@@ -18,7 +18,7 @@ Google Doc
 The part im missing is customer validation - are you guys able to help me out with some customer demand that I can list for these connectors?`;
 
         const parser = new IntelligentMessageParser();
-        const messages = parser.parse(input, true); // Enable debug
+        const messages = parser.parse(input);
         
         console.log('\n=== ATTACHMENT PARSING TEST ===');
         console.log('Number of messages:', messages.length);
