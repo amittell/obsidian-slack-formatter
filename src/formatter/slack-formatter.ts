@@ -45,6 +45,10 @@ import { UnifiedProcessor } from './processors/unified-processor';
 import { PreProcessor } from './stages/preprocessor';
 import { PostProcessor } from './stages/postprocessor';
 import { MessageContinuationProcessor } from './processors/message-continuation-processor';
+import { EmbeddedMessageDetector } from './processors/embedded-message-detector';
+import { ContentDeduplicationProcessor } from './processors/content-deduplication-processor';
+import { MessageStructureValidator } from './validators/message-structure-validator';
+import { OutputFormattingStandards } from './standards/output-formatting-standards';
 
 // Import strategies
 import { StandardFormatStrategy } from './strategies/standard-format-strategy';
@@ -86,6 +90,18 @@ export class SlackFormatter implements ISlackFormatter {
     /** Message continuation processor for merging split messages */
     private continuationProcessor: MessageContinuationProcessor;
     
+    /** Embedded message detector for identifying embedded content */
+    private embeddedDetector: EmbeddedMessageDetector;
+    
+    /** Content deduplication processor for removing duplicate content */
+    private deduplicationProcessor: ContentDeduplicationProcessor;
+    
+    /** Message structure validator for integrity checks */
+    private structureValidator: MessageStructureValidator;
+    
+    /** Output formatting standards processor for consistent formatting */
+    private formattingStandards: OutputFormattingStandards;
+    
     /** Map of formatting strategies by format type */
     private strategies: Map<string, BaseFormatStrategy>;
     
@@ -125,6 +141,12 @@ export class SlackFormatter implements ISlackFormatter {
         this.preprocessor = new PreProcessor(settings?.maxLines || 1000);
         this.postprocessor = new PostProcessor();
         this.continuationProcessor = new MessageContinuationProcessor();
+        
+        // Initialize message structure and deduplication components
+        this.embeddedDetector = new EmbeddedMessageDetector(this.debugMode);
+        this.deduplicationProcessor = new ContentDeduplicationProcessor(this.debugMode);
+        this.structureValidator = new MessageStructureValidator(this.debugMode);
+        this.formattingStandards = new OutputFormattingStandards(this.settings);
         
         // Initialize strategies
         this.strategies = new Map();
@@ -355,7 +377,22 @@ export class SlackFormatter implements ISlackFormatter {
                 debugInfo.push(`Merged ${beforeMergeCount - afterMergeCount} continuation messages`);
             }
             
-            debugInfo.push(`Parsed ${messages.length} messages (${parsingMethod})`);
+            // Apply content deduplication (embedded content removal)
+            const deduplicationResult = this.deduplicationProcessor.process(messages);
+            messages = deduplicationResult.messages;
+            
+            if (deduplicationResult.removedDuplicates > 0) {
+                debugInfo.push(`Removed ${deduplicationResult.removedDuplicates} duplicate content blocks`);
+            }
+            
+            // Validate message structure integrity
+            const validationResult = this.structureValidator.validate(messages);
+            if (!validationResult.isValid) {
+                const errorCount = validationResult.issues.filter(i => i.severity === 'error').length;
+                debugInfo.push(`Structure validation: ${errorCount} errors, score: ${validationResult.score}/100`);
+            }
+            
+            debugInfo.push(`Processed ${messages.length} messages (${parsingMethod})`);
             
             // 4. Process message content
             const processedMessages = messages.map(msg => {
@@ -370,9 +407,17 @@ export class SlackFormatter implements ISlackFormatter {
                 return processed;
             });
             
-            // 5. Apply formatting strategy
+            // 5. Apply formatting standards and strategy
+            this.formattingStandards.updateContext({ 
+                settings: this.settings,
+                standardType: this.getFormattingStandardType(formatType)
+            });
+            
             const strategy = this.strategies.get(formatType) || this.strategies.get('standard')!;
             let formatted = strategy.formatToMarkdown(processedMessages);
+            
+            // Note: Removed OutputFormattingStandards override that was breaking callout format
+            // The strategies already handle proper formatting with > [!slack]+ Message from format
             
             // 6. Postprocessing
             const postprocessed = this.postprocessor.process(formatted);
@@ -565,6 +610,12 @@ export class SlackFormatter implements ISlackFormatter {
         this.intelligentParser.updateSettings(settings, parsedMaps);
         // Note: Format detection will be performed during actual parsing to ensure context-aware parsing
         
+        // Update message structure and deduplication components
+        this.embeddedDetector = new EmbeddedMessageDetector(this.debugMode);
+        this.deduplicationProcessor = new ContentDeduplicationProcessor(this.debugMode);
+        this.structureValidator = new MessageStructureValidator(this.debugMode);
+        this.formattingStandards = new OutputFormattingStandards(settings);
+        
         // Update strategies
         this.strategies.forEach(strategy => {
             strategy.updateSettings(settings, parsedMaps);
@@ -754,5 +805,32 @@ export class SlackFormatter implements ISlackFormatter {
         }
         
         return shouldSwitch;
+    }
+
+    /**
+     * Determine the appropriate formatting standard type based on detected format
+     * @private
+     * @param {string} formatType - The detected format type
+     * @returns {string} The formatting standard type to use
+     */
+    private getFormattingStandardType(formatType: string): 'CONVERSATION' | 'COMPACT' | 'DETAILED' {
+        // Use settings preference if available
+        if (this.settings.formattingStyle) {
+            switch (this.settings.formattingStyle.toLowerCase()) {
+                case 'compact': return 'COMPACT';
+                case 'detailed': return 'DETAILED';
+                default: return 'CONVERSATION';
+            }
+        }
+        
+        // Default based on format type
+        switch (formatType) {
+            case 'dm':
+                return 'COMPACT';
+            case 'thread':
+                return 'DETAILED';
+            default:
+                return 'CONVERSATION';
+        }
     }
 }
