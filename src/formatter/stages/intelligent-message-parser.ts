@@ -444,6 +444,20 @@ export class IntelligentMessageParser {
             return false;
         }
         
+        // Check if this line is clearly content, not a username/message start
+        // This prevents specific problematic content lines from being treated as message boundaries
+        const text = line.trimmed;
+        const clearContentPatterns = [
+            /^If the monologue/i,  // Specific problematic content from the bug report
+            /^[a-z]/,  // Lines starting with lowercase (usually content, not usernames)
+            /≥|≤|>/,  // Mathematical/comparison symbols (clearly content)
+            /^[0-9]+\./,  // Numbered lists (1., 2., etc.)
+        ];
+        
+        if (clearContentPatterns.some(pattern => this.safeRegexTest(pattern, text))) {
+            return false;
+        }
+        
         // Check if this is a standalone timestamp (likely a continuation)
         const standaloneTimestampPatterns = [
             /^\[\d{1,2}:\d{2}(?:\s*(?:AM|PM))?\]\(https?:\/\/[^)]+\)$/i, // [8:26](url)
@@ -888,6 +902,21 @@ export class IntelligentMessageParser {
         if (!line || line.isEmpty) return false;
         
         const text = line.trimmed;
+        
+        // Exclude lines that are clearly content, not usernames
+        const contentPatterns = [
+            /^If the monologue/i,  // Specific problematic content
+            /^[a-z]/,  // Lines starting with lowercase (usually content)
+            /\.\s*$/,  // Lines ending with period (usually content)
+            /^[0-9]+\./,  // Numbered lists (1., 2., etc.)
+            /^[#*-]/,  // Markdown headers, bullets, lists
+            /≥|≤|>/,  // Mathematical/comparison symbols (content)
+            /^(and|or|but|if|when|where|how|what|why)\s/i,  // Content conjunctions
+        ];
+        
+        if (contentPatterns.some(pattern => this.safeRegexTest(pattern, text))) {
+            return false;
+        }
         
         // Check for patterns that strongly suggest this is a username/message start
         return (
@@ -1737,6 +1766,11 @@ export class IntelligentMessageParser {
     }
 
     private looksLikeUsername(text: string): boolean {
+        // Handle app messages with URL prefixes like " (https://app.slack.com/services/...)AppName"
+        if (this.safeRegexTest(/^\s*\(https?:\/\/[^)]+\)[A-Za-z]/, text)) {
+            return true;
+        }
+        
         return this.safeRegexTest(/^[A-Za-z][A-Za-z0-9\s\-_.]{1,30}$/, text) && 
                !this.isObviousMetadata({trimmed: text} as LineAnalysis);
     }
@@ -1746,6 +1780,12 @@ export class IntelligentMessageParser {
     }
 
     private cleanUsername(text: string): string {
+        // Handle app messages with URL prefixes like " (https://app.slack.com/services/...)AppName"
+        const appMatch = this.safeRegexMatch(text, /^\s*\(https?:\/\/[^)]+\)([A-Za-z][A-Za-z0-9\s\-_.]*)/);
+        if (appMatch && appMatch[1]) {
+            return appMatch[1].trim();
+        }
+        
         return this.safeRegexReplace(text, /[^\w\s\-_.]/g, '').trim();
     }
 
