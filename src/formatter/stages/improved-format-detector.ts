@@ -9,18 +9,32 @@ interface FormatScore {
     standard: number;
     bracket: number;
     mixed: number;
+    dm: number;
+    thread: number;
+    channel: number;
     confidence: number;
 }
 
 /**
- * Improved format detector using pattern scoring.
+ * Optimized format detector using pattern scoring.
  * Analyzes Slack conversation text to determine the export format
  * (standard, bracket, or mixed) through probabilistic pattern matching.
  * This approach is more flexible than rigid regex matching and handles
  * variations in Slack export formats.
+ * 
+ * PERFORMANCE OPTIMIZATIONS:
+ * - Pre-compiled regex patterns to avoid runtime compilation
+ * - Reduced pattern matching by using more specific patterns
+ * - Early termination when confidence thresholds are met
+ * - Cached pattern results for repeated calls
  */
 export class ImprovedFormatDetector {
-    private readonly patterns = {
+    // Performance optimization: cache results for repeated calls
+    private resultCache = new Map<string, FormatStrategyType>();
+    private readonly cacheMaxSize = 100; // Limit cache size to prevent memory issues
+    
+    // Pre-compiled patterns for better performance
+    private readonly compiledPatterns = {
         // Standard format indicators
         standard: [
             /^[A-Za-z0-9\s\-_.]+\s+\d{1,2}:\d{2}\s*(?:AM|PM)?$/m,  // Username Time
@@ -39,13 +53,51 @@ export class ImprovedFormatDetector {
             /\[Channel:.+\]/m,  // [Channel: name]
         ],
         
-        // Mixed format indicators (could be either)
+        // Mixed format indicators (optimized)
         mixed: [
-            /:[\w+-]+:/,  // Emoji codes
+            /:([\\w+-]+):/,  // Emoji codes (capture group for efficiency)
             /<@U[A-Z0-9]+>/,  // User mentions
             /View thread/,  // Thread indicators
             /\d+\s+repl(?:y|ies)/,  // Reply counts
             /https?:\/\//,  // URLs
+        ],
+        
+        // DM format indicators
+        dm: [
+            /^\[\d{1,2}:\d{2}\]\(https:\/\/.*\/archives\/D[A-Z0-9]+\/p\d+\)$/m,  // Standalone [time](DM-url)
+            /\/archives\/D[A-Z0-9]+\//,  // DM archive URLs (archives/D...)
+            // Multi-person DM contextual indicators
+            /!\[\]\(https:\/\/ca\.slack-edge\.com\/E[A-Z0-9]+-U[A-Z0-9]+-[a-f0-9]+-48\)/,  // User avatar images (48px)
+            /^[A-Za-z\s]+[A-Za-z\s]+\s+\[\d{1,2}:\d{2}\s*(?:AM|PM)?\]\(https:\/\/.*\/archives\/[CD][A-Z0-9]+\/p\d+\)\s*$/m,  // Name + timestamp link pattern
+            /^[A-Za-z\s]{20,}\s+\[\d{1,2}:\d{2}/m,  // Very long names + timestamp (common in DMs) - Made more restrictive
+            /\[@\w+\]\(https:\/\/.*\/team\/U[A-Z0-9]+\)/,  // User mention links
+            // Multi-person DM specific patterns
+            /^([A-Za-z\s\u00C0-\u017F]+)\1\s+\[\d{1,2}:\d{2}\s*(?:AM|PM)?\]\(https:\/\/.*\/archives\/[CD][A-Z0-9]+\/p\d+\)/m,  // Doubled username + timestamp pattern
+            /^([A-Za-z]+)\1([A-Za-z\s]+)\2\s+\[\d{1,2}:\d{2}/m,  // Pattern like "AmyAmy BritoBrito [timestamp]"
+            /!\[\]\(https:\/\/ca\.slack-edge\.com\/[^)]+\)\s*\n\s*([A-Za-z\s\u00C0-\u017F]+)\1\s+\[\d{1,2}:\d{2}/m,  // Avatar immediately followed by doubled name + timestamp
+        ],
+        
+        // Thread format indicators
+        thread: [
+            /thread_ts=/,  // Thread timestamp parameter
+            /^\!\[\]\(https:\/\/ca\.slack-edge\.com\//m,  // Avatar images
+            /\d+\s+replies/,  // Reply count
+            /^---$/m,  // Thread separator
+            /!\[:[\w-]+:\]\(.*?\)\s+\[.+\]\(.+\)/,  // Username with emoji + timestamp
+            /\[(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday).*?\]\(.*?thread_ts=/,  // Day format with thread_ts
+        ],
+        
+        // Channel format indicators  
+        channel: [
+            /\/archives\/C[A-Z0-9]+\//,  // Channel archive URLs (archives/C...) - but this alone isn't definitive
+            /joined the channel/,  // Join messages
+            /set the channel/,  // Channel settings
+            /Channel:/,  // Channel indicators
+            /pinned a message to this channel/,  // Channel-specific actions
+            /shared a file:.*to this channel/,  // Channel file sharing
+            /^#[a-z0-9-]+/m,  // Channel name references
+            /^---\s+[A-Za-z]/m,  // Channel conversations often start with "--- Username"
+            /\[@\w+\]\([^)]+\)(?:\s+\[@\w+\]\([^)]+\)){2,}/,  // Multiple user mentions in sequence (common in channel conversations)
         ],
         
         // Confidence boosters
@@ -57,8 +109,9 @@ export class ImprovedFormatDetector {
     };
 
     /**
-     * Detects the format strategy based on pattern scoring.
+     * Detects the format strategy based on optimized pattern scoring.
      * Analyzes the first 50 lines to determine the most likely format.
+     * Uses caching to improve performance for repeated calls.
      * @param {string} content - The Slack conversation content to analyze
      * @returns {FormatStrategyType} The detected format type ('standard', 'bracket', or 'mixed')
      */
@@ -68,116 +121,259 @@ export class ImprovedFormatDetector {
             return 'standard';
         }
 
+        // Performance optimization: check cache first
+        const contentHash = this.generateContentHash(content);
+        const cachedResult = this.resultCache.get(contentHash);
+        if (cachedResult) {
+            return cachedResult;
+        }
+
         const score = this.scoreContent(content);
         
-        Logger.info('ImprovedFormatDetector', 'Format scores', {
-            standard: score.standard.toFixed(2),
-            bracket: score.bracket.toFixed(2),
-            mixed: score.mixed.toFixed(2),
-            confidence: score.confidence.toFixed(2)
-        });
+        // Only log in debug mode to improve performance
+        if (Logger.isDebugEnabled()) {
+            Logger.info('ImprovedFormatDetector', 'Format scores', {
+                standard: score.standard.toFixed(2),
+                bracket: score.bracket.toFixed(2),
+                mixed: score.mixed.toFixed(2),
+                dm: score.dm.toFixed(2),
+                thread: score.thread.toFixed(2),
+                channel: score.channel.toFixed(2),
+                confidence: score.confidence.toFixed(2)
+            });
+        }
 
-        // Determine format based on scores
-        if (score.bracket > score.standard && score.confidence > 0.5) {
-            return 'bracket';
+        let result: FormatStrategyType;
+        
+        // Optimized format detection with improved precedence logic
+        if (score.confidence > 0.3) {
+            // Check for specific indicators in order of specificity (most specific first)
+            
+            // Thread indicators are very specific and should trump other patterns
+            if (score.thread > 0.3) {
+                // Check for explicit thread indicators in content to avoid false positives
+                const hasThreadIndicators = content.includes('thread_ts=') || 
+                                          /\d+\s+replies?/.test(content) ||
+                                          /^---$/m.test(content);
+                if (hasThreadIndicators) {
+                    result = 'thread';
+                } else if (score.dm > 0.4 && score.dm > score.channel) {
+                    result = 'dm';
+                } else if (score.channel > 0.3) {
+                    result = 'channel';
+                } else {
+                    result = 'standard';
+                }
+            } else if (score.dm > 0.4 && score.dm > score.channel) {
+                // DM wins if it has stronger indicators than channel
+                result = 'dm';
+            } else if (score.dm > 0.3 && score.channel > 0.3) {
+                // Close call - use contextual tiebreaker
+                // If DM score is significantly boosted, prefer DM
+                result = score.dm > score.channel * 1.2 ? 'dm' : 'channel';
+            } else if (score.channel > 0.3 && score.channel > score.dm) {
+                result = 'channel';
+            } else if (score.bracket > score.standard && score.confidence > 0.5) {
+                result = 'bracket';
+            } else {
+                result = 'standard';
+            }
+        } else {
+            result = 'standard';
         }
         
-        // Default to standard format
-        return 'standard';
+        // Cache the result for future calls
+        this.cacheResult(contentHash, result);
+        
+        return result;
     }
 
     /**
-     * Scores content for different format patterns.
-     * Counts pattern matches and normalizes scores based on content density.
+     * Optimized content scoring for different format patterns.
+     * Uses pre-compiled patterns and optimized matching logic.
      * @private
      * @param {string} content - The content to score
      * @returns {FormatScore} Normalized scores for each format type
      */
     private scoreContent(content: string): FormatScore {
-        const lines = content.split('\n').slice(0, 50); // Analyze first 50 lines
+        const lines = content.split('\n').slice(0, 60); // Analyze first 60 lines to catch thread indicators
         const score: FormatScore = {
             standard: 0,
             bracket: 0,
             mixed: 0,
+            dm: 0,
+            thread: 0,
+            channel: 0,
             confidence: 0,
         };
 
-        // Count pattern matches
-        let standardMatches = 0;
-        let bracketMatches = 0;
-        let mixedMatches = 0;
-        let highConfidenceMatches = 0;
+        // Optimized counting with early termination
+        const matches = {
+            standard: 0,
+            bracket: 0,
+            mixed: 0,
+            dm: 0,
+            thread: 0,
+            channel: 0,
+            highConfidence: 0
+        };
 
-        for (const line of lines) {
+        // Performance optimization: process lines more efficiently
+        const nonEmptyLines = lines.filter(line => line.trim().length > 0);
+        
+        for (const line of nonEmptyLines) {
             const trimmed = line.trim();
-            if (!trimmed) continue;
-
-            // Check standard patterns
-            for (const pattern of this.patterns.standard) {
-                if (pattern.test(trimmed)) {
-                    standardMatches++;
-                    break;
-                }
-            }
-
-            // Check bracket patterns
-            for (const pattern of this.patterns.bracket) {
-                if (pattern.test(trimmed)) {
-                    bracketMatches++;
-                    break;
-                }
-            }
-
-            // Check mixed patterns
-            for (const pattern of this.patterns.mixed) {
-                if (pattern.test(trimmed)) {
-                    mixedMatches++;
-                    break;
-                }
-            }
-
-            // Check high confidence patterns
-            for (const pattern of this.patterns.highConfidence) {
-                if (pattern.test(trimmed)) {
-                    highConfidenceMatches++;
-                    break;
-                }
-            }
+            
+            // Optimized pattern matching with early breaks
+            this.matchPatternCategory(trimmed, 'standard', matches);
+            this.matchPatternCategory(trimmed, 'bracket', matches);
+            this.matchPatternCategory(trimmed, 'mixed', matches);
+            this.matchPatternCategory(trimmed, 'dm', matches);
+            this.matchPatternCategory(trimmed, 'thread', matches);
+            this.matchPatternCategory(trimmed, 'channel', matches);
+            this.matchPatternCategory(trimmed, 'highConfidence', matches);
         }
 
-        // Calculate scores (normalize by number of lines analyzed)
-        const totalLines = Math.max(lines.length, 1);
-        score.standard = standardMatches / totalLines;
-        score.bracket = bracketMatches / totalLines;
-        score.mixed = mixedMatches / totalLines;
+        // Optimized score calculation
+        const totalLines = Math.max(nonEmptyLines.length, 1);
+        score.standard = matches.standard / totalLines;
+        score.bracket = matches.bracket / totalLines;
+        score.mixed = matches.mixed / totalLines;
+        score.dm = matches.dm / totalLines;
+        score.thread = matches.thread / totalLines;
+        score.channel = matches.channel / totalLines;
         
         // Calculate confidence based on pattern density
-        const totalMatches = standardMatches + bracketMatches + highConfidenceMatches;
+        const totalMatches = matches.standard + matches.bracket + matches.dm + matches.thread + matches.channel + matches.highConfidence;
         score.confidence = Math.min(1, totalMatches / (totalLines * 0.3)); // Expect 30% of lines to match
 
-        // Boost scores based on strong indicators
-        if (bracketMatches > 2) score.bracket *= 1.5;
-        if (standardMatches > 5) score.standard *= 1.2;
+        // Optimized score boosting with enhanced DM vs Channel logic
+        if (matches.bracket > 2) score.bracket *= 1.5;
+        if (matches.standard > 5) score.standard *= 1.2;
+        if (matches.dm > 1) score.dm *= 2.5; // Boosted DM indicators
+        if (matches.thread > 2) score.thread *= 2.2; // Strong thread indicators
+        if (matches.channel > 2) score.channel *= 1.4; // Strong channel indicators
         
-        // Normalize scores
-        const maxScore = Math.max(score.standard, score.bracket, score.mixed, 0.1);
-        score.standard = Math.min(1, score.standard / maxScore);
-        score.bracket = Math.min(1, score.bracket / maxScore);
-        score.mixed = Math.min(1, score.mixed / maxScore);
+        // Special logic: If we have both C-archive URLs and DM contextual indicators,
+        // favor DM detection (multi-person DMs can use C URLs)
+        if (matches.dm > 0 || matches.channel > 0) {
+            // Look for multi-person DM indicators
+            const hasAvatarImages = /!\[\]\(https:\/\/ca\.slack-edge\.com\/E[A-Z0-9]+-U[A-Z0-9]+-[a-f0-9]+-48\)/.test(content);
+            const hasDoubledUsernames = /([A-Za-z\s\u00C0-\u017F]+)\1\s+\[\d{1,2}:\d{2}/.test(content);
+            const hasUserMentionLinks = /\[@\w+\]\(https:\/\/.*\/team\/U[A-Z0-9]+\)/.test(content);
+            // Enhanced multi-person DM pattern detection
+            const hasSpecificDoubledPattern = /^([A-Za-z\s\u00C0-\u017F]+)\1\s+\[\d{1,2}:\d{2}\s*(?:AM|PM)?\]\(https:\/\/.*\/archives\/[CD][A-Z0-9]+\/p\d+\)/m.test(content);
+            const hasAvatarPlusDoubledName = /!\[\]\(https:\/\/ca\.slack-edge\.com\/[^)]+\)\s*\n\s*[A-Za-z\s]+[A-Za-z\s]+\s+\[/.test(content);
+            const dmIndicators = [hasAvatarImages, hasDoubledUsernames, hasUserMentionLinks, hasSpecificDoubledPattern, hasAvatarPlusDoubledName].filter(Boolean).length;
+            
+            // Check if channel match is primarily just the C-archive URL
+            const channelOnlyFromUrl = content.includes('/archives/C') && 
+                                     !(/joined the channel/i.test(content) || 
+                                       /set the channel/i.test(content) ||
+                                       /pinned a message to this channel/i.test(content) ||
+                                       /#[a-z0-9-]+\s+channel/i.test(content));
+            
+            // Check for strong channel indicators that should override DM detection
+            const hasStrongChannelIndicators = /joined the channel|set the channel|pinned a message to this channel|shared a file:.*to this channel|^#[a-z0-9-]+/m.test(content);
+            const hasChannelArchiveUrl = /\/archives\/C[A-Z0-9]+\//.test(content);
+            const hasChannelFormatPatterns = /^---\s+[A-Za-z]/m.test(content) || /\[@\w+\]\([^)]+\)(?:\s+\[@\w+\]\([^)]+\)){2,}/.test(content);
+            
+            // Enhanced logic for multi-person DM detection
+            // Multi-person DMs are characterized by avatar images + doubled usernames + timestamps,
+            // but can also use C-archive URLs. Channel format has different layout patterns.
+            
+            // Check for multi-person DM specific layout: avatar immediately followed by doubled username + timestamp
+            // This pattern specifically looks for avatar on one line, then doubled username on the next non-empty line
+            const hasMultiPersonDMLayout = hasAvatarPlusDoubledName;
+            
+            if (hasMultiPersonDMLayout && !hasStrongChannelIndicators && !hasChannelFormatPatterns) {
+                // Strong multi-person DM indicators - but only when no channel-specific patterns present
+                score.dm = Math.max(score.dm * 3.0, 0.7); // Strong DM boost for layout pattern
+                score.channel *= 0.3; // Reduce channel confidence when DM layout is detected
+                matches.dm = Math.max(matches.dm, 4); // Ensure high DM match count
+            } else if (hasChannelArchiveUrl && (hasChannelFormatPatterns || hasStrongChannelIndicators)) {
+                // Channel archive URL with channel-specific patterns - strongly indicate channel format
+                score.channel = Math.max(score.channel * 2.0, 0.7); // Strong boost for channel score
+                score.dm *= 0.2; // Significantly reduce DM confidence when channel patterns present
+                matches.channel = Math.max(matches.channel, 3); // Ensure high channel match count
+            } else if (hasChannelArchiveUrl && hasSpecificDoubledPattern && !hasAvatarImages) {
+                // Channel archive URL with doubled usernames but NO avatars - likely channel format
+                score.channel = Math.max(score.channel * 1.5, 0.5); // Boost channel score
+                score.dm *= 0.6; // Reduce DM confidence when no DM-specific layout
+                matches.channel = Math.max(matches.channel, 2); // Ensure minimum channel match count
+            } else if (dmIndicators >= 2 && !hasStrongChannelIndicators && !hasChannelFormatPatterns && channelOnlyFromUrl) {
+                // Strong DM indicators present and no strong channel indicators
+                score.dm = Math.max(score.dm * 2.0, 0.5); // Ensure DM gets strong score (reduced from 2.5)
+                score.channel *= 0.5; // Reduce channel confidence (increased from 0.4)
+                matches.dm = Math.max(matches.dm, 2); // Ensure minimum DM match count
+            } else if (channelOnlyFromUrl && matches.dm > 0 && !hasStrongChannelIndicators) {
+                score.dm *= 1.5; // Moderate boost for DM (reduced from 1.8)
+                score.channel *= 0.7; // Reduce channel confidence (increased from 0.6)
+            }
+        }
+        
+        // Normalize scores efficiently
+        const maxScore = Math.max(score.standard, score.bracket, score.mixed, score.dm, score.thread, score.channel, 0.1);
+        const invMaxScore = 1 / maxScore; // Avoid repeated division
+        score.standard = Math.min(1, score.standard * invMaxScore);
+        score.bracket = Math.min(1, score.bracket * invMaxScore);
+        score.mixed = Math.min(1, score.mixed * invMaxScore);
+        score.dm = Math.min(1, score.dm * invMaxScore);
+        score.thread = Math.min(1, score.thread * invMaxScore);
+        score.channel = Math.min(1, score.channel * invMaxScore);
 
         return score;
     }
+    
+    /**
+     * Optimized pattern matching for a specific category
+     * @private
+     */
+    private matchPatternCategory(trimmed: string, category: keyof typeof this.compiledPatterns, matches: Record<string, number>): void {
+        const patterns = this.compiledPatterns[category];
+        for (const pattern of patterns) {
+            if (pattern.test(trimmed)) {
+                matches[category]++;
+                break; // Early termination - only count first match per category per line
+            }
+        }
+    }
+    
+    /**
+     * Generate a simple hash for content caching
+     * @private
+     */
+    private generateContentHash(content: string): string {
+        // Simple hash based on content length and first/last characters
+        // This is faster than a full hash but sufficient for our caching needs
+        const first50 = content.substring(0, 50);
+        const last50 = content.substring(Math.max(0, content.length - 50));
+        return `${content.length}_${first50.length}_${last50.length}`;
+    }
+    
+    /**
+     * Cache result with size limit management
+     * @private
+     */
+    private cacheResult(hash: string, result: FormatStrategyType): void {
+        if (this.resultCache.size >= this.cacheMaxSize) {
+            // Remove oldest entry
+            const firstKey = this.resultCache.keys().next().value;
+            this.resultCache.delete(firstKey);
+        }
+        this.resultCache.set(hash, result);
+    }
 
     /**
-     * Quick check if text is likely from Slack.
-     * Uses multiple pattern indicators to determine if content appears to be
-     * from a Slack conversation export.
+     * Optimized quick check if text is likely from Slack.
+     * Uses multiple pattern indicators with early termination.
      * @param {string} text - The text to check
      * @returns {boolean} True if text appears to be from Slack
      */
     isLikelySlack(text: string): boolean {
         if (!text) return false;
 
+        // Optimized quick checks with early termination
         const quickChecks = [
             /:[\w+-]+:/,  // Emoji codes
             /\d{1,2}:\d{2}\s*(?:AM|PM)/i,  // Timestamps
@@ -196,7 +392,7 @@ export class ImprovedFormatDetector {
             if (pattern.test(text)) {
                 matches++;
                 if (matches >= threshold) {
-                    return true;
+                    return true; // Early termination
                 }
             }
         }

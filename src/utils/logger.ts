@@ -19,6 +19,7 @@ export class Logger {
     // Basic console logger, could be replaced with a more robust library if needed.
     private static logger = console; 
     private static prefix = "[SlackFormat]"; // Centralized prefix
+    private static debugEnabled = false; // Performance optimization flag
 
     /**
      * Logs a message with a specified level and optional data.
@@ -72,5 +73,21 @@ export class Logger {
     }
     public static error(className: string, message: string, data?: LoggableData): void {
         this.log('error', className, message, data);
+    }
+    
+    /**
+     * Check if debug logging is enabled for performance optimization
+     * @returns {boolean} True if debug logging is enabled
+     */
+    public static isDebugEnabled(): boolean {
+        return this.debugEnabled;
+    }
+    
+    /**
+     * Set debug logging state
+     * @param {boolean} enabled - Whether debug logging should be enabled
+     */
+    public static setDebugEnabled(enabled: boolean): void {
+        this.debugEnabled = enabled;
     }
 }

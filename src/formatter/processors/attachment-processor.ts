@@ -24,6 +24,10 @@ export class AttachmentProcessor extends BaseProcessor<string> {
         imageFromSource: /^Image from (iOS|Android|Desktop)$/i,
         imageMarkdown: /^!\[([^\]]*)\]\(([^)]+)\)$/,
         
+        // Avatar patterns (Slack-specific)
+        avatarUrl: /^!\[\]\(https:\/\/ca\.slack-edge\.com\/[^)]+\)$/,
+        slackAvatarDomain: /^https:\/\/ca\.slack-edge\.com\//,
+        
         // Preview blocks
         previewBlockStart: /^\s*\[\s*$/,
         previewBlockEnd: /^\s*\]\(https?:\/\/[^)]+\)\s*$/,
@@ -82,6 +86,13 @@ export class AttachmentProcessor extends BaseProcessor<string> {
             const afterFileCounts = this.processFileCounts(processed);
             if (afterFileCounts !== processed) {
                 processed = afterFileCounts;
+                modified = true;
+            }
+            
+            // Handle avatar patterns
+            const afterAvatars = this.processAvatars(processed);
+            if (afterAvatars !== processed) {
+                processed = afterAvatars;
                 modified = true;
             }
             
@@ -230,6 +241,31 @@ export class AttachmentProcessor extends BaseProcessor<string> {
                 }
             }
         }
+        
+        // Check for GitHub repository patterns (common link previews)
+        if (this.patterns.repoName.test(line)) {
+            // Look ahead for "Language", "Last updated" or other GitHub metadata
+            for (let i = index + 1; i < Math.min(index + 5, lines.length); i++) {
+                const nextLine = lines[i].trim();
+                if (/^(Language|Last updated|Added by \[GitHub\])$/i.test(nextLine)) {
+                    return true;
+                }
+            }
+        }
+        
+        // Check for doubled title patterns (common in Slack link previews)
+        const doubledPattern = /^([A-Za-z\u00C0-\u017F]+)\1$/;
+        if (doubledPattern.test(line) && line.length > 6) {
+            // Look ahead for metadata or URL
+            for (let i = index + 1; i < Math.min(index + 3, lines.length); i++) {
+                const nextLine = lines[i].trim();
+                if (this.patterns.linkPreviewUrl.test(nextLine) || 
+                    /^(Language|Last updated)$/i.test(nextLine)) {
+                    return true;
+                }
+            }
+        }
+        
         return false;
     }
 
@@ -240,12 +276,36 @@ export class AttachmentProcessor extends BaseProcessor<string> {
         // Empty line usually ends preview
         if (line === '') return true;
         
-        // Check if next line looks like a new message
+        // Check if this line looks like the end of GitHub integration metadata
+        if (/^Added by \[GitHub\]$/i.test(line)) {
+            return true;
+        }
+        
+        // Check if next line looks like a new message or reaction
         if (index + 1 < lines.length) {
             const nextLine = lines[index + 1].trim();
+            
+            // Reactions or emoji patterns indicate end of preview
+            if (/^![:\[].*?[:\]]\([^)]+\)\d+/i.test(nextLine) || 
+                /^:[a-zA-Z0-9_+-]+:$/i.test(nextLine)) {
+                return true;
+            }
+            
+            // Avatar patterns indicate start of new message
+            if (/^!\[\]\(https:\/\/ca\.slack-edge\.com\/[^)]+\)$/i.test(nextLine)) {
+                return true;
+            }
+            
             // Common message start patterns
-            if (/^[A-Za-z0-9\s\-_.]+$/.test(nextLine) || 
+            if (/^[A-Za-z0-9\s\-_.]+.*\[[^\]]+\]\(https?:\/\/[^)]+\)$/i.test(nextLine) || 
                 /^\d{1,2}:\d{2}\s*(?:AM|PM)?$/i.test(nextLine)) {
+                return true;
+            }
+            
+            // Thread metadata patterns
+            if (/^\d+\s+repl(?:y|ies)/i.test(nextLine) ||
+                /^View thread$/i.test(nextLine) ||
+                /^Last reply/i.test(nextLine)) {
                 return true;
             }
         }
@@ -281,10 +341,79 @@ export class AttachmentProcessor extends BaseProcessor<string> {
     }
 
     /**
+     * Process avatar patterns by filtering or preserving them appropriately
+     */
+    private processAvatars(text: string): string {
+        const lines = text.split('\n');
+        const processed: string[] = [];
+        
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            const trimmed = line.trim();
+            
+            // Check if this is a standalone avatar line
+            if (this.isStandaloneAvatar(trimmed)) {
+                // Check context to decide whether to preserve or filter
+                const shouldPreserve = this.shouldPreserveAvatar(lines, i);
+                
+                if (shouldPreserve) {
+                    // Preserve avatar with a comment for clarity
+                    processed.push(`<!-- Avatar: ${trimmed} -->`);
+                } else {
+                    // Filter out standalone avatars that are not part of message context
+                    continue;
+                }
+            } else {
+                processed.push(line);
+            }
+        }
+        
+        return processed.join('\n');
+    }
+
+    /**
+     * Check if a line is a standalone avatar image
+     */
+    private isStandaloneAvatar(line: string): boolean {
+        return this.patterns.avatarUrl.test(line);
+    }
+
+    /**
+     * Determine if an avatar should be preserved based on context
+     */
+    private shouldPreserveAvatar(lines: string[], index: number): boolean {
+        // Check if the avatar is immediately followed by a username line
+        // This indicates it's part of a thread format message header
+        if (index + 1 < lines.length) {
+            const nextLine = lines[index + 1].trim();
+            // Check if next line looks like a username with timestamp (thread format)
+            if (/^[A-Za-z0-9\s\-_.'\u00C0-\u017F]+.*\[[^\]]+\]\(https?:\/\/[^)]+\)$/i.test(nextLine)) {
+                return true;
+            }
+        }
+        
+        // Check if the avatar is part of a message that has substantial content
+        // Look ahead for content lines that aren't just metadata
+        for (let i = index + 1; i < Math.min(index + 5, lines.length); i++) {
+            const line = lines[i].trim();
+            if (line && !this.isAttachmentMetadata(line) && line.length > 20) {
+                return true;
+            }
+        }
+        
+        return false;
+    }
+
+    /**
      * Check if a line should be filtered out as attachment metadata
      */
     isAttachmentMetadata(line: string): boolean {
         const trimmed = line.trim();
+        
+        // Avatar patterns are metadata that should be handled specially
+        if (this.patterns.avatarUrl.test(trimmed)) {
+            return true;
+        }
         
         // File preview brackets
         if (this.patterns.previewBlockStart.test(trimmed) || 
@@ -300,6 +429,10 @@ export class AttachmentProcessor extends BaseProcessor<string> {
             /^Preview not available$/i,
             /^File type: .+$/i,
             /^File size: .+$/i,
+            /^Language$/i,
+            /^TypeScript$/i,
+            /^Last updated$/i,
+            /^\d+\s+(?:minutes?|hours?|days?|weeks?|months?|years?)\s+ago$/i,
         ];
         
         return metadataPatterns.some(pattern => pattern.test(trimmed));

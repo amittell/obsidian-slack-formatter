@@ -6,6 +6,7 @@ describe('Fix Verification - Unknown User Issue', () => {
         const input = `Jacob FreyJacob Frey  [7:13 AM](https://ableton.slack.com/archives/C07LB4Q7S3V/p1733943183106099?thread_ts=1733846267.949189&cid=C07LB4Q7S3V)  
 btw [[alex j]] wanted to mention yesterday the issue I've been tracking which mostly only happens with TypeScript seems related to not finding a good base directory, which should be fixed by the Pyright base directory fixes. The errors go away after switching files once or twice.
 Jacob FreyJacob Frey  [7:44 AM](https://ableton.slack.com/archives/C07LB4Q7S3V/p1733945054109689?thread_ts=1733846267.949189&cid=C07LB4Q7S3V)  
+Thanks for the info!
 Alex J  [7:48 AM](https://ableton.slack.com/archives/C07LB4Q7S3V/p1733945285113869?thread_ts=1733846267.949189&cid=C07LB4Q7S3V)  
 [7:48](https://ableton.slack.com/archives/C07LB4Q7S3V/p1733945309114539?thread_ts=1733846267.949189&cid=C07LB4Q7S3V)  
 yes when coding i do lots of cmd+p <select thing> esc
@@ -35,12 +36,17 @@ but it seems like any file switching fixes it`;
         // All key content should be captured
         const allText = messages.map(m => m.text || '').join(' ');
         expect(allText).toContain('btw [[alex j]] wanted to mention');
+        expect(allText).toContain('Thanks for the info!');
         expect(allText).toContain('yes when coding i do lots of cmd+p');
         expect(allText).toContain('but it seems like any file switching fixes it');
         
-        // First message should have Jacob as author and contain his content
+        // First message should have Jacob as author and contain his first message
         expect(messages[0].username).toBe('Jacob Frey');
         expect(messages[0].text).toContain('btw [[alex j]] wanted to mention');
+        
+        // Second message should have Jacob as author and contain his second message
+        expect(messages[1].username).toBe('Jacob Frey');
+        expect(messages[1].text).toContain('Thanks for the info!');
         
         // Third message should have Alex as author and contain all his content
         expect(messages[2].username).toBe('Alex J');

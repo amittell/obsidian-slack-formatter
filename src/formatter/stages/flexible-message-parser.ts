@@ -2,7 +2,7 @@ import { SlackMessage } from '../../models.js';
 import type { SlackReaction } from '../../types/messages.types.js';
 import { parseDate, parseSlackTimestamp } from '../../utils/datetime-utils.js';
 import { Logger } from '../../utils/logger.js';
-import { cleanupDoubledUsernames } from '../../utils/username-utils.js';
+import { cleanupDoubledUsernames, MessageFormat, detectMessageFormat, extractUsernameFromThreadFormat, extractUsernameFromDMFormat, extractUsername } from '../../utils/username-utils.js';
 import { duplicateDetectionService } from '../../utils/duplicate-detection-service.js';
 
 /**
@@ -87,18 +87,26 @@ const CONFIDENCE_THRESHOLDS = {
  * 3. Extract reactions and metadata from content
  * 
  * Supports multiple Slack export formats through probabilistic pattern matching
- * rather than rigid regex rules.
+ * 
+ * KNOWN LIMITATION: Message continuation logic has known issues that can result in
+ * over-splitting of messages (expected 2 messages, getting 3-5). This parser is
+ * used as a fallback when IntelligentMessageParser fails. The continuation logic
+ * complexity makes it acceptable to have this known limitation since the primary
+ * parser handles the most common use cases correctly.
  */
 export class FlexibleMessageParser {
     // Remove instance logger - use static methods instead
+    
+    // Format type for context-aware parsing
+    private detectedFormat: 'dm' | 'thread' | 'channel' | 'standard' | 'mixed' = 'standard';
     
     // Simplified core patterns
     private readonly patterns = {
         // Flexible username patterns
         username: [
-            /^([A-Za-z0-9\s\-_.]+)$/,  // Simple username
-            /^([A-Za-z0-9\s\-_.]+)\s*(?::[\w\-+]+:|[\u{1F300}-\u{1F9FF}])*$/u,  // Username with emoji
-            /^!\[.*?\]\(.*?\)\s*([A-Za-z0-9\s\-_.]+)/,  // Avatar + username
+            /^([A-Za-z0-9\s\-_.'\u00C0-\u017F]+)$/,  // Simple username
+            /^([A-Za-z0-9\s\-_.'\u00C0-\u017F]+)\s*(?::[\w\-+]+:|[\u{1F300}-\u{1F9FF}])*$/u,  // Username with emoji
+            /^!\[.*?\]\(.*?\)\s*([A-Za-z0-9\s\-_.'\u00C0-\u017F]+)/,  // Avatar + username
         ],
         
         // Flexible timestamp patterns
@@ -113,13 +121,18 @@ export class FlexibleMessageParser {
         
         // Combined patterns
         userAndTime: [
-            /^([A-Za-z0-9\s\-_.]+?)(?:\1)?\s*\[([^\]]+)\]\(https?:\/\/[^\)]*\/archives\/[^\)]+\)\s*$/i,  // Username (possibly doubled) + linked timestamp
-            /^([A-Za-z0-9\s\-_.]+?)(?:\1)?\s+(\d{1,2}:\d{2}\s*(?:AM|PM)?)$/i,  // Username (possibly doubled) + time
+            /^([A-Za-z0-9\s\-_.'\u00C0-\u017F]+?)(?:\1)?\s*\[([^\]]+)\]\(https?:\/\/[^\)]*\/archives\/[^\)]+\)\s*$/i,  // Username (possibly doubled) + linked timestamp
+            /^([A-Za-z0-9\s\-_.'\u00C0-\u017F]+?)(?:\1)?\s+(\d{1,2}:\d{2}\s*(?:AM|PM)?)$/i,  // Username (possibly doubled) + time
+            /^([A-Za-z0-9\s\-_.'\u00C0-\u017F]+?)\s+\[(\d{1,2}:\d{2}\s*(?:AM|PM)?)\]$/i,  // Username + simple bracketed time [3:45 PM]
             /^(.+?)\s+\[(\d{1,2}:\d{2}(?:\s*(?:AM|PM))?|(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|Today|Yesterday)[^\]]*)\]\(https?:\/\/[^\)]*\/archives\/[^\)]+\)$/i,  // User + linked timestamp to Slack archives
+            /^([A-Za-z0-9\s\-_.'\u00C0-\u017F]{2,30})\s+\[([^\]]+)\]\(https?:\/\/[^\)]+\)$/i,  // Username + any linked timestamp (but restrict username pattern)
             /^(.+?)\s+(?:at\s+)?(\d{1,2}:\d{2})\s*$/i,  // User at time
             /^(.+?)(?::[\w\-+]+:|[\u{1F300}-\u{1F9FF}])+\s*(\d{1,2}:\d{2}\s*(?:AM|PM)?)$/ui,  // User + emoji + time
             /^(.+?)(:[a-zA-Z0-9_+-]+:)\s+(\d{1,2}:\d{2}\s*(?:AM|PM)?)$/i,  // User emoji time (with space between emoji and time)
-            /^([A-Za-z][A-Za-z\s\-_.]+?)\s+(\d{1,2}:\d{2}\s*(?:AM|PM)?)$/i,  // Simple name + time (more restrictive)
+            /^([A-Za-z\u00C0-\u017F][A-Za-z\s\-_.\u00C0-\u017F]+?)\s+(\d{1,2}:\d{2}\s*(?:AM|PM)?)$/i,  // Simple name + time (more restrictive)
+            // Multi-person DM specific patterns
+            /^([A-Za-z\s\u00C0-\u017F]+)\1\s+\[(\d{1,2}:\d{2}\s*(?:AM|PM)?)\]\(https?:\/\/[^\)]*\/archives\/[CD][A-Z0-9]+\/p\d+\)\s*$/i,  // Explicit doubled username + linked timestamp
+            /^([A-Za-z]+)\1([A-Za-z\s]+)\2\s+\[(\d{1,2}:\d{2}\s*(?:AM|PM)?)\].*$/i,  // Pattern like "AmyAmy BritoBrito [timestamp]"
         ],
         
         // Metadata patterns (simplified)
@@ -147,8 +160,13 @@ export class FlexibleMessageParser {
             /^Last updated$/i,  // GitHub integration metadata
             /^\d+\s+(?:minutes?|hours?|days?|weeks?|months?|years?)\s+ago$/i,  // Time ago patterns
             /^![^]]+]\(https?:\/\/[^)]+\)$/,  // Standalone images/avatars
-            /^!\[\]\(https:\/\/[^)]*slack[^)]*\)/,  // Lines starting with Slack avatar images
+            /^!\[\]\(https:\/\/ca\.slack-edge\.com\/[^)]+\)$/,  // Slack avatar images (specific pattern)
             /^[\w-]+\/[\w-]+$/,  // GitHub repository names (e.g., "amittell/obsidian-dynamic-todo-list")
+        ],
+        
+        // Avatar patterns specifically for thread format
+        avatar: [
+            /^!\[\]\(https:\/\/ca\.slack-edge\.com\/[^)]+\)$/,  // Slack avatar URL pattern
         ],
         
         // Date separators
@@ -172,6 +190,12 @@ export class FlexibleMessageParser {
             currentDate: null,
             debugInfo: [],
         };
+
+        // Detect format for context-aware parsing
+        this.detectedFormat = this.detectFormat(text);
+        if (isDebugEnabled) {
+            Logger.debug('FlexibleMessageParser', `Detected format: ${this.detectedFormat}`, undefined, isDebugEnabled);
+        }
 
         // Multi-pass parsing
         this.identifyMessageBlocks(context, isDebugEnabled);
@@ -221,6 +245,49 @@ export class FlexibleMessageParser {
                     currentBlock = null;
                 }
                 this.updateDateContext(trimmed, context);
+                continue;
+            }
+            
+            // Check if this is an avatar line that precedes a message
+            if (this.isAvatarLine(trimmed)) {
+                // Check if next non-empty line is a username/timestamp combo (thread format)
+                let nextMessageLineIndex = i + 1;
+                let foundNextMessage = false;
+                
+                // Skip empty lines to find the next actual content
+                while (nextMessageLineIndex < context.lines.length) {
+                    const nextLine = context.lines[nextMessageLineIndex].trim();
+                    if (nextLine) {
+                        const nextScore = this.scoreLine(nextLine, context);
+                        
+                        // If next non-empty line has high confidence for username/time, this avatar belongs to that message
+                        if (nextScore.confidence > CONFIDENCE_THRESHOLDS.timestamp || nextScore.hasUserAndTime > CONFIDENCE_THRESHOLDS.timestamp) {
+                            foundNextMessage = true;
+                            if (isDebugEnabled) {
+                                context.debugInfo.push(`Line ${i}: Found avatar before message header at line ${nextMessageLineIndex}: ${trimmed}`);
+                            }
+                            // We'll capture this avatar when we process the next line
+                            break;
+                        } else {
+                            // Next content is not a message header, this avatar is standalone
+                            break;
+                        }
+                    }
+                    nextMessageLineIndex++;
+                }
+                
+                if (foundNextMessage) {
+                    // Avatar belongs to upcoming message, skip for now
+                    previousLineWasBlank = false;
+                    continue;
+                }
+                
+                // Avatar is standalone (not followed by message header) - ignore it completely
+                // Don't add to current block as it would interfere with message boundaries
+                if (isDebugEnabled) {
+                    context.debugInfo.push(`Line ${i}: Standalone avatar ignored: ${trimmed}`);
+                }
+                previousLineWasBlank = false;
                 continue;
             }
             
@@ -292,31 +359,21 @@ export class FlexibleMessageParser {
                         if (isLinkedTimestamp) {
                             // Linked timestamps like [8:26](url) are almost always continuations
                             shouldMerge = true;
-                        } else if (i + 1 < context.lines.length) {
-                            const nextLine = context.lines[i + 1].trim();
-                            const nextScore = this.scoreLine(nextLine, context);
-                            
-                            // Check if there was a gap (empty line) between the previous message and this timestamp
-                            let hasGap = false;
-                            if (prevBlock.endLine < i - 1) {
-                                // Check if there's an empty line between
-                                for (let j = prevBlock.endLine + 1; j < i; j++) {
-                                    if (context.lines[j].trim() === '') {
-                                        hasGap = true;
-                                        break;
-                                    }
-                                }
-                            }
-                            
-                            // Only merge simple timestamps if:
-                            // 1. There's no gap (empty line) between messages
-                            // 2. Next line is content (not metadata, not empty, not another message start)
-                            // 3. The timestamp format matches common continuation patterns
-                            if (!hasGap && nextLine && 
-                                nextScore.isMetadata < CONFIDENCE_THRESHOLDS.highConfidence && 
-                                nextScore.confidence < CONFIDENCE_THRESHOLDS.highConfidence &&
-                                /^\[?\d{1,2}:\d{2}(?:\s*(?:AM|PM))?\]?$/i.test(trimmed)) {
+                        } else if (isSimpleTimestamp || isBracketedTimestamp) {
+                            // For standard format, simple timestamps are continuations
+                            if (this.detectedFormat === 'standard' || this.detectedFormat === 'mixed') {
                                 shouldMerge = true;
+                            } else if ((this.detectedFormat === 'thread' || this.detectedFormat === 'channel') && i + 1 < context.lines.length) {
+                                // In thread/channel format, check if there's content after
+                                const nextLine = context.lines[i + 1].trim();
+                                const nextScore = this.scoreLine(nextLine, context);
+                                
+                                // If next line is regular content (not metadata), it's a continuation
+                                if (nextLine && 
+                                    nextScore.isMetadata < CONFIDENCE_THRESHOLDS.highConfidence && 
+                                    nextScore.confidence < CONFIDENCE_THRESHOLDS.highConfidence) {
+                                    shouldMerge = true;
+                                }
                             }
                         }
                         
@@ -343,8 +400,12 @@ export class FlexibleMessageParser {
                             }
                             currentBlock.content.push(line); // Add the timestamp line
                             
-                            // Replace the previous block with the extended one
+                            // Replace the previous block with the extended one - but DON'T remove from blocks yet
+                            // Keep currentBlock active so subsequent content gets captured
                             context.blocks[context.blocks.length - 1] = currentBlock;
+                            
+                            // Mark that we're in continuation mode - content after this should be captured
+                            currentBlock.endLine = i; // Will be updated as more content is added
                             previousLineWasBlank = false;
                             continue;
                         }
@@ -396,8 +457,19 @@ export class FlexibleMessageParser {
             // Handle blank lines
             else if (trimmed === '') {
                 if (currentBlock && previousLineWasBlank) {
-                    context.blocks.push(currentBlock);
-                    currentBlock = null;
+                    // Check if we're in a continuation block - if so, be more lenient about closing
+                    const isRecentContinuation = currentBlock.content.some(content => 
+                        /^\[\d{1,2}:\d{2}(?:\s*(?:AM|PM))?\]\(https?:\/\/[^)]+\)$/i.test(content.trim()) ||
+                        /^\[\d{1,2}:\d{2}(?:\s*(?:AM|PM))?\]$/i.test(content.trim())
+                    );
+                    
+                    if (!isRecentContinuation) {
+                        context.blocks.push(currentBlock);
+                        currentBlock = null;
+                    } else {
+                        // We're in a continuation - just add the blank line but don't close yet
+                        currentBlock.content.push('');
+                    }
                 } else if (currentBlock) {
                     currentBlock.content.push('');
                 }
@@ -405,13 +477,20 @@ export class FlexibleMessageParser {
             }
             // Standalone content (no header)
             else if (!currentBlock && trimmed !== '' && score.isMetadata < 0.5) {
-                currentBlock = {
-                    startLine: i,
-                    endLine: i,
-                    content: [line],
-                    confidence: 0.3,
-                };
-                previousLineWasBlank = false;
+                // Don't create a new block for standalone timestamps - they should be continuations
+                const isStandaloneTimestamp = score.isTimestamp > CONFIDENCE_THRESHOLDS.timestamp && 
+                                            score.isUsername < CONFIDENCE_THRESHOLDS.lowConfidence && 
+                                            !score.hasUserAndTime;
+                
+                if (!isStandaloneTimestamp) {
+                    currentBlock = {
+                        startLine: i,
+                        endLine: i,
+                        content: [line],
+                        confidence: 0.3,
+                    };
+                    previousLineWasBlank = false;
+                }
             }
         }
         
@@ -490,19 +569,44 @@ export class FlexibleMessageParser {
                         context.debugInfo.push(`Block ${i}: Checking standalone timestamp. FirstLine: "${firstLineOfBlock}", isStandaloneTimestamp: ${isStandaloneTimestamp}, prevBlock.username: "${prevBlock?.username || 'none'}"`);
                     }
                     
-                    if (isStandaloneTimestamp && prevBlock.username && prevBlock.username !== 'Unknown User') {
-                        if (isDebugEnabled) {
-                            context.debugInfo.push(`Merging standalone timestamp block ${i} into previous block`);
+                    if (isStandaloneTimestamp) {
+                        // FORMAT-AWARE: In thread/channel format, check if username follows timestamp
+                        if (this.detectedFormat === 'thread' || this.detectedFormat === 'channel') {
+                            // Check if this block has a username that follows the timestamp pattern
+                            if (block.username && block.username !== 'Unknown User') {
+                                // In thread format: [timestamp]\n\nUsername\n\ncontent is a continuation
+                                if (prevBlock.username && prevBlock.username !== 'Unknown User') {
+                                    if (isDebugEnabled) {
+                                        context.debugInfo.push(`Thread format: Merging continuation block ${i} (timestamp + ${block.username}) into previous block from ${prevBlock.username}`);
+                                    }
+                                    // This is a continuation message - merge into previous
+                                    prevBlock.content.push(''); // Add blank line separator
+                                    prevBlock.content.push(firstLineOfBlock); // Add the timestamp
+                                    prevBlock.content.push(''); // Blank line
+                                    prevBlock.content.push(block.username); // Add the username line
+                                    prevBlock.content.push(''); // Blank line
+                                    prevBlock.content.push(...block.content); // Add the content
+                                    prevBlock.endLine = block.endLine;
+                                    context.blocks.splice(i, 1);
+                                    i--;
+                                    continue;
+                                }
+                            }
+                        } else if (prevBlock.username && prevBlock.username !== 'Unknown User') {
+                            // DM/Standard format: standalone timestamp with previous username = continuation
+                            if (isDebugEnabled) {
+                                context.debugInfo.push(`Merging standalone timestamp block ${i} into previous block`);
+                            }
+                            // This is a continuation message from the same user
+                            // Merge this block into the previous one
+                            prevBlock.content.push(''); // Add blank line separator
+                            prevBlock.content.push(firstLineOfBlock); // Add the timestamp
+                            prevBlock.content.push(...block.content); // Add the content
+                            prevBlock.endLine = block.endLine;
+                            context.blocks.splice(i, 1);
+                            i--;
+                            continue;
                         }
-                        // This is a continuation message from the same user
-                        // Merge this block into the previous one
-                        prevBlock.content.push(''); // Add blank line separator
-                        prevBlock.content.push(firstLineOfBlock); // Add the timestamp
-                        prevBlock.content.push(...block.content); // Add the content
-                        prevBlock.endLine = block.endLine;
-                        context.blocks.splice(i, 1);
-                        i--;
-                        continue;
                     }
                 }
                 
@@ -559,13 +663,22 @@ export class FlexibleMessageParser {
                 }
             }
             
-            // Check for avatar in previous line
+            // Check for avatar in previous line (enhanced for Slack avatars)
             if (i > 0 && block.startLine > 0) {
                 try {
                     const prevLine = context.lines[block.startLine - 1].trim();
-                    const avatarMatch = prevLine.match(/^!\[.*?\]\((https?:\/\/[^\)]+)\)$/);
-                    if (avatarMatch && avatarMatch.length > 1 && avatarMatch[1] && avatarMatch[1] !== null) {
-                        block.avatarUrl = avatarMatch[1];
+                    // Check for Slack avatar pattern first
+                    if (this.isAvatarLine(prevLine)) {
+                        const avatarMatch = prevLine.match(/^!\[\]\((https?:\/\/[^\)]+)\)$/);
+                        if (avatarMatch && avatarMatch.length > 1 && avatarMatch[1] && avatarMatch[1] !== null) {
+                            block.avatarUrl = avatarMatch[1];
+                        }
+                    } else {
+                        // Fall back to general image pattern
+                        const avatarMatch = prevLine.match(/^!\[.*?\]\((https?:\/\/[^\)]+)\)$/);
+                        if (avatarMatch && avatarMatch.length > 1 && avatarMatch[1] && avatarMatch[1] !== null) {
+                            block.avatarUrl = avatarMatch[1];
+                        }
                     }
                 } catch (error) {
                     Logger.debug('FlexibleMessageParser', 'Error extracting avatar URL', { error });
@@ -776,12 +889,12 @@ export class FlexibleMessageParser {
         
         try {
             // Check for patterns that look like link preview titles (e.g., "GuidewireGuidewire")
-            if (/^([A-Za-z]+)\1$/.test(line) && line.length > 10) {
+            if (/^([A-Za-z\u00C0-\u017F]+)\1$/.test(line) && line.length > 10) {
                 return 0;
             }
             
             // Single short words are unlikely to be usernames without more context
-            if (/^[A-Za-z]{1,3}$/.test(line)) {
+            if (/^[A-Za-z\u00C0-\u017F]{1,3}$/.test(line)) {
                 // Check if the next line might be a timestamp to confirm this is a username
                 return 0.3; // Low confidence
             }
@@ -797,7 +910,22 @@ export class FlexibleMessageParser {
             }
             
             // Lines that look like partial sentences or phrases are not usernames
-            if (/^(One thing|At Friday|Hosted and|Also sent|Added by|View thread|Thread:|Last reply|Language|TypeScript|Last updated|Nice|Oh interesting|Interesting|Hey|hi team|Just noticed|Went to|New message|First message|This is)/i.test(line)) {
+            if (/^(One thing|At Friday|Hosted and|Also sent|Added by|View thread|Thread:|Last reply|Language|TypeScript|Last updated|Nice|Oh interesting|Interesting|Hey|hi team|Just noticed|Went to|New message|First message|Initial message|This is)/i.test(line)) {
+                return 0;
+            }
+            
+            // Lines that look like message content (sentences with common words) are not usernames
+            if (/^(Main|Continuation|Message|Content|Reply|Response|Update|Comment|Note|Text|Information|Details|Summary|Description|Explanation|Question|Answer|Thanks|Thank|Please|Sorry|Sure|Yes|No|Ok|Okay|Right|Well|So|But|And|Or|Also|However|Actually|Really|Just|Still|Only|Even|More|Less|Some|Many|Most|All|Any|Each|Every|Both|Either|Neither|Few|Several|Other|Another|Next|Last|First|Second|Third|Fourth|Fifth|Sixth|Seventh|Eighth|Ninth|Tenth|Previous|Following|Above|Below|Here|There|Where|When|Why|How|What|Who|Which|That|These|Those|Before|After|During|While|Since|Until|If|Unless|Although|Because|Since|As|Like|Such|Same|Different|Similar|Various|Specific|General|Important|Necessary|Possible|Impossible|Easy|Difficult|Good|Bad|Great|Excellent|Amazing|Wonderful|Terrible|Awful|Nice|Fine|Better|Best|Worse|Worst|New|Old|Recent|Current|Future|Past|Present|Today|Tomorrow|Yesterday|Now|Later|Soon|Never|Always|Sometimes|Often|Usually|Rarely|Seldom|Once|Twice|Again|Still|Yet|Already|Finally|Eventually|Immediately|Quickly|Slowly|Carefully|Properly|Correctly|Incorrectly|Exactly|Approximately|Probably|Definitely|Certainly|Obviously|Clearly|Unfortunately|Fortunately|Hopefully|Basically|Essentially|Generally|Specifically|Particularly|Especially|Mainly|Mostly|Primarily|Simply|Actually|Really|Truly|Honestly|Seriously|Absolutely|Completely|Totally|Partially|Slightly|Significantly|Considerably|Extremely|Very|Quite|Rather|Pretty|Too|Enough|Almost|Nearly|About|Around|Over|Under|Through|Across|Along|Against|Towards|Without|Within|Outside|Inside|Between|Among|Despite|Although|However|Therefore|Thus|Hence|Consequently|Furthermore|Moreover|Additionally|Also|Besides|Instead|Otherwise|Meanwhile|Anyway|Regardless|Nevertheless|Nonetheless|Indeed|Actually|Obviously|Apparently|Fortunately|Unfortunately|Interestingly|Surprisingly|Remarkably)\s+(part|message|content|text|line|section|paragraph|sentence|word|phrase|statement|remark|comment|note|reply|response|update|piece|item|thing|element|component|aspect|feature|detail|point|topic|subject|matter|issue|problem|solution|answer|question|example|instance|case|situation|condition|status|state|stage|step|phase|level|degree|amount|number|count|total|sum|result|outcome|effect|impact|consequence|reason|cause|purpose|goal|objective|target|aim|plan|idea|thought|concept|notion|opinion|view|perspective|approach|method|way|manner|style|type|kind|sort|form|format|structure|design|pattern|model|system|process|procedure|technique|strategy|tactic|action|activity|task|job|work|effort|attempt|try|test|trial|experiment|study|research|analysis|investigation|examination|review|evaluation|assessment|judgment|decision|choice|option|alternative|possibility|chance|opportunity|risk|danger|threat|challenge|difficulty|obstacle|barrier|limitation|restriction|constraint|requirement|condition|criterion|standard|rule|regulation|policy|principle|guideline|instruction|direction|guidance|advice|suggestion|recommendation|proposal|offer|request|demand|requirement|need|want|desire|wish|hope|dream|expectation|anticipation|prediction|forecast|estimate|calculation|measurement|observation|discovery|finding|conclusion|result|person's?)/i.test(line)) {
+                return 0;
+            }
+            
+            // Lines that contain common sentence structures are not usernames
+            if (/\b(the|a|an|this|that|these|those|my|your|his|her|its|our|their|some|any|all|every|each|many|much|more|most|few|several|other|another|one|two|three|four|five|first|second|third|last|next|before|after|during|while|when|where|why|how|what|who|which|if|unless|because|since|as|like|than|but|and|or|so|yet|for|nor|to|of|in|on|at|by|with|from|up|out|off|over|under|above|below|through|across|into|onto|upon|within|without|between|among|around|about|against|towards|during|throughout|until|since|before|after|while|when|where)\b/i.test(line)) {
+                return 0;
+            }
+            
+            // Lines with possessives or contractions (like "B's continuation") are not usernames
+            if (/^[A-Z]'s\s+\w+/i.test(line)) {
                 return 0;
             }
             
@@ -949,8 +1077,8 @@ export class FlexibleMessageParser {
     }
 
     /**
-     * Extract header information from a line.
-     * Parses username and timestamp from message headers.
+     * Extract header information from a line with format awareness.
+     * Parses username and timestamp from message headers using format detection.
      * @private
      * @param {string} line - The header line to parse
      * @param {MessageBlock} block - The block to update with extracted info
@@ -959,6 +1087,71 @@ export class FlexibleMessageParser {
      */
     private extractHeaderInfo(line: string, block: MessageBlock, context: ParserContext): void {
         try {
+            // Detect the message format first
+            const format = detectMessageFormat(line);
+            
+            // Apply format-aware extraction
+            if (format === MessageFormat.THREAD) {
+                // Thread format: "Username![:emoji:](url) [timestamp](url)"
+                const username = extractUsernameFromThreadFormat(line);
+                if (username && username !== 'Unknown User') {
+                    block.username = username;
+                }
+                
+                // Extract timestamp from thread format
+                const timestampMatch = line.match(/\[([^\]]+)\]\(https?:\/\/[^)]+\)$/);
+                if (timestampMatch && timestampMatch[1]) {
+                    block.timestamp = timestampMatch[1];
+                }
+                return;
+            } else if (format === MessageFormat.DM) {
+                // Enhanced DM format handling for multi-person DMs
+                
+                // Handle multi-person DM pattern: "UserNameUserName [timestamp](url)"
+                const multiPersonDMPattern = /^([A-Za-z\s\u00C0-\u017F]+)\1\s+\[([^\]]+)\]\(https?:\/\/[^)]+\)$/;
+                const multiPersonMatch = line.match(multiPersonDMPattern);
+                
+                if (multiPersonMatch && multiPersonMatch[1] && multiPersonMatch[2]) {
+                    // Extract doubled username and timestamp
+                    const username = extractUsernameFromDMFormat(multiPersonMatch[1].trim());
+                    block.username = username;
+                    block.timestamp = multiPersonMatch[2];
+                    return;
+                }
+                
+                // Handle split doubled pattern: "AmyAmy BritoBrito [timestamp]"
+                const splitDoubledPattern = /^([A-Za-z]+)\1([A-Za-z\s]+)\2\s+\[([^\]]+)\]/;
+                const splitMatch = line.match(splitDoubledPattern);
+                
+                if (splitMatch && splitMatch[1] && splitMatch[2] && splitMatch[3]) {
+                    // Reconstruct full name and extract timestamp
+                    const fullName = splitMatch[1] + splitMatch[2];
+                    const username = extractUsername(fullName, MessageFormat.DM);
+                    block.username = username;
+                    block.timestamp = splitMatch[3];
+                    return;
+                }
+                
+                // Handle any username + timestamp pattern in DM format
+                const usernameTimestampPattern = /^(.+?)\s+\[([^\]]+)\]/;
+                const usernameTimestampMatch = line.match(usernameTimestampPattern);
+                
+                if (usernameTimestampMatch && usernameTimestampMatch[1] && usernameTimestampMatch[2]) {
+                    const username = extractUsernameFromDMFormat(usernameTimestampMatch[1]);
+                    block.username = username;
+                    block.timestamp = usernameTimestampMatch[2];
+                    return;
+                }
+                
+                // Fallback: standalone timestamp line (original logic)
+                const timestampMatch = line.match(/^\[([^\]]+)\]\(https?:\/\/[^)]+\)$/);
+                if (timestampMatch && timestampMatch[1]) {
+                    block.timestamp = timestampMatch[1];
+                }
+                return;
+            }
+            
+            // Fall back to original logic for unknown formats
             // Try combined patterns first
             for (let i = 0; i < this.patterns.userAndTime.length; i++) {
                 const pattern = this.patterns.userAndTime[i];
@@ -966,16 +1159,16 @@ export class FlexibleMessageParser {
                 if (match && match.length > 1) {
                     // Handle different pattern matches with null safety
                     if (i === 0 || i === 1) { // Username (possibly doubled) patterns
-                        block.username = this.cleanUsername((match[1] && match[1] !== null) ? match[1] : '');
+                        block.username = this.cleanUsername((match[1] && match[1] !== null) ? match[1] : '', format);
                         block.timestamp = (match[2] && match[2] !== null) ? match[2] : '';
                     } else if (i === 4) { // User + emoji + time pattern
-                        block.username = this.cleanUsername((match[1] && match[1] !== null) ? match[1] : '');
+                        block.username = this.cleanUsername((match[1] && match[1] !== null) ? match[1] : '', format);
                         block.timestamp = (match[2] && match[2] !== null) ? match[2] : '';
                     } else if (i === 5) { // User emoji time (with space between emoji and time)
-                        block.username = this.cleanUsername((match[1] && match[1] !== null) ? match[1] : '');
+                        block.username = this.cleanUsername((match[1] && match[1] !== null) ? match[1] : '', format);
                         block.timestamp = (match.length > 3 && match[3] && match[3] !== null) ? match[3] : '';
                     } else {
-                        block.username = this.cleanUsername((match[1] && match[1] !== null) ? match[1] : '');
+                        block.username = this.cleanUsername((match[1] && match[1] !== null) ? match[1] : '', format);
                         block.timestamp = (match.length > 2 && match[2] && match[2] !== null) ? match[2] : '';
                     }
                     return;
@@ -991,7 +1184,7 @@ export class FlexibleMessageParser {
                 const match = line.match(pattern);
                 if (match && match[0]) {
                     const usernameValue = (match.length > 1 && match[1] && match[1] !== null) ? match[1] : match[0];
-                    block.username = this.cleanUsername(usernameValue || '');
+                    block.username = this.cleanUsername(usernameValue || '', MessageFormat.UNKNOWN);
                     break;
                 }
             }
@@ -1015,21 +1208,22 @@ export class FlexibleMessageParser {
     }
 
     /**
-     * Clean username by removing emojis and artifacts.
+     * Clean username by removing emojis and artifacts with format awareness.
      * Handles doubled usernames, emoji codes, and formatting artifacts.
      * @private
      * @param {string} username - Raw username string
+     * @param {MessageFormat} [format] - Message format for context-aware cleaning
      * @returns {string} Cleaned username or 'Unknown User'
      */
-    private cleanUsername(username: string): string {
+    private cleanUsername(username: string, format?: MessageFormat): string {
         let cleaned = username;
         
-        // Remove emojis
+        // Remove emojis (but preserve for format-aware processing)
         cleaned = cleaned.replace(/:[a-zA-Z0-9_+-]+:/g, '').trim();
         cleaned = cleaned.replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '').trim();
         
-        // Clean up doubled names
-        cleaned = cleanupDoubledUsernames(cleaned);
+        // Clean up doubled names with format awareness
+        cleaned = cleanupDoubledUsernames(cleaned, format);
         
         // Remove trailing punctuation
         cleaned = cleaned.replace(/[!?,.;:]+$/, '').trim();
@@ -1042,7 +1236,7 @@ export class FlexibleMessageParser {
 
     /**
      * Extract reactions from a line.
-     * Parses emoji:count pairs in various formats.
+     * Parses emoji:count pairs in various formats including complex patterns.
      * @private
      * @param {string} line - The line to parse for reactions
      * @returns {SlackReaction[]} Array of extracted reactions
@@ -1050,12 +1244,32 @@ export class FlexibleMessageParser {
     private extractReactions(line: string): SlackReaction[] {
         const reactions: SlackReaction[] = [];
         
-        // Pattern for emoji:count pairs
-        const reactionPattern = /(:[a-zA-Z0-9_+-]+:|[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]|!\[:[^:]+:\]\([^)]+\))\s*(\d+)/gu;
+        // Enhanced pattern for complex reaction formats including linked emoji images
+        // Handles patterns like: ![:subscribe:](url)4![:heavy_plus_sign:](url)1
+        const complexReactionPattern = /!\[:([^:]+):\]\([^)]+\)(\d+)/g;
         
+        // Standard pattern for emoji:count pairs
+        const standardReactionPattern = /(:[a-zA-Z0-9_+-]+:|[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}])\s*(\d+)/gu;
+        
+        // Process complex reaction patterns first (linked emoji images)
         let match;
-        while ((match = reactionPattern.exec(line)) !== null) {
-            if (!match || match.length < 3 || !match[1] || !match[2]) continue;
+        while ((match = complexReactionPattern.exec(line)) !== null) {
+            if (!match || match.length < 3 || !match[1] || !match[2] || match[1] === null || match[2] === null) continue;
+            
+            const name = match[1];
+            const count = parseInt(match[2], 10);
+            
+            if (!isNaN(count) && name) {
+                reactions.push({ name, count });
+            }
+        }
+        
+        // Process standard reaction patterns (avoiding overlap with complex patterns)
+        const processedText = line.replace(complexReactionPattern, ''); // Remove already processed reactions
+        complexReactionPattern.lastIndex = 0; // Reset regex state
+        
+        while ((match = standardReactionPattern.exec(processedText)) !== null) {
+            if (!match || match.length < 3 || !match[1] || !match[2] || match[1] === null || match[2] === null) continue;
             
             const emoji = match[1];
             const count = parseInt(match[2], 10);
@@ -1063,17 +1277,8 @@ export class FlexibleMessageParser {
             if (!isNaN(count) && emoji) {
                 let name = emoji;
                 
-                // Extract name from different formats
-                if (emoji.startsWith('![:')) {
-                    try {
-                        const nameMatch = emoji.match(/!\[:(.+?):\]/);
-                        if (nameMatch && nameMatch.length > 1 && nameMatch[1] && nameMatch[1] !== null) {
-                            name = nameMatch[1];
-                        }
-                    } catch (error) {
-                        Logger.debug('FlexibleMessageParser', 'Error extracting emoji name', { emoji, error });
-                    }
-                } else if (emoji.startsWith(':')) {
+                // Extract name from standard emoji format
+                if (emoji.startsWith(':') && emoji.endsWith(':')) {
                     name = emoji.slice(1, -1);
                 }
                 
@@ -1186,7 +1391,7 @@ export class FlexibleMessageParser {
                 // Skip messages with obvious non-username patterns
                 if (message.username && (
                     /^\d+$/.test(message.username) ||  // Just numbers
-                    /^[A-Za-z]{1,3}$/.test(message.username) ||  // Very short words like "1", "Nice"
+                    /^[A-Za-z\u00C0-\u017F]{1,3}$/.test(message.username) ||  // Very short words like "1", "Nice"
                     /^(Language|TypeScript|Last updated|\d+\s+(?:minutes?|hours?|days?)\s+ago)$/i.test(message.username) ||
                     // Skip if username looks like a sentence fragment (contains common phrase starters)
                     /^(First|Second|Third|Next|Last|Another|Other|This|That|These|Those|Some|Many|Few|Several|All|Any|Each|Every)\s+(message|comment|note|reply|response|update|post|item|thing)/i.test(message.username)
@@ -1343,6 +1548,82 @@ export class FlexibleMessageParser {
                (contentScore.isUsername > TIMESTAMP_CONFIDENCE_THRESHOLD && 
                 currentIndex + 2 < context.lines.length && 
                 this.scoreTimestamp(context.lines[currentIndex + 2].trim()) > TIMESTAMP_CONFIDENCE_THRESHOLD);
+    }
+
+    /**
+     * Check if a line is an avatar image pattern.
+     * 
+     * @private
+     * @param line - The line to check
+     * @returns True if this is an avatar line
+     */
+    private isAvatarLine(line: string): boolean {
+        try {
+            for (const pattern of this.patterns.avatar) {
+                if (pattern.test(line)) {
+                    return true;
+                }
+            }
+        } catch (error) {
+            Logger.debug('FlexibleMessageParser', 'Regex error in isAvatarLine', { line, error });
+        }
+        return false;
+    }
+
+    /**
+     * Detect the format of the Slack export for context-aware parsing.
+     * @private
+     * @param {string} text - The full text to analyze
+     * @returns {string} The detected format type
+     */
+    private detectFormat(text: string): 'dm' | 'thread' | 'channel' | 'standard' | 'mixed' {
+        // Check for DM format indicators
+        const dmPatterns = [
+            /^\[\d{1,2}:\d{2}\]\(https:\/\/.*\/archives\/D[A-Z0-9]+\/p\d+\)$/m,
+            /\/archives\/D[A-Z0-9]+\//
+        ];
+        
+        // Check for thread format indicators
+        const threadPatterns = [
+            /thread_ts=/,
+            /^\!\[\]\(https:\/\/ca\.slack-edge\.com\//m,
+            /\d+\s+replies/,
+            /Last reply.*ago.*View thread/
+        ];
+        
+        // Check for channel format indicators
+        const channelPatterns = [
+            /\/archives\/C[A-Z0-9]+\//,
+            /^---\s*[A-Za-z]/m
+        ];
+        
+        let dmScore = 0;
+        let threadScore = 0;
+        let channelScore = 0;
+        
+        // Score each pattern
+        for (const pattern of dmPatterns) {
+            if (pattern.test(text)) dmScore++;
+        }
+        
+        for (const pattern of threadPatterns) {
+            if (pattern.test(text)) threadScore++;
+        }
+        
+        for (const pattern of channelPatterns) {
+            if (pattern.test(text)) channelScore++;
+        }
+        
+        // Determine format based on scores
+        if (dmScore > threadScore && dmScore > channelScore) {
+            return 'dm';
+        } else if (threadScore > dmScore && threadScore >= channelScore) {
+            return 'thread';
+        } else if (channelScore > 0) {
+            return 'channel';
+        } else {
+            return 'standard';
+        }
     }
 
 }

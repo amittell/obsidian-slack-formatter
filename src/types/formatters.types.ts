@@ -5,7 +5,7 @@
 /**
  * Available format strategy types
  */
-export type FormatStrategyType = 'standard' | 'bracket' | 'mixed';
+export type FormatStrategyType = 'standard' | 'bracket' | 'mixed' | 'dm' | 'thread' | 'channel';
 
 /**
  * Result from processing stages

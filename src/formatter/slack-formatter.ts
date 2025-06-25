@@ -119,7 +119,7 @@ export class SlackFormatter implements ISlackFormatter {
         
         // Initialize components
         this.parser = new FlexibleMessageParser();
-        this.intelligentParser = new IntelligentMessageParser(this.settings, { userMap, emojiMap });
+        this.intelligentParser = new IntelligentMessageParser(this.settings, { userMap, emojiMap }, 'standard');
         this.formatDetector = new ImprovedFormatDetector();
         this.unifiedProcessor = new UnifiedProcessor(this.settings);
         this.preprocessor = new PreProcessor(settings?.maxLines || 1000);
@@ -128,9 +128,14 @@ export class SlackFormatter implements ISlackFormatter {
         
         // Initialize strategies
         this.strategies = new Map();
-        this.strategies.set('standard', new StandardFormatStrategy(this.settings, this.parsedMaps));
+        const standardStrategy = new StandardFormatStrategy(this.settings, this.parsedMaps);
+        this.strategies.set('standard', standardStrategy);
         this.strategies.set('bracket', new BracketFormatStrategy(this.settings, this.parsedMaps));
         this.strategies.set('mixed', new MixedFormatStrategy(this.settings, this.parsedMaps));
+        // Map DM format to standard strategy for now
+        this.strategies.set('dm', standardStrategy);
+        this.strategies.set('thread', standardStrategy);
+        this.strategies.set('channel', standardStrategy);
     }
 
     /**
@@ -324,7 +329,9 @@ export class SlackFormatter implements ISlackFormatter {
             const formatType = this.formatDetector.detectFormat(preprocessed.content);
             debugInfo.push(`Detected format: ${formatType}`);
             
-            // 3. Parse messages with intelligent parser as primary
+            // 3. Parse messages with intelligent parser as primary (with detected format)
+            // Recreate parser with detected format for context-aware parsing
+            this.intelligentParser = new IntelligentMessageParser(this.settings, this.parsedMaps, formatType);
             let messages = this.intelligentParser.parse(preprocessed.content, this.debugMode);
             let parsingMethod = 'intelligent';
             
@@ -400,9 +407,10 @@ export class SlackFormatter implements ISlackFormatter {
                 }
             }
             
-            // Calculate stats (but don't update global state for chunks)
+            // Calculate and store stats
             const endTime = Date.now();
             const stats = this.calculateStats(processedMessages, formatType, endTime - startTime);
+            this.lastStats = stats;
             
             return formatted;
             
@@ -555,6 +563,7 @@ export class SlackFormatter implements ISlackFormatter {
         this.parser = new FlexibleMessageParser();
         // IntelligentMessageParser has updateSettings method
         this.intelligentParser.updateSettings(settings, parsedMaps);
+        // Note: Format detection will be performed during actual parsing to ensure context-aware parsing
         
         // Update strategies
         this.strategies.forEach(strategy => {

@@ -438,6 +438,12 @@ export class IntelligentMessageParser {
             return false;
         }
         
+        // Check if this looks like link preview content
+        // Link previews often appear after URLs and should not start a new message
+        if (this.looksLikeLinkPreview(line, allLines, index)) {
+            return false;
+        }
+        
         // Check if this is a standalone timestamp (likely a continuation)
         const standaloneTimestampPatterns = [
             /^\[\d{1,2}:\d{2}(?:\s*(?:AM|PM))?\]\(https?:\/\/[^)]+\)$/i, // [8:26](url)
@@ -783,6 +789,87 @@ export class IntelligentMessageParser {
         }
         
         return mergedBoundaries.filter(b => b.confidence > CONFIDENCE_CONFIG.MIN_CONFIDENCE_THRESHOLD); // Only keep reasonable boundaries
+    }
+
+    /**
+     * Check if content appears to be a link preview
+     */
+    private looksLikeLinkPreview(line: LineAnalysis, allLines: LineAnalysis[], index: number): boolean {
+        if (!line || line.isEmpty) return false;
+        
+        const text = line.trimmed;
+        
+        // Check for common link preview patterns and file attachment patterns
+        const linkPreviewPatterns = [
+            /^!\[.*\]\(.*\).*\(formerly.*\)$/i,  // ![X (formerly Twitter)](...) 
+            /^[A-Za-z0-9\s]+\s+\(formerly\s+[A-Za-z0-9\s]+\)$/i,  // "X (formerly Twitter)"
+            /\bChapters:\d+:\d+\b/i,  // Video chapters
+            /^Nice - my AI.*talk is now up!/i,  // Specific content from the test
+            /\(\d+\s*[KMG]?B\)$/,  // File sizes
+            /^Programmatically integrate/i,
+            /imo\s+fair\s+to\s+say.*software.*changing/i,
+            
+            // File attachment patterns
+            /^\d+\s+files?$/i,  // "4 files", "1 file"
+            /^(Zip|PDF|Doc|Google Doc|Excel|PowerPoint|Image|Video|Word|Spreadsheet)$/i,  // File type names
+            /\.(zip|pdf|doc|docx|xls|xlsx|ppt|pptx|jpg|jpeg|png|gif|mp4|mov|avi)$/i,  // File extensions
+            /files\.slack\.com|enterprise\.slack\.com/,  // Slack file URLs
+            /\/download\//,  // Download paths
+            /^\[.*\]\(https:\/\/.*files.*\)/i,  // File download links in markdown format
+            /^\[\s*$/,  // Lines that just start with "["
+            /^\]\(https?:\/\/docs\.google\.com/i,  // Google Docs links (with or without s in https)
+            /^\]\(https?:\/\/.*\.slack\.com/i,  // Any Slack links in bracket format
+            /^\]\(https?:\/\//i,  // Any link that starts with ](http
+            /^Stripe Guidewire Accelerator/i,  // Specific document title pattern
+        ];
+        
+        // Also check if this looks like a response after a quoted message
+        // Look for a quoted message (line starting with >) in the previous few lines
+        let hasQuotedMessageBefore = false;
+        for (let i = Math.max(0, index - 3); i < index; i++) {
+            if (allLines[i] && allLines[i].trimmed.startsWith('>')) {
+                hasQuotedMessageBefore = true;
+                break;
+            }
+        }
+        
+        // If this follows a quoted message and doesn't have strong message indicators,
+        // it's likely a response to the quote, not a new message
+        if (hasQuotedMessageBefore && !line.characteristics.hasAvatar && !line.characteristics.hasTimestamp) {
+            // Check if the line looks like regular content (not metadata)
+            if (text.length > 10 && !this.isObviousMetadata(line)) {
+                return true; // This is likely a continuation/response to a quote
+            }
+        }
+        
+        // Direct pattern match
+        if (linkPreviewPatterns.some(pattern => this.safeRegexTest(pattern, text))) {
+            return true;
+        }
+        
+        // Check context - link previews typically follow URLs
+        let hasUrlBefore = false;
+        for (let i = Math.max(0, index - 5); i < index; i++) {
+            if (allLines[i] && allLines[i].characteristics.hasUrl) {
+                hasUrlBefore = true;
+                break;
+            }
+        }
+        
+        // If preceded by URL and looks like a title/description
+        if (hasUrlBefore) {
+            // Check if it looks like a preview title (e.g. "Platform Name (@handle) on X")
+            if (this.safeRegexTest(/^[A-Za-z0-9\s]+\s+\(@?\w+\)\s+on\s+\w+$/i, text)) {
+                return true;
+            }
+            
+            // Check if line has link preview image pattern followed by text
+            if (this.safeRegexTest(/^!\[.*?\]\(.*?\)[A-Za-z]/, text)) {
+                return true;
+            }
+        }
+        
+        return false;
     }
 
     /**

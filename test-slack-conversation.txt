@@ -1,133 +1,141 @@
-Alex MittellAlex Mittell  [Feb 6th at 7:47 PM](https://stripe.slack.com/archives/C039S5CGKEJ/p1738889253251969)  
-
-Hey all, I've been annoyed for a while by trying to copy and paste Slack conversations into Obsidian 'nicely' so I knocked up a quick plug-in to make it easier. Does anyone know if / how I can get this added to the internal [[Notes/Lexicon/Stripe]] Obsidian plug-in repo?BTW you can grab it [here](https://github.com/amittell/obsidian-slack-formatter) if you want to try it, feedback and suggestions welcome this version is pretty rough and ready! ![:bufo-cowboy:](https://emoji.slack-edge.com/T0181S17H6Z/bufo-cowboy/e335ba4bec9b8113.png)
-
-4 files 
-
-[
-
-![IMG_5205.png](https://files.slack.com/files-tmb/T0181S17H6Z-F08BS9PP539-ca5b017000/img_5205_720.png)
-
-](https://files.slack.com/files-pri/T0181S17H6Z-F08BS9PP539/img_5205.png)
-
-[](https://files.slack.com/files-pri/T0181S17H6Z-F08BS9PP539/download/img_5205.png?origin_team=E0181S17H6Z)
-
-[
-
-![IMG_3606.png](https://files.slack.com/files-tmb/T0181S17H6Z-F08C072EZK8-ac7a0cbdc5/img_3606_720.png)
-
-](https://files.slack.com/files-pri/T0181S17H6Z-F08C072EZK8/img_3606.png)
-
-[](https://files.slack.com/files-pri/T0181S17H6Z-F08C072EZK8/download/img_3606.png?origin_team=E0181S17H6Z)
-
-[
-
-![IMG_8424.png](https://files.slack.com/files-tmb/T0181S17H6Z-F08BS9Q78RM-064de9aca6/img_8424_720.png)
-
-](https://files.slack.com/files-pri/T0181S17H6Z-F08BS9Q78RM/img_8424.png)
-
-[](https://files.slack.com/files-pri/T0181S17H6Z-F08BS9Q78RM/download/img_8424.png?origin_team=E0181S17H6Z)
-
-[
-
-![IMG_3729.png](https://files.slack.com/files-tmb/T0181S17H6Z-F08C6RCG6HG-f8200610bb/img_3729_720.png)
-
-](https://files.slack.com/files-pri/T0181S17H6Z-F08C6RCG6HG/img_3729.png)
-
-[](https://files.slack.com/files-pri/T0181S17H6Z-F08C6RCG6HG/download/img_3729.png?origin_team=E0181S17H6Z)
-
-amittell/obsidian-slack-formatter
-
-Language
-
-TypeScript
-
-Last updated
-
-11 minutes ago
-
-Added by [GitHub](https://stripe.slack.com/services/B021A2RAUJK "GitHub")
-
-![:so-beautiful:](https://emoji.slack-edge.com/T0181S17H6Z/so-beautiful/ef84f57243c1429e.gif)27![:pika-aww:](https://emoji.slack-edge.com/T0181S17H6Z/pika-aww/b6643a39be4ca95c.png)5
-
-13 replies
-
----
-
-![](https://ca.slack-edge.com/E0181S17H6Z-UL85BJW1W-903f5432c8dd-48)
-
-Phillip EdgingtonPhillip Edgington![:go-llm-logo:](https://slack-imgs.com/?c=1&o1=gu&url=https%3A%2F%2Femoji.slack-edge.com%2FT0181S17H6Z%2Fgo-llm-logo%2Fb9434a1da22de0f3.png)  [Feb 6th at 8:01 PM](https://stripe.slack.com/archives/C039S5CGKEJ/p1738890084360609?thread_ts=1738889253.251969&cid=C039S5CGKEJ)  
-
-you can make a PR here [https://git.corp.stripe.com/stripe-private-oss-forks/obsidian-plugins](https://git.corp.stripe.com/stripe-private-oss-forks/obsidian-plugins) and tag obsidian-reviewers for a review
-
-![:bufo-ty:](https://emoji.slack-edge.com/T0181S17H6Z/bufo-ty/a4e226ec281b39ba.png)1
-
-![](https://ca.slack-edge.com/E0181S17H6Z-U07JC6P29UM-67fda94224a3-48)
-
-Alex MittellAlex Mittell  [Feb 6th at 9:02 PM](https://stripe.slack.com/archives/C039S5CGKEJ/p1738893743941379?thread_ts=1738889253.251969&cid=C039S5CGKEJ)  
-
-Thanks [@phillipedgington](https://stripe.slack.com/team/UL85BJW1W). I already found a bug with DM threads. I'll make s PR when I've fixed that. ![:bufo-lol-cry:](https://emoji.slack-edge.com/T0181S17H6Z/bufo-lol-cry/be10ad5b27425b57.gif)
-
-![](https://ca.slack-edge.com/E0181S17H6Z-U01GHRRFF33-10f9cb2cdee9-48)
-
-Clement MiaoClement Miao![:no_entry:](https://a.slack-edge.com/production-standard-emoji-assets/14.0/apple-large/26d4.png)  [Feb 7th at 8:25 AM](https://stripe.slack.com/archives/C039S5CGKEJ/p1738934758764809?thread_ts=1738889253.251969&cid=C039S5CGKEJ)  
-
-this is AMAZING omg
-
-[8:26](https://stripe.slack.com/archives/C039S5CGKEJ/p1738934765553959?thread_ts=1738889253.251969&cid=C039S5CGKEJ)
-
-even if a bit buggy, this is going to be great
-
-![](https://ca.slack-edge.com/E0181S17H6Z-U06JYDE02GY-a46bd4440a89-48)
-
-Trajan McGillTrajan McGill  [Feb 7th at 9:18 AM](https://stripe.slack.com/archives/C039S5CGKEJ/p1738937902183979?thread_ts=1738889253.251969&cid=C039S5CGKEJ)  
-
-Yeah, this is going to be fantastic.
-
-[9:18](https://stripe.slack.com/archives/C039S5CGKEJ/p1738937929874099?thread_ts=1738889253.251969&cid=C039S5CGKEJ)
-
-So, first attempt was copying and pasting this very thread, and looks good, but it doesn't seem to detect where all the messages start and end. I get one big message containing the first three messages.
-
-[9:23](https://stripe.slack.com/archives/C039S5CGKEJ/p1738938227881789?thread_ts=1738889253.251969&cid=C039S5CGKEJ)
-
-Curious how the clipboard works on Slack copies; are there image objects along with the text, where eventually we could get pasted embedded images to just paste right in there, too?
-
-![:bufo-thinking:](https://emoji.slack-edge.com/T0181S17H6Z/bufo-thinking/23345a0f0ad89bd4.png)1
-
-![](https://ca.slack-edge.com/E0181S17H6Z-U03LKBAKQNM-beebd2750dc4-48)
-
-David BrownmanDavid Brownman  [Feb 7th at 1:31 PM](https://stripe.slack.com/archives/C039S5CGKEJ/p1738953077700449?thread_ts=1738889253.251969&cid=C039S5CGKEJ)  
-
-[@alexm](https://stripe.slack.com/team/U07JC6P29UM) [@phillipedgington](https://stripe.slack.com/team/UL85BJW1W) FYI our rule (so far) is that we can use stripe-employee developed plugins straight from the "store", so i'm not sure you need the `private-oss-forks` PR if you don't want it
-
-![:nice5:](https://emoji.slack-edge.com/T0181S17H6Z/nice5/c6a3c019914a4f1e.gif)1
-
-[1:31](https://stripe.slack.com/archives/C039S5CGKEJ/p1738953082490149?thread_ts=1738889253.251969&cid=C039S5CGKEJ)
-
-either way, seriously cool plugin!
-
-![:bufo-ty:](https://emoji.slack-edge.com/T0181S17H6Z/bufo-ty/a4e226ec281b39ba.png)1
-
-![](https://ca.slack-edge.com/E0181S17H6Z-UL85BJW1W-903f5432c8dd-48)
-
-Phillip EdgingtonPhillip Edgington![:go-llm-logo:](https://slack-imgs.com/?c=1&o1=gu&url=https%3A%2F%2Femoji.slack-edge.com%2FT0181S17H6Z%2Fgo-llm-logo%2Fb9434a1da22de0f3.png)  [Feb 7th at 1:31 PM](https://stripe.slack.com/archives/C039S5CGKEJ/p1738953104407329?thread_ts=1738889253.251969&cid=C039S5CGKEJ)  
-
-oh interesting
-
-[1:31](https://stripe.slack.com/archives/C039S5CGKEJ/p1738953107321319?thread_ts=1738889253.251969&cid=C039S5CGKEJ)
-
-nice
-
-![](https://ca.slack-edge.com/E0181S17H6Z-U07JC6P29UM-67fda94224a3-48)
-
-Alex MittellAlex Mittell  [Feb 7th at 10:52 PM](https://stripe.slack.com/archives/C039S5CGKEJ/p1738986767073259?thread_ts=1738889253.251969&cid=C039S5CGKEJ)  
-
-I've updated the pluggin to handle DM conversation imports. Need to run a whole bunch of other slack copy and pastes through it I'm sure there are more cases I haven't accounted for, what you get in a raw copy and paste is limited but might be able to preserve the images that come over in it. The intercept cmd+V is currently non-functional I know about that one. ![:bufoyes:](https://emoji.slack-edge.com/T0181S17H6Z/bufoyes/10dc6775c6f8e350.png)
-
-![:pray:](https://a.slack-edge.com/production-standard-emoji-assets/14.0/apple-small/1f64f@2x.png)1
-
-![](https://ca.slack-edge.com/E0181S17H6Z-U06JYDE02GY-a46bd4440a89-48)
-
-Trajan McGillTrajan McGill  [Today at 8:39 AM](https://stripe.slack.com/archives/C039S5CGKEJ/p1740145151982659?thread_ts=1738889253.251969&cid=C039S5CGKEJ)  
-
-Hi [@alexm](https://stripe.slack.com/team/U07JC6P29UM), thanks for your work on this! Having installed the latest version (0.0.6), I'm having a bit of trouble making it paste as expected. I tried selecting all the messages in one entire thread in Slack, copying, and then using Cmd-shift-V to paste into Obsidian, and got nothing whatsoever as output. Hitting just Cmd-V does paste the usual badly formatted stuff, so I know it's in the clipboard. Then I tried doing the same with this very thread, and found that it did paste, but only about the last half of the thread. Any thoughts?
+User1
+  12:00 PM
+Hi Stripes, here's the agenda for this week's Friday Fireside, with 
+@user2
+ and 
+@user3
+We'll hear from Archive co-founder & CEO User4 and Co-founder & CTO User5. Archive powers profitable resale programs for apparel and footwear brands. :internet-archive:
+@user6
+ and 
+@user7
+ will update us on our six key financial metrics :party-chart:
+@user8
+ and 
+@user9
+ from the Money Movement and Storage (MMS) team will demo key payouts features that improve merchant flexibility (and drive liquidity for Stripe) :payouts:
+Patrick will take us through tabs! :finger-cursor:
+:bufo-reading:  Oh and if you haven't already: make sure to read the 2024 annual letter.
+See you there!
+:thankyou4:
+4
+:friday:
+4
+:bufo-reading:
+7
+:bufo-yayy:
+2
+
+User10
+  11:51 AM
+channel is open and we'll get start in 10 minutes :blob-dance:
+:100:
+6
+:celebration:
+4
+:bufo-reading:
+3
+:blob-omg:
+4
+:cattyping:
+3
+:bufo-run:
+1
+
+User11
+  11:59 AM
+Rare blufo (blurfo?)
+ED: yeah, :blurfo: (edited) 
+:blurfo:
+4
+:blurfo-vibe:
+9
+:bufo-offers-blurfo:
+1
+
+Benjamin Neuwirth
+  12:02 PM
+So are these clothes that are returned? Or fully used and then resold?
+:good-question:
+5
+
+Darren Jennings
+  12:03 PM
+their icon is reminiscent of analogue.co
+:yeah:
+1
+
+Eoin Nugent
+  12:03 PM
+there's a new shuppa startup! (…at least phonetically the same name) https://www.myshuppa.com/ groceries+alcohol in (at least) dublin
+ShuppaShuppa
+shuppa | Instant Grocery Delivery in Dublin
+Shuppa | Grocery delivery dublin | Wine delivery dublin | App to doorstep in minutes | Download the app & shop today!
+:eyes:
+1
+:open_mouth:
+1
+:tm:
+3
+
+Miriam Keil
+  12:08 PM
+Sounds like you didn't spend your youth thrifting clothes, P. :hehehehe:
+
+Dan Nelson
+  12:09 PM
+Let's force a reason for this to be on-chain... if I buy a used coat through Archive, I could see the previous owners and we could play the game of "who wore it best".
+:chains:
+2
+:lolol:
+9
+:rolling_on_the_floor_laughing:
+1
+
+1 reply
+8 days agoView thread
+
+Anthony Voellm
+  12:09 PM
+Selling my Tandy Coco2 for a premium!!!! True vintage 1980s :slightly_smiling_face: (edited) 
+
+Adam O'Donnell
+  12:09 PM
+This is a fascinating market.
+:equals-equals:
+1
+:heavy_plus_sign:
+4
+
+2 replies
+Last reply 8 days agoView thread
+
+User11
+  12:10 PM
+economists: did someone say incentives?
+
+User1
+  5:19 PM
+If you missed it, be sure to catch the replay available now on the new StripeTV (with playback speed, chapter markers, and transcript, oh my!)
+At Friday Fireside This week 
+@user2
+ and 
+@user3
+ hosted and we heard from
+Archive co-founder & CEO User4 and Co-founder & CTO User5. Archive powers profitable resale programs for apparel and footwear brands :macklemore-thrift-shop:
+@user6
+ and 
+@user7
+ updated us on our six key financial metrics and the impact of/on GTM :party-chart:
+@user8
+ and 
+@user9
+ from the Money Movement and Storage (MMS) team demo'd key payouts features that improve merchant flexibility (and drive liquidity for Stripe) :one-million-dollars:
+Patrick took us through tabs! :finger-cursor: and then we heard from guest User12 on this week's QBR
+The replay, notes, and audio are up at go/ff-stream, go/ff-notes and go/ff-audio.
+:bufo-reading:  Oh and if you haven't already: make sure to read the 2024 annual letter.
+:bufo-offers-stripetv:
+2
+:austin-spin:
+1
+:bufo-offers-stripetv-in-technicolor:
+2

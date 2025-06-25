@@ -145,6 +145,16 @@ Second message`;
 
         const messages = parser.parse(input);
 
+        // DEBUG: Log the actual message objects to see timestamp values
+        console.log('\n=== DEBUG MESSAGE OBJECTS ===');
+        messages.forEach((msg, i) => {
+            console.log(`Message ${i}:`);
+            console.log(`  Username: "${msg.username}"`);
+            console.log(`  Timestamp: "${msg.timestamp}"`);
+            console.log(`  Date: "${msg.date}"`);
+            console.log('');
+        });
+
         expect(messages.length).toBe(2);
         expect(messages[0].username).toBe('User One');
         expect(messages[0].text).toContain('First message');

@@ -146,8 +146,12 @@ export abstract class BaseFormatStrategy implements FormatStrategy {
                }
 
                // --- Assemble Output ---
-               // Check if author changed or it's the first message
-               if (previousAuthor === null || currentAuthor !== previousAuthor) {
+               // Check if author changed, it's the first message, or messages have different timestamps (DM format)
+               const hasDifferentTimestamp = finalOutput !== '' && message.timestamp && 
+                   messages.indexOf(message) > 0 && 
+                   messages[messages.indexOf(message) - 1].timestamp !== message.timestamp;
+               
+               if (previousAuthor === null || currentAuthor !== previousAuthor || hasDifferentTimestamp) {
                    // Add separation from previous block if this isn't the very first message
                    if (finalOutput !== '') {
                        finalOutput += '\n'; // Add a blank line between author blocks

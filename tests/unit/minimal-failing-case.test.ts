@@ -3,8 +3,8 @@ import { IntelligentMessageParser } from '../../src/formatter/stages/intelligent
 
 describe('Minimal failing case', () => {
     it('should include content after [time](url) continuation', () => {
-        // Minimal test case with just the problematic pattern
-        const input = `UserName  [timestamp](https://url)
+        // Minimal test case with just the problematic pattern using realistic Slack format
+        const input = `UserName  [Feb 6th at 7:47 PM](https://slack.com/archives/012/p123)
 
 Main content
 
@@ -17,19 +17,24 @@ Content after continuation`;
         
         console.log('\n=== MINIMAL TEST OUTPUT ===');
         console.log('Number of messages:', messages.length);
-        if (messages.length > 0) {
-            console.log('Message text:', JSON.stringify(messages[0].text));
-            console.log('Text length:', messages[0].text.length);
-            const lines = messages[0].text.split('\n');
-            console.log('Number of lines in text:', lines.length);
-            lines.forEach((line, i) => {
-                console.log(`  Line ${i}: "${line}"`);
+        messages.forEach((msg, i) => {
+            console.log(`\nMessage ${i}:`);
+            console.log(`  Username: "${msg.username}"`);
+            console.log(`  Timestamp: "${msg.timestamp}"`);
+            console.log(`  Text: ${JSON.stringify(msg.text)}`);
+            console.log(`  Text length: ${msg.text.length}`);
+            const lines = msg.text.split('\n');
+            console.log(`  Number of lines in text: ${lines.length}`);
+            lines.forEach((line, j) => {
+                console.log(`    Line ${j}: "${line}"`);
             });
-        }
+        });
         
         expect(messages.length).toBe(1);
-        expect(messages[0].text).toContain('Main content');
-        expect(messages[0].text).toContain('[9:18]');
-        expect(messages[0].text).toContain('Content after continuation');
+        // The parser should capture ALL content for the message, including both parts
+        const allText = messages[0].text;
+        expect(allText).toContain('Main content');
+        expect(allText).toContain('[9:18]');
+        expect(allText).toContain('Content after continuation');
     });
 });

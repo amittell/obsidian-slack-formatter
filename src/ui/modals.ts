@@ -73,6 +73,8 @@ export class SlackPreviewModal extends BaseModal {
     private statsContainer: HTMLElement;
     private formattedText: string = '';
     private debugMode: boolean = false;
+    private renderComponent: Component | null = null;
+    private showRawContent: boolean = false;
 
     constructor(
         app: App,
@@ -104,6 +106,24 @@ export class SlackPreviewModal extends BaseModal {
             });
         
         debugContainer.createSpan({ text: ' Show debug information' });
+
+        // View toggle (raw vs formatted)
+        const viewToggleContainer = contentEl.createDiv({ cls: 'view-toggle-container' });
+        viewToggleContainer.style.marginBottom = '10px';
+        viewToggleContainer.style.display = 'flex';
+        viewToggleContainer.style.alignItems = 'center';
+        viewToggleContainer.style.gap = '10px';
+        
+        viewToggleContainer.createSpan({ text: 'Formatted view' });
+        
+        const viewToggle = new ToggleComponent(viewToggleContainer)
+            .setValue(this.showRawContent)
+            .onChange((value) => {
+                this.showRawContent = value;
+                this.updatePreview();
+            });
+        
+        viewToggleContainer.createSpan({ text: 'Raw view' });
 
         // Stats container
         this.statsContainer = contentEl.createDiv({ cls: 'slack-stats-container' });
@@ -141,6 +161,14 @@ export class SlackPreviewModal extends BaseModal {
         });
     }
 
+    onClose(): void {
+        // Clean up the render component when modal closes
+        if (this.renderComponent) {
+            this.renderComponent.unload();
+            this.renderComponent = null;
+        }
+    }
+
     private async updatePreview() {
         try {
             // Store original debug setting if formatter has updateSettings
@@ -149,19 +177,23 @@ export class SlackPreviewModal extends BaseModal {
                 originalDebug = this.formatter.settings?.debug;
             }
 
-            // Temporarily enable debug if needed
-            if (this.debugMode && 'updateSettings' in this.formatter) {
+            // Update debug setting based on toggle state
+            if ('updateSettings' in this.formatter) {
                 const settings = hasSettings(this.formatter) ? this.formatter.settings : {};
                 const parsedMaps = hasParsedMaps(this.formatter) ? this.formatter.parsedMaps : { userMap: {}, emojiMap: {} };
                 
                 // Safely call updateSettings with proper type checking
                 if (typeof this.formatter.updateSettings === 'function') {
-                    this.formatter.updateSettings({ ...settings, debug: true }, parsedMaps);
+                    this.formatter.updateSettings({ ...settings, debug: this.debugMode }, parsedMaps);
                 }
             }
 
             // Format the content
             this.formattedText = this.formatter.formatSlackContent(this.rawText);
+            
+            // Debug logging
+            Logger.debug('SlackPreviewModal', 'Formatted text length:', this.formattedText.length);
+            Logger.debug('SlackPreviewModal', 'Formatted text preview:', this.formattedText.substring(0, 200) + '...');
 
             // Restore original debug setting
             if (originalDebug !== undefined && 'updateSettings' in this.formatter) {
@@ -189,34 +221,68 @@ export class SlackPreviewModal extends BaseModal {
             // Clear and re-render preview
             this.previewContainer.empty();
             
-            // Use MarkdownRenderer to properly render the content
-            // Create a dedicated component instance for rendering to avoid memory leaks
-            const renderComponent = new Component();
-            renderComponent.load();
-            
-            try {
-                // Use the newer render method with dedicated component
-                await MarkdownRenderer.render(
-                    this.app,
-                    this.formattedText,
-                    this.previewContainer,
-                    '', // sourcePath
-                    renderComponent // Use dedicated component instance
-                );
-                
-                // Register component for cleanup when modal closes
-                this.registerChild(renderComponent);
-            } catch (renderError) {
-                // Fallback to plain text if render fails
-                Logger.warn('SlackPreviewModal', 'Markdown rendering failed, showing plain text', renderError);
-                this.previewContainer.empty();
+            // Check if we should show raw content or formatted
+            if (this.showRawContent) {
+                // Show raw markdown content
                 const pre = this.previewContainer.createEl('pre');
                 pre.style.whiteSpace = 'pre-wrap';
                 pre.style.overflow = 'auto';
+                pre.style.fontFamily = 'var(--font-monospace)';
+                pre.style.fontSize = '0.9em';
                 pre.textContent = this.formattedText;
+            } else {
+                // Use MarkdownRenderer to properly render the content
+                // Create a dedicated component instance for rendering to avoid memory leaks
+                this.renderComponent = new Component();
+                this.renderComponent.load();
                 
-                // Clean up component on error
-                renderComponent.unload();
+                try {
+                    Logger.debug('SlackPreviewModal', 'Starting markdown render with text length:', this.formattedText.length);
+                    
+                    // Try the simpler render method first (more compatible across Obsidian versions)
+                    try {
+                        await MarkdownRenderer.renderMarkdown(
+                            this.formattedText,
+                            this.previewContainer,
+                            '', // sourcePath
+                            this.renderComponent
+                        );
+                        Logger.debug('SlackPreviewModal', 'Markdown render completed successfully with renderMarkdown');
+                    } catch (fallbackError) {
+                        Logger.debug('SlackPreviewModal', 'renderMarkdown failed, trying render method', fallbackError);
+                        // Fallback to the render method
+                        await MarkdownRenderer.render(
+                            this.app,
+                            this.formattedText,
+                            this.previewContainer,
+                            '', // sourcePath
+                            this.renderComponent
+                        );
+                        Logger.debug('SlackPreviewModal', 'Markdown render completed successfully with render');
+                    }
+                    
+                    // Store component for cleanup when modal closes
+                    // Note: registerChild is not available in modals, we'll clean up in onClose
+                } catch (renderError) {
+                    // Fallback to plain text if render fails
+                    Logger.warn('SlackPreviewModal', 'Markdown rendering failed, showing plain text', { 
+                        error: renderError instanceof Error ? renderError.message : String(renderError),
+                        stack: renderError instanceof Error ? renderError.stack : undefined,
+                        formattedTextLength: this.formattedText.length,
+                        formattedTextSample: this.formattedText.substring(0, 100)
+                    });
+                    this.previewContainer.empty();
+                    const pre = this.previewContainer.createEl('pre');
+                    pre.style.whiteSpace = 'pre-wrap';
+                    pre.style.overflow = 'auto';
+                    pre.textContent = this.formattedText;
+                    
+                    // Clean up component on error
+                    if (this.renderComponent) {
+                        this.renderComponent.unload();
+                        this.renderComponent = null;
+                    }
+                }
             }
             
         } catch (error) {

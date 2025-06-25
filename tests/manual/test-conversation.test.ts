@@ -47,6 +47,12 @@ describe('Manual Test - Real Conversation', () => {
             path.join(__dirname, '../../test-result.md'), 
             result
         );
+        
+        // Save a debug version with just the first 2000 chars
+        fs.writeFileSync(
+            path.join(__dirname, '../../test-result-debug.md'), 
+            result.substring(0, 2000)
+        );
 
         // Basic assertions
         expect(result).toBeTruthy();
@@ -55,6 +61,15 @@ describe('Manual Test - Real Conversation', () => {
         // Check if messages were properly separated
         const messageBlocks = result.match(/> \[!slack\]\+ Message from/g);
         console.log('Number of message blocks found:', messageBlocks?.length || 0);
+        
+        // Debug: show what usernames are being found
+        const usernameMatches = result.match(/> \[!slack\]\+ Message from ([^\n]+)/g);
+        console.log('Usernames found:', usernameMatches || []);
+        
+        // Debug: show total result length
+        console.log('Result length:', result.length);
+        console.log('First 1000 chars of result:');
+        console.log(result.substring(0, 1000));
         
         // We expect at least 5 messages based on the input
         expect(messageBlocks?.length).toBeGreaterThanOrEqual(5);
