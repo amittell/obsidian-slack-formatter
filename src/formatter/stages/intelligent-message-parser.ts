@@ -811,7 +811,7 @@ export class IntelligentMessageParser {
             
             // File attachment patterns
             /^\d+\s+files?$/i,  // "4 files", "1 file"
-            /^(Zip|PDF|Doc|Google Doc|Google Docs|Excel|PowerPoint|Image|Video|Word|Spreadsheet)$/i,  // File type names
+            /^(Zip|PDF|Doc|Google Doc|Excel|PowerPoint|Image|Video|Word|Spreadsheet)$/i,  // File type names
             /\.(zip|pdf|doc|docx|xls|xlsx|ppt|pptx|jpg|jpeg|png|gif|mp4|mov|avi)$/i,  // File extensions
             /files\.slack\.com|enterprise\.slack\.com/,  // Slack file URLs
             /\/download\//,  // Download paths
@@ -821,11 +821,6 @@ export class IntelligentMessageParser {
             /^\]\(https?:\/\/.*\.slack\.com/i,  // Any Slack links in bracket format
             /^\]\(https?:\/\//i,  // Any link that starts with ](http
             /^Stripe Guidewire Accelerator/i,  // Specific document title pattern
-            
-            // Document title patterns - common in Google Docs, Notion, etc. link previews
-            /^[A-Za-z0-9\s]+–[A-Za-z0-9\s]+:.*$/i,  // "Title–Subtitle: Description" pattern
-            /^[A-Za-z0-9\s]+:\s*(Consolidated|Strategy|Decision|Technical|Implementation|Specification).*$/i,  // Technical document patterns
-            /^[A-Za-z0-9\s]+(Connector|Document|Strategy|Guide|Manual|Specification|Report).*$/i,  // Document type patterns
         ];
         
         // Also check if this looks like a response after a quoted message
@@ -852,16 +847,16 @@ export class IntelligentMessageParser {
             return true;
         }
         
-        // Check context - link previews typically follow URLs
+        // Check context - link previews typically follow URLs (look back further for link previews)
         let hasUrlBefore = false;
-        for (let i = Math.max(0, index - 5); i < index; i++) {
+        for (let i = Math.max(0, index - 10); i < index; i++) {
             if (allLines[i] && allLines[i].characteristics.hasUrl) {
                 hasUrlBefore = true;
                 break;
             }
         }
         
-        // If preceded by URL and looks like a title/description
+        // If preceded by URL, be more inclusive about link preview content
         if (hasUrlBefore) {
             // Check if it looks like a preview title (e.g. "Platform Name (@handle) on X")
             if (this.safeRegexTest(/^[A-Za-z0-9\s]+\s+\(@?\w+\)\s+on\s+\w+$/i, text)) {
@@ -872,9 +867,41 @@ export class IntelligentMessageParser {
             if (this.safeRegexTest(/^!\[.*?\]\(.*?\)[A-Za-z]/, text)) {
                 return true;
             }
+            
+            // General link preview detection: if preceded by URL and doesn't have strong message indicators,
+            // treat as link preview content (this covers document titles, descriptions, etc.)
+            if (!line.characteristics.hasTimestamp && 
+                !line.characteristics.hasAvatar && 
+                !this.isObviousMetadata(line) &&
+                !this.hasStrongUsernameIndicators(line, allLines, index)) {
+                return true;
+            }
         }
         
         return false;
+    }
+
+    /**
+     * Check if a line has strong indicators that it's a username/message start
+     */
+    private hasStrongUsernameIndicators(line: LineAnalysis, allLines: LineAnalysis[], index: number): boolean {
+        if (!line || line.isEmpty) return false;
+        
+        const text = line.trimmed;
+        
+        // Check for patterns that strongly suggest this is a username/message start
+        return (
+            // Has timestamp format (suggests username + timestamp)
+            line.characteristics.hasTimestamp ||
+            // Followed by typical message content patterns
+            (index + 1 < allLines.length && allLines[index + 1] && 
+             allLines[index + 1].trimmed.length > 20 && 
+             !allLines[index + 1].isEmpty) ||
+            // Contains username-like patterns (but be conservative to avoid false positives)
+            this.safeRegexTest(/^[A-Z][a-z]+\s+[A-Z][a-z]+\s+\d{1,2}:\d{2}/, text) ||
+            // Has avatar or reaction indicators
+            line.characteristics.hasAvatar
+        );
     }
 
     /**
