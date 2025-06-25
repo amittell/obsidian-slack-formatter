@@ -811,7 +811,7 @@ export class IntelligentMessageParser {
             
             // File attachment patterns
             /^\d+\s+files?$/i,  // "4 files", "1 file"
-            /^(Zip|PDF|Doc|Google Doc|Excel|PowerPoint|Image|Video|Word|Spreadsheet)$/i,  // File type names
+            /^(Zip|PDF|Doc|Google Doc|Google Docs|Excel|PowerPoint|Image|Video|Word|Spreadsheet)$/i,  // File type names
             /\.(zip|pdf|doc|docx|xls|xlsx|ppt|pptx|jpg|jpeg|png|gif|mp4|mov|avi)$/i,  // File extensions
             /files\.slack\.com|enterprise\.slack\.com/,  // Slack file URLs
             /\/download\//,  // Download paths
@@ -821,6 +821,11 @@ export class IntelligentMessageParser {
             /^\]\(https?:\/\/.*\.slack\.com/i,  // Any Slack links in bracket format
             /^\]\(https?:\/\//i,  // Any link that starts with ](http
             /^Stripe Guidewire Accelerator/i,  // Specific document title pattern
+            
+            // Document title patterns - common in Google Docs, Notion, etc. link previews
+            /^[A-Za-z0-9\s]+–[A-Za-z0-9\s]+:.*$/i,  // "Title–Subtitle: Description" pattern
+            /^[A-Za-z0-9\s]+:\s*(Consolidated|Strategy|Decision|Technical|Implementation|Specification).*$/i,  // Technical document patterns
+            /^[A-Za-z0-9\s]+(Connector|Document|Strategy|Guide|Manual|Specification|Report).*$/i,  // Document type patterns
         ];
         
         // Also check if this looks like a response after a quoted message
