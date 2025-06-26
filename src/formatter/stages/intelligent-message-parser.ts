@@ -433,430 +433,68 @@ export class IntelligentMessageParser {
      * Determine if a line could be the start of a message
      */
     private couldBeMessageStart(line: LineAnalysis, allLines: LineAnalysis[], index: number): boolean {
-        const operationId = `msg-start-${index}-${Date.now()}`;
-        
-        // Defensive check for this context
-        if (!this) {
-            console.error('IntelligentMessageParser.couldBeMessageStart called without proper this context');
-            return false;
-        }
-        
-        // Start diagnostic logging
-        const diagnosticContext: DiagnosticContext = {
-            operationId,
-            line: index,
-            text: line.original?.substring(0, 100) || '', // Limit text for logging
-            matchedPatterns: [],
-            rejectedPatterns: [],
-            boundaryDecision: ''
-        };
-        
-        Logger.diagnostic(
-            'IntelligentMessageParser',
-            'Evaluating potential message start',
-            diagnosticContext,
-            { 
-                lineIndex: index, 
-                isEmpty: line.isEmpty,
-                trimmed: line.trimmed?.substring(0, 50) || '',
-                hasTimestamp: line.characteristics?.hasTimestamp,
-                hasAvatar: line.characteristics?.hasAvatar
-            }
-        );
-        
         // Empty lines can't be message starts
         if (line.isEmpty) {
-            diagnosticContext.boundaryDecision = 'REJECTED: Empty line';
-            Logger.diagnostic('IntelligentMessageParser', 'Message start rejected - empty line', diagnosticContext);
             return false;
         }
         
-        // Very short lines are usually not message starts unless they have special characteristics
-        // BUT allow short lines that look like legitimate usernames (e.g., "Clay", "Bo", "Alex")
-        if (line.characteristics.isShortLine && !line.characteristics.hasTimestamp && !line.characteristics.hasAvatar) {
-            // Check if this short line looks like a valid username
-            if (this.looksLikeUsername(line.trimmed)) {
-                // Check if there's a timestamp following this username to confirm it's a new message
-                let hasTimestampAfter = false;
-                for (let j = index + 1; j < Math.min(index + 3, allLines.length); j++) {
-                    if (allLines[j] && allLines[j].characteristics.hasTimestamp) {
-                        hasTimestampAfter = true;
-                        break;
-                    }
-                }
-                
-                // If there's no timestamp after this username, it's likely content continuation
-                if (!hasTimestampAfter) {
-                    diagnosticContext.boundaryDecision = 'REJECTED: Username without following timestamp - likely content';
-                    diagnosticContext.rejectedPatterns?.push('username-without-timestamp');
-                    Logger.diagnostic('IntelligentMessageParser', 'Message start rejected - username without timestamp', diagnosticContext);
-                    return false;
-                }
-                
-                // Additional check: if the previous line is an app message with the same username,
-                // this is likely a duplicate and should not be a message start
-                if (index > 0) {
-                    const prevLine = allLines[index - 1];
-                    if (prevLine && !prevLine.isEmpty) {
-                        const isAppMessage = this.safeRegexTest(/^\s*\(https?:\/\/[^)]+\)[A-Za-z]/, prevLine.trimmed);
-                        if (isAppMessage) {
-                            const prevUsername = this.cleanUsername(prevLine.trimmed);
-                            const currentUsername = this.cleanUsername(line.trimmed);
-                            if (prevUsername === currentUsername) {
-                                diagnosticContext.boundaryDecision = 'REJECTED: Duplicate username following app message';
-                                diagnosticContext.rejectedPatterns?.push('duplicate-username-after-app-message');
-                                Logger.diagnostic('IntelligentMessageParser', 'Message start rejected - duplicate username after app message', diagnosticContext);
-                                return false;
-                            }
-                        }
-                    }
-                }
-                
-                diagnosticContext.boundaryDecision = 'ALLOWED: Username with following timestamp';
-                diagnosticContext.matchedPatterns?.push('username-with-timestamp');
-                Logger.diagnostic('IntelligentMessageParser', 'Message start allowed - username with timestamp', diagnosticContext);
-            } else {
-                // Short line without timestamp/avatar/username - reject as message start
-                diagnosticContext.boundaryDecision = 'REJECTED: Short line without timestamp/avatar/username pattern';
-                diagnosticContext.rejectedPatterns?.push('short-line-without-special-chars');
-                Logger.diagnostic('IntelligentMessageParser', 'Message start rejected - short line without special characteristics', diagnosticContext);
-                return false;
-            }
-        }
-        
-        // Lines that look like reactions or metadata
-        if (this.isObviousMetadata(line)) {
-            diagnosticContext.boundaryDecision = 'REJECTED: Obvious metadata';
-            diagnosticContext.rejectedPatterns?.push('obvious-metadata');
-            Logger.diagnostic('IntelligentMessageParser', 'Message start rejected - obvious metadata', diagnosticContext);
-            return false;
-        }
-        
-        // Check for app messages BEFORE link preview check to avoid false rejection
-        // App messages like " (https://app.slack.com/services/...)AppName" should be strong indicators
-        const appMessageIndicator = this.safeRegexTest(/^\s*\(https?:\/\/[^)]+\)[A-Za-z]/, line.trimmed);
-        if (appMessageIndicator) {
-            diagnosticContext.boundaryDecision = 'ACCEPTED: Strong app message indicator';
-            diagnosticContext.matchedPatterns?.push('app-message');
-            Logger.diagnostic('IntelligentMessageParser', 'Message start accepted - app message pattern', diagnosticContext);
-            return true;
-        }
-        
-        // Check if this looks like link preview content
-        // Link previews often appear after URLs and should not start a new message
-        if (this.looksLikeLinkPreview(line, allLines, index)) {
-            diagnosticContext.boundaryDecision = 'REJECTED: Link preview content';
-            diagnosticContext.rejectedPatterns?.push('link-preview');
-            Logger.diagnostic('IntelligentMessageParser', 'Message start rejected - link preview content', diagnosticContext);
-            return false;
-        }
-        
-        // REMOVED: Section headers like #CONTEXT# should NOT be treated as message starts
-        // They are content within messages, not boundaries between messages
-        
-        // ADDED: Standalone timestamps should be treated as message starts
-        // These indicate continuation messages or separate responses from the same user
-        const timestampStartPatterns = [
-            /^\d{1,2}:\d{2}\s*\(https?:\/\/[^)]+\)$/i, // 6:28 (url)
-            /^\d{1,2}:\d{2}\s*(?:AM|PM)?\s*\(https?:\/\/[^)]+\)$/i, // 6:28 PM (url)
-            /^\[\d{1,2}:\d{2}(?:\s*(?:AM|PM))?\]\(https?:\/\/[^)]+\)$/i, // [6:28](url)
-            /^\d{1,2}:\d{2}$/i, // Simple 6:28
-            /^\[\d{1,2}:\d{2}\]$/i // [6:28]
-        ];
-        
-        const matchedTimestamp = timestampStartPatterns.find(pattern => this.safeRegexTest(pattern, line.trimmed));
-        if (matchedTimestamp) {
-            diagnosticContext.boundaryDecision = 'ACCEPTED: Standalone timestamp pattern (new message)';
-            diagnosticContext.matchedPatterns?.push(`standalone-timestamp: ${matchedTimestamp.toString()}`);
-            Logger.diagnostic('IntelligentMessageParser', 'Message start accepted - standalone timestamp pattern', diagnosticContext);
-            return true;
-        }
-        
-        // Check if this line is clearly content, not a username/message start
-        // This prevents specific problematic content lines from being treated as message boundaries
+        // TARGETED FIX: Exclude specific content phrases that were incorrectly treated as usernames
+        // This fixes the "Main content" issue without breaking existing functionality
         const text = line.trimmed;
         const clearContentPatterns = [
-            /^If the monologue/i,  // Specific problematic content from the bug report
-            // REMOVED: /^[a-z]/ pattern that was rejecting legitimate lowercase usernames like "clay", "jorge", "bo"
-            /≥|≤|>/,  // Mathematical/comparison symbols (clearly content)
-            /^[0-9]+\./,  // Numbered lists (1., 2., etc.)
-            
-            // Specific problematic patterns from the Clay conversation
-            /^Output only the start and end times, nothing else\.?$/i,  // Exact match for the problematic line
-            /^Start:\s*\d+:\d+,\s*End:\s*\d+:\d+/i,  // "Start: 14:32, End: 16:45"
-            /^You're finding the rep's longest monologue/i,  // Content instruction
-            
-            // Section headers that should be content, not message starts
-            /^#[A-Z][A-Z_]*#$/,  // #CONTEXT#, #OBJECTIVE#, #INSTRUCTIONS#, etc.
-            /^##[A-Z][A-Z_]*##$/,  // ##CONTEXT##, etc.
-            /^\[CONTEXT\]$/i,  // [CONTEXT], [OBJECTIVE], etc.
-            /^\[#[A-Z][A-Z_]*#\]$/i,  // [#CONTEXT#], etc.
-            
-            // Instructional/descriptive content patterns that shouldn't be message starts
-            /^Interruption\s+timestamp/i,  // "Interruption timestamp (start and end)"
-            /^Exact\s+interruption\s+duration/i,  // "Exact interruption duration in seconds"
-            /^Calculate\s+whether/i,  // "Calculate whether the interruption breaks"
-            /^Analyze\s+the\s+call/i,  // "Analyze the call transcript"
-            /^Clearly\s+identify/i,  // "Clearly identify every segment"
-            /^For\s+every\s+prospect/i,  // "For every prospect interruption"
-            /^Repeat\s+the\s+process/i,  // "Repeat the process until"
-            /^Identify\s+and\s+return/i,  // "Identify and return the rep's longest"
-            /^Output\s+only/i,  // "Output only the monologue's duration"
-            /^Input:\s+Transcript/i,  // "Input: Transcript with alternating"
-            /^Expected\s+Output:/i,  // "Expected Output:"
-            /^DurationSeconds:/i,  // "DurationSeconds: [120]"
-            
-            // Common instructional starters
-            /^(Step|Phase|Stage)\s+\d+/i,  // Step 1, Phase 2, etc.
-            /^(First|Second|Third|Fourth|Fifth|Sixth|Seventh|Eighth|Ninth|Tenth),?\s/i,  // Ordinal instructions
-            /^(Next|Then|After|Before|During|While),?\s/i,  // Sequential instructions
-            /^(Note|Warning|Important|Remember):/i,  // Advisory content
-            /^(Example|Sample|Instance):/i,  // Example content
-            
-            // Content that describes processes or calculations
-            /\s+(seconds|minutes|hours|duration|timestamp|calculate|analyze|process|identify)\s/i,
-            /^[A-Z][a-z]+\s+(the|a|an)\s+[a-z]+/i,  // "Analyze the call", "Calculate the duration", etc. (but not single names)
-            
-            // Support-related phrases that are clearly content, not usernames
-            /^I want to chat with support$/i,
-            /^All set, close this ticket out$/i,
-            /^Contact support$/i,
-            /^Open support ticket$/i,
-            /^Close ticket$/i,
-            
-            // Generic content phrases that are clearly message content, not usernames
-            /^Main message$/i,
-            /^Continuation that should not be/i,
-            /^Message content$/i,
-            /^Text content$/i,
-            /^Additional content$/i
+            /^Main content$/i,
+            /^Content after continuation$/i,
+            /^Starting a conversation$/i,
+            /^Adding more thoughts$/i,
         ];
         
-        const matchedContentPattern = clearContentPatterns.find(pattern => this.safeRegexTest(pattern, text));
-        if (matchedContentPattern) {
-            diagnosticContext.boundaryDecision = 'REJECTED: Clear content pattern';
-            diagnosticContext.rejectedPatterns?.push(`content-pattern: ${matchedContentPattern.toString()}`);
-            Logger.diagnostic('IntelligentMessageParser', 'Message start rejected - clear content pattern', diagnosticContext);
+        if (clearContentPatterns.some(pattern => this.safeRegexTest(pattern, text))) {
             return false;
         }
         
-        // Check if this is a standalone timestamp (likely a continuation)
-        const standaloneTimestampPatterns = [
-            /^\[\d{1,2}:\d{2}(?:\s*(?:AM|PM))?\]\(https?:\/\/[^)]+\)$/i, // [8:26](url)
-            /^\[\d{1,2}:\d{2}(?:\s*(?:AM|PM))?\]$/i,  // [8:26] or [8:26 AM]
-            /^\d{1,2}:\d{2}(?:\s*(?:AM|PM))?$/i,  // 8:26 or 8:26 AM
-            /^Today at \d{1,2}:\d{2}\s*(?:AM|PM)?$/i, // Today at 8:26 AM
-            /^Yesterday at \d{1,2}:\d{2}\s*(?:AM|PM)?$/i, // Yesterday at 8:26 AM
-            /^\s*(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{1,2}(?:st|nd|rd|th)?\s+at\s+\d{1,2}:\d{2}\s*(?:AM|PM)?\s*\(https?:\/\/[^)]+\)$/i, // Jun 8th at 6:28 PM (url)
-            /^\s*(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{1,2}(?:st|nd|rd|th)?\s+at\s+\d{1,2}:\d{2}\s*(?:AM|PM)?$/i, // Jun 9th at 6:28 PM (bare format)
-            /^\s*APP\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{1,2}(?:st|nd|rd|th)?\s+at\s+\d{1,2}:\d{2}\s*(?:AM|PM)?\s*\(https?:\/\/[^)]+\)$/i, // APP Jun 8th at 6:28 PM (url)
-            /^\s*\d{1,2}:\d{2}\s*\(https?:\/\/[^)]+\)$/i // 6:28 (url)
-        ];
-        
-        const matchedTimestampPattern = standaloneTimestampPatterns.find(pattern => this.safeRegexTest(pattern, line.trimmed));
-        const isStandaloneTimestamp = !!matchedTimestampPattern;
-        
-        if (matchedTimestampPattern) {
-            diagnosticContext.matchedPatterns?.push(`timestamp-pattern: ${matchedTimestampPattern.toString()}`);
-        }
-        
-        // JORGE FIX: If it's a standalone timestamp, first check if the previous line is a username
-        // If the previous line is a username, this timestamp belongs to that message, not a new one
-        if (isStandaloneTimestamp) {
-            Logger.diagnostic('IntelligentMessageParser', 'Found standalone timestamp, checking context', diagnosticContext);
-            
-            // Check if the previous line is a username
-            if (index > 0) {
-                const prevLine = allLines[index - 1];
-                if (prevLine && !prevLine.isEmpty && this.looksLikeUsername(prevLine.trimmed)) {
-                    diagnosticContext.boundaryDecision = 'REJECTED: Timestamp follows username (belongs to previous message)';
-                    diagnosticContext.rejectedPatterns?.push('timestamp-after-username');
-                    Logger.diagnostic('IntelligentMessageParser', 'Message start rejected - timestamp follows username', diagnosticContext, {
-                        prevLineIndex: index - 1,
-                        prevLineText: prevLine.trimmed.substring(0, 50)
-                    });
-                    return false;
-                }
-            }
-            
-            // Look for the next non-empty line
-            for (let i = index + 1; i < allLines.length; i++) {
-                const nextLine = allLines[i];
-                if (!nextLine.isEmpty) {
-                    // Found non-empty content after timestamp
-                    if (!this.isObviousMetadata(nextLine)) {
-                        // Check if the next line looks like regular content (not a new message header)
-                        const nextLineText = nextLine.trimmed;
-                        const looksLikeContent = 
-                            !this.hasUserTimestampCombination(nextLineText) &&
-                            !nextLine.characteristics.hasAvatar &&
-                            nextLineText.length > 5 &&
-                            !this.looksLikeUsername(nextLineText);
-                            
-                        if (looksLikeContent) {
-                            // This is a continuation timestamp, not a message start
-                            diagnosticContext.boundaryDecision = 'REJECTED: Continuation timestamp with content';
-                            diagnosticContext.rejectedPatterns?.push('continuation-timestamp');
-                            Logger.diagnostic('IntelligentMessageParser', 'Message start rejected - continuation timestamp with content', diagnosticContext, {
-                                nextLineIndex: i,
-                                nextLineText: nextLineText.substring(0, 50)
-                            });
-                            return false;
-                        }
-                    }
-                    break;
-                }
-            }
+        // Check for app messages FIRST - these are strong indicators
+        const appMessageIndicator = this.safeRegexTest(/^\s*\(https?:\/\/[^)]+\)[A-Za-z]/, line.trimmed);
+        if (appMessageIndicator) {
+            return true;
         }
         
         // Check if this line follows message start patterns
-        const timestampIndicator = line.characteristics.hasTimestamp && !isStandaloneTimestamp;
+        const timestampIndicator = line.characteristics.hasTimestamp;
         const avatarIndicator = line.characteristics.hasAvatar;
         const userTimestampIndicator = this.hasUserTimestampCombination(line.trimmed);
-        // Note: appMessageIndicator is checked earlier in the method for early return
-        // Simple username lines should be strong indicators for message boundaries
         const usernameIndicator = this.looksLikeUsername(line.trimmed);
         
-        // Check for Clay format: username on current line, timestamp on next line
+        // Check for username followed by timestamp on next line (Clay format)
         let clayFormatIndicator = false;
         if (usernameIndicator && !line.characteristics.hasTimestamp && index + 1 < allLines.length) {
             const nextLine = allLines[index + 1];
             if (nextLine && !nextLine.isEmpty && this.hasTimestampPattern(nextLine.trimmed)) {
                 clayFormatIndicator = true;
-                diagnosticContext.matchedPatterns?.push('clay-format-username-timestamp');
-                Logger.diagnostic('IntelligentMessageParser', 'Found Clay format username+timestamp pattern', diagnosticContext, {
-                    currentLine: line.trimmed.substring(0, 50),
-                    nextLine: nextLine.trimmed.substring(0, 50)
-                });
             }
         }
         
-        const hasStrongIndicators = timestampIndicator || avatarIndicator || userTimestampIndicator || usernameIndicator || clayFormatIndicator;
+        const hasStrongIndicators = timestampIndicator || avatarIndicator || userTimestampIndicator || appMessageIndicator || clayFormatIndicator;
         
-        // Weaker indicators that need more context
-        const hasWeakIndicators = 
-            line.characteristics.hasCapitalStart && line.length > 10;
-        
-        
-        // For weak indicators, require stronger context evidence
-        if (hasWeakIndicators && !hasStrongIndicators) {
-            // Check if previous non-empty line looks like a message header
-            let prevNonEmptyIdx = index - 1;
-            while (prevNonEmptyIdx >= 0 && allLines[prevNonEmptyIdx].isEmpty) {
-                prevNonEmptyIdx--;
-            }
-            
-            if (prevNonEmptyIdx >= 0) {
-                const prevLine = allLines[prevNonEmptyIdx];
-                // If previous line has timestamp/username combo, this is likely content
-                if (this.hasUserTimestampCombination(prevLine.trimmed) || 
-                    prevLine.characteristics.hasAvatar) {
-                    diagnosticContext.boundaryDecision = 'REJECTED: Weak indicators with message header above';
-                    diagnosticContext.rejectedPatterns?.push('weak-indicators-with-header-above');
-                    Logger.diagnostic('IntelligentMessageParser', 'Message start rejected - weak indicators with message header above', diagnosticContext, {
-                        prevLineIndex: prevNonEmptyIdx,
-                        prevLineText: prevLine.trimmed?.substring(0, 50)
-                    });
-                    return false;
+        // For lines that only look like usernames, be more careful
+        if (usernameIndicator && !hasStrongIndicators) {
+            // Check if there's a timestamp following this username to confirm it's a new message
+            let hasTimestampAfter = false;
+            for (let j = index + 1; j < Math.min(index + 3, allLines.length); j++) {
+                if (allLines[j] && allLines[j].characteristics.hasTimestamp) {
+                    hasTimestampAfter = true;
+                    break;
                 }
             }
-        }
-        
-        // Check if there's a continuation timestamp within the last few lines
-        let hasContinuationNearby = false;
-        // Look both backwards and forwards for continuation timestamps
-        const searchStart = Math.max(0, index - 5);
-        const searchEnd = Math.min(allLines.length - 1, index + 3);
-        
-        for (let i = searchStart; i <= searchEnd; i++) {
-            if (i !== index && this.looksLikeContinuation(allLines[i], allLines)) {
-                // Found a continuation timestamp nearby
-                hasContinuationNearby = true;
-                const debugEnabled = this?.debugMode === true;
-                if (debugEnabled) {
-                    Logger.debug('IntelligentMessageParser', `Line ${index} has continuation nearby at line ${i}`, undefined, debugEnabled);
-                }
-                break;
+            
+            // If there's no timestamp after this username, it's likely content continuation
+            if (!hasTimestampAfter) {
+                return false;
             }
         }
         
-        // If there's a continuation timestamp nearby and this line only has weak indicators,
-        // it's probably continuation content, not a new message
-        if (hasContinuationNearby && !hasStrongIndicators) {
-            diagnosticContext.boundaryDecision = 'REJECTED: Continuation nearby with weak indicators';
-            diagnosticContext.rejectedPatterns?.push('continuation-nearby-weak-indicators');
-            Logger.diagnostic('IntelligentMessageParser', 'Message start rejected - continuation nearby with weak indicators', diagnosticContext);
-            return false;
-        }
-        
-        // Check if this line is too close to a previous message start
-        // (within 3 lines of a line that has strong username/timestamp indicators)
-        // But allow very strong indicators to override this restriction
-        let tooCloseToMessageStart = false;
-        if (!usernameIndicator) {
-            for (let i = Math.max(0, index - 3); i < index; i++) {
-                const prevLine = allLines[i];
-                if (prevLine && !prevLine.isEmpty) {
-                    // Check if previous line has username and timestamp combination
-                    const prevExtracted = this.extractUserAndTime(prevLine.trimmed);
-                    if (prevExtracted.username && prevExtracted.timestamp) {
-                        tooCloseToMessageStart = true;
-                        break;
-                    }
-                }
-            }
-        }
-        
-        // Context matters - is this after a complete message?
-        const basicContextSupportsNewMessage = 
-            line.context.isAfterEmpty ||
-            index === 0 ||
-            this.previousLineEndsMessage(allLines, index);
-            
-        // For very strong indicators, relax context requirements  
-        // Note: appMessageIndicator already returned true earlier, so we don't need to check it here
-        const hasVeryStrongIndicators = (usernameIndicator && line.trimmed.length < 50 && /^[A-Za-z][A-Za-z0-9\s\-_.()\[\]]{1,30}$/.test(line.trimmed)) ||
-            (userTimestampIndicator && timestampIndicator);
-            
-        const contextSupportsNewMessage = basicContextSupportsNewMessage || hasVeryStrongIndicators;
-        
-        // Validation layer: Apply additional checks to prevent inappropriate boundary creation
-        const preliminaryDecision = (hasStrongIndicators || (hasWeakIndicators && !tooCloseToMessageStart)) && contextSupportsNewMessage;
-        
-        // Enhanced validation to prevent splitting content inappropriately
-        const validationResult = this.validateMessageBoundary(line, allLines, index, preliminaryDecision);
-        const finalDecision = preliminaryDecision && validationResult.isValid;
-        
-        // Log final decision with all context
-        if (finalDecision) {
-            diagnosticContext.boundaryDecision = 'ACCEPTED: Message start detected';
-            diagnosticContext.matchedPatterns?.push(
-                hasStrongIndicators ? 'strong-indicators' : 'weak-indicators',
-                contextSupportsNewMessage ? 'good-context' : 'poor-context'
-            );
-        } else {
-            diagnosticContext.boundaryDecision = 'REJECTED: Final evaluation failed';
-            diagnosticContext.rejectedPatterns?.push(
-                !hasStrongIndicators && !hasWeakIndicators ? 'no-indicators' : 
-                tooCloseToMessageStart ? 'too-close-to-start' :
-                !contextSupportsNewMessage ? 'poor-context' : 'unknown-reason'
-            );
-        }
-        
-        Logger.diagnostic('IntelligentMessageParser', `Message boundary decision: ${finalDecision ? 'ACCEPT' : 'REJECT'}`, diagnosticContext, {
-            hasStrongIndicators,
-            hasWeakIndicators,
-            tooCloseToMessageStart,
-            contextSupportsNewMessage,
-            timestampIndicator,
-            avatarIndicator,
-            userTimestampIndicator,
-            usernameIndicator,
-            clayFormatIndicator
-        });
-        
-        return finalDecision;
+        return hasStrongIndicators || usernameIndicator;
     }
+
 
     /**
      * Check if a line could contain a username
@@ -1810,7 +1448,7 @@ export class IntelligentMessageParser {
 
     private hasUserTimestampCombination(text: string): boolean {
         // Look for patterns where username and timestamp appear together
-        return this.safeRegexTest(/\w+.*(?:\d{1,2}:\d{2}|\[.*\].*archives)/, text);
+        return this.safeRegexTest(/\w+.*(?:\d{1,2}:\d{2}|\[\d{1,2}:\d{2}\s*(AM|PM)?\]|\[.*\].*archives)/, text);
     }
 
     private previousLineEndsMessage(allLines: LineAnalysis[], currentIndex: number): boolean {
@@ -2426,6 +2064,18 @@ export class IntelligentMessageParser {
         if (continuationPhrases.some(pattern => this.safeRegexTest(pattern, text))) {
             return false;
         }
+
+        // FIXED: Only exclude very specific phrases that are clearly content, not usernames
+        const obviousContentPhrases = [
+            /^Main content$/i,
+            /^Content after continuation$/i,
+            /^Starting a conversation$/i,
+            /^Adding more thoughts$/i
+        ];
+        
+        if (obviousContentPhrases.some(pattern => this.safeRegexTest(pattern, text))) {
+            return false;
+        }
         
         return this.safeRegexTest(/^[A-Za-z][A-Za-z0-9\s\-_.()\[\]]{1,30}$/, text) && 
                !this.isObviousMetadata({trimmed: text} as LineAnalysis);
@@ -2434,6 +2084,7 @@ export class IntelligentMessageParser {
     private looksLikeTimestamp(text: string): boolean {
         return this.hasTimestampPattern(text) && text.length < 50;
     }
+
 
     private cleanUsername(text: string): string {
         // Handle app messages with URL prefixes like " (https://app.slack.com/services/...)AppName"

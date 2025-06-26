@@ -52,7 +52,7 @@ describe('Group C: Text Processing & Content Quality', () => {
         });
 
         test('should detect smart quotes and encoding issues', () => {
-            const text = "We'll hear from "Archive" co-founder & CEO…";
+            const text = "We'll hear from \"Archive\" co-founder & CEO…";
             const result = detectTextEncoding(text);
             
             expect(result.hasEncodingIssues).toBe(true);
@@ -70,7 +70,7 @@ describe('Group C: Text Processing & Content Quality', () => {
 
     describe('C2: Robust Text Encoding Correction', () => {
         test('should correct smart quotes to ASCII', () => {
-            const input = "We'll hear from "Archive" and 'Company'";
+            const input = "We'll hear from \"Archive\" and 'Company'";
             const result = correctEncodingIssues(input);
             
             expect(result.wasChanged).toBe(true);
@@ -103,7 +103,7 @@ describe('Group C: Text Processing & Content Quality', () => {
         });
 
         test('should convert smart quotes specifically', () => {
-            const input = ""Hello" and 'world'";
+            const input = "\"Hello\" and 'world'";
             const result = convertSmartQuotes(input);
             
             expect(result).toBe('"Hello" and \'world\'');
@@ -118,7 +118,7 @@ describe('Group C: Text Processing & Content Quality', () => {
         });
 
         test('should perform comprehensive normalization', () => {
-            const input = ""Hello"   world\r\n\r\nwith…  issues";
+            const input = "\"Hello\"   world\r\n\r\nwith…  issues";
             const result = engine.normalize(input);
             
             expect(result.wasChanged).toBe(true);
@@ -156,14 +156,14 @@ describe('Group C: Text Processing & Content Quality', () => {
         });
 
         test('should provide quick normalization', () => {
-            const input = ""Test"   with\r\nissues…";
+            const input = "\"Test\"   with\r\nissues…";
             const result = engine.quickNormalize(input);
             
             expect(result).toBe('"Test" with\nissues...');
         });
 
         test('should detect normalization needs', () => {
-            const needsNorm = ""Text"   with\r\nissues";
+            const needsNorm = "\"Text\"   with\r\nissues";
             const clean = "Clean text without issues";
             
             expect(engine.needsNormalization(needsNorm)).toBe(true);
@@ -171,7 +171,7 @@ describe('Group C: Text Processing & Content Quality', () => {
         });
 
         test('should provide normalization statistics', () => {
-            const input = ""Text"   with\r\n…issues";
+            const input = "\"Text\"   with\r\n…issues";
             const stats = engine.getStats(input);
             
             expect(stats.hasSmartQuotes).toBe(true);
@@ -272,7 +272,7 @@ describe('Group C: Text Processing & Content Quality', () => {
         });
 
         test('should process text through pipeline', () => {
-            const input = ""Hello"   world\r\nwith…  encoding  issues";
+            const input = "\"Hello\"   world\r\nwith…  encoding  issues";
             const result = pipeline.process(input);
             
             expect(result.success).toBe(true);
@@ -282,7 +282,7 @@ describe('Group C: Text Processing & Content Quality', () => {
         });
 
         test('should provide quick sanitization', () => {
-            const input = ""Test"   with\r\nissues…";
+            const input = "\"Test\"   with\r\nissues…";
             const result = pipeline.quickSanitize(input);
             
             expect(result).toBe('"Test" with\nissues...');
@@ -312,7 +312,7 @@ describe('Group C: Text Processing & Content Quality', () => {
             const whitespaceProcessor = new WhitespaceNormalizationProcessor();
             const unicodeProcessor = new UnicodeNormalizationProcessor();
             
-            const testText = ""Hello"   world…";
+            const testText = "\"Hello\"   world…";
             const context = {
                 originalText: testText,
                 stage: 'test',
@@ -370,7 +370,7 @@ describe('Group C: Text Processing & Content Quality', () => {
         test('should handle real Slack content with encoding issues', () => {
             const slackContent = `
                 User1 [10:30 AM]
-                We'll discuss the "new features" today… 
+                We'll discuss the \"new features\" today… 
                 Check out https://example.com for more info!
                 
                 User2 [10:31 AM]  
@@ -401,19 +401,19 @@ describe('Group C: Text Processing & Content Quality', () => {
         });
 
         test('should handle edge cases and preserve semantic content', () => {
-            const edgeCase = `
-                "Smart quotes" and 'single quotes'
-                Em—dash and en–dash
-                Ellipsis… character
-                Zero\u200Bwidth\u200Cchars
-                Multiple     spaces
-                
-                \`inline code\`
-                
-                ```
-                    preserved    formatting
-                ```
-            `.trim();
+            const edgeCase = [
+                '"Smart quotes" and \'single quotes\'',
+                'Em—dash and en–dash',
+                'Ellipsis… character',
+                'Zero\u200Bwidth\u200Cchars',
+                'Multiple     spaces',
+                '',
+                '`inline code`',
+                '',
+                '```',
+                '    preserved formatting',
+                '```'
+            ].join('\n');
             
             const result = textNormalizationEngine.normalize(edgeCase, {
                 validateIntegrity: true
