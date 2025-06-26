@@ -8,6 +8,9 @@ import { duplicateDetectionService } from '../../utils/duplicate-detection-servi
 /**
  * Pattern scoring weights for identifying message boundaries.
  * Each score is a probability value between 0 and 1.
+ * 
+ * @interface PatternScore
+ * @since 1.0.0
  */
 interface PatternScore {
     isUsername: number;
@@ -20,7 +23,10 @@ interface PatternScore {
 
 /**
  * Message block representing a potential message during parsing.
- * Contains extracted metadata and content lines.
+ * Contains extracted metadata and content lines for each identified message.
+ * 
+ * @interface MessageBlock
+ * @since 1.0.0
  */
 interface MessageBlock {
     startLine: number;
@@ -36,7 +42,10 @@ interface MessageBlock {
 
 /**
  * Parser context maintained throughout the multi-pass parsing process.
- * Tracks state, extracted blocks, and debug information.
+ * Tracks state, extracted blocks, and debug information across all parsing phases.
+ * 
+ * @interface ParserContext
+ * @since 1.0.0
  */
 interface ParserContext {
     lines: string[];
@@ -81,18 +90,32 @@ const CONFIDENCE_THRESHOLDS = {
 
 /**
  * Flexible message parser that uses pattern scoring and multi-pass parsing.
- * Implements a three-pass approach:
- * 1. Identify message blocks based on pattern scores
- * 2. Refine blocks by analyzing context and merging
- * 3. Extract reactions and metadata from content
  * 
- * Supports multiple Slack export formats through probabilistic pattern matching
+ * Alternative parser implementation that serves as a fallback when the main
+ * IntelligentMessageParser encounters difficult content. Uses probabilistic
+ * pattern matching with configurable confidence thresholds.
  * 
- * KNOWN LIMITATION: Message continuation logic has known issues that can result in
- * over-splitting of messages (expected 2 messages, getting 3-5). This parser is
- * used as a fallback when IntelligentMessageParser fails. The continuation logic
- * complexity makes it acceptable to have this known limitation since the primary
- * parser handles the most common use cases correctly.
+ * Three-Pass Algorithm:
+ * 1. Pattern Recognition: Score lines for username, timestamp, and metadata patterns
+ * 2. Block Identification: Group related lines into message blocks
+ * 3. Content Extraction: Extract metadata and content, handle reactions
+ * 
+ * Key Features:
+ * - Multi-format support (DM, Thread, Channel, Standard)
+ * - Probabilistic scoring with confidence thresholds
+ * - Pattern-based username and timestamp detection
+ * - Doubled username handling for multi-person DMs
+ * - International character support
+ * - Flexible continuation detection
+ * 
+ * Known Limitations:
+ * - Message continuation logic can over-split messages (expected 2, getting 3-5)
+ * - Less sophisticated boundary detection than IntelligentMessageParser
+ * - Acceptable for fallback scenarios where primary parser fails
+ * 
+ * @complexity O(n²) for block identification, O(n) for pattern scoring
+ * @see {@link IntelligentMessageParser} for primary parsing algorithm
+ * @since 1.0.0
  */
 export class FlexibleMessageParser {
     // Remove instance logger - use static methods instead

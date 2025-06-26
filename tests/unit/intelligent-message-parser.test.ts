@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from '@jest/globals';
 import { IntelligentMessageParser } from '../../src/formatter/stages/intelligent-message-parser';
 import { DEFAULT_SETTINGS } from '../../src/settings';
+import { TestLogger } from '../helpers';
 
 describe('IntelligentMessageParser - Error Resilience', () => {
     let parser: IntelligentMessageParser;
@@ -146,13 +147,13 @@ Second message`;
         const messages = parser.parse(input);
 
         // DEBUG: Log the actual message objects to see timestamp values
-        console.log('\n=== DEBUG MESSAGE OBJECTS ===');
+        TestLogger.log('\n=== DEBUG MESSAGE OBJECTS ===');
         messages.forEach((msg, i) => {
-            console.log(`Message ${i}:`);
-            console.log(`  Username: "${msg.username}"`);
-            console.log(`  Timestamp: "${msg.timestamp}"`);
-            console.log(`  Date: "${msg.date}"`);
-            console.log('');
+            TestLogger.log(`Message ${i}:`);
+            TestLogger.log(`  Username: "${msg.username}"`);
+            TestLogger.log(`  Timestamp: "${msg.timestamp}"`);
+            TestLogger.log(`  Date: "${msg.date}"`);
+            TestLogger.log('');
         });
 
         expect(messages.length).toBe(2);

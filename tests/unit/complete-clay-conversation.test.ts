@@ -1,5 +1,6 @@
 import { describe, it, expect } from '@jest/globals';
 import { IntelligentMessageParser } from '../../src/formatter/stages/intelligent-message-parser';
+import { TestLogger } from '../helpers';
 
 describe('Complete Clay Conversation Test', () => {
     it('should parse the complete raw Clay conversation correctly', () => {
@@ -92,28 +93,28 @@ This thread was picked up by our in-app web widget and will no longer sync to Sl
         const parser = new IntelligentMessageParser();
         const messages = parser.parse(input);
         
-        console.log('\n=== COMPLETE CLAY CONVERSATION ANALYSIS ===');
-        console.log(`Total messages detected: ${messages.length}`);
+        TestLogger.log('\n=== COMPLETE CLAY CONVERSATION ANALYSIS ===');
+        TestLogger.log(`Total messages detected: ${messages.length}`);
         
         messages.forEach((msg, i) => {
-            console.log(`\nMessage ${i + 1}:`);
-            console.log(`  Username: "${msg.username}"`);
-            console.log(`  Timestamp: "${msg.timestamp || 'null'}"`);
-            console.log(`  Content length: ${msg.text?.length || 0} chars`);
-            console.log(`  Content preview: "${msg.text?.substring(0, 80)}..."`);
+            TestLogger.log(`\nMessage ${i + 1}:`);
+            TestLogger.log(`  Username: "${msg.username}"`);
+            TestLogger.log(`  Timestamp: "${msg.timestamp || 'null'}"`);
+            TestLogger.log(`  Content length: ${msg.text?.length || 0} chars`);
+            TestLogger.log(`  Content preview: "${msg.text?.substring(0, 80)}..."`);
         });
         
         // Count expected users from the ground truth
         const expectedUsers = ['Owen Chandler', 'Clay', 'Jorge Macias', 'Bo (Clay)', 'Channeled'];
-        console.log('\n=== EXPECTED VS ACTUAL ===');
+        TestLogger.log('\n=== EXPECTED VS ACTUAL ===');
         expectedUsers.forEach(expectedUser => {
             const userMessages = messages.filter(msg => msg.username === expectedUser);
-            console.log(`${expectedUser}: ${userMessages.length} messages detected`);
+            TestLogger.log(`${expectedUser}: ${userMessages.length} messages detected`);
         });
         
         // Count Unknown User messages
         const unknownUserMessages = messages.filter(msg => msg.username === 'Unknown User');
-        console.log(`\nUnknown User messages: ${unknownUserMessages.length}`);
+        TestLogger.log(`\nUnknown User messages: ${unknownUserMessages.length}`);
         
         // Based on the raw data, we should expect approximately 6-7 messages:
         // 1. Owen Chandler - Initial message

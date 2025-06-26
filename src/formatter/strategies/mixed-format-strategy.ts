@@ -181,7 +181,40 @@ export class MixedFormatStrategy extends BaseFormatStrategy {
     }
 
     /**
-     * Format minimal style message (content-only or partial info)
+     * Formats a message with minimal or incomplete information.
+     * Applied when message lacks clear structure or complete metadata.
+     * 
+     * **Minimal Message Features:**
+     * - Simplified `[!info]` callout for reduced visual noise
+     * - Graceful handling of missing usernames
+     * - Optional timestamp inclusion when available
+     * - Content-focused presentation
+     * - Inline reactions without heavy formatting
+     * 
+     * @private
+     * @param {SlackMessage} message - Message with incomplete or minimal data
+     * @returns {string} Formatted message optimized for minimal information
+     * 
+     * @example
+     * ```typescript
+     * formatMinimalMessage({
+     *   text: 'System notification or incomplete message',
+     *   username: 'Unknown User'
+     * })
+     * // Returns:
+     * // >[!info]
+     * // > System notification or incomplete message
+     * 
+     * formatMinimalMessage({
+     *   text: 'Bot message',
+     *   timestamp: 'Feb 8th at 5:00 PM'
+     * })
+     * // Returns:
+     * // >[!info]
+     * // > February 8, 2024 at 5:00 PM
+     * // > 
+     * // > Bot message
+     * ```
      */
     private formatMinimalMessage(message: SlackMessage): string {
         const lines: string[] = [];

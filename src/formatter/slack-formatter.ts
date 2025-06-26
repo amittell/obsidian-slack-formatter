@@ -8,13 +8,18 @@ import { validateFormatterOutput } from '../utils/validation-utils';
 
 /**
  * Configuration constants for debug output formatting and input validation
+ * @internal
+ * @since 1.0.0
  */
 const DEBUG_LINES_LIMIT = 50;
 const MIN_MESSAGE_LENGTH = 10;
 const MIN_TOTAL_LINES = 10;
 
 /**
- * Performance protection constants
+ * Performance protection constants that define safe limits for input processing
+ * to prevent memory issues and UI freezing during large content processing.
+ * @internal
+ * @since 1.0.0
  */
 const PERFORMANCE_LIMITS = {
     /** Maximum input size in characters (5MB) */
@@ -57,10 +62,49 @@ import { MixedFormatStrategy } from './strategies/mixed-format-strategy';
 import { BaseFormatStrategy } from './strategies/base-format-strategy';
 
 /**
- * Main formatter class that orchestrates the Slack-to-Markdown conversion process.
- * Implements a multi-stage pipeline with format detection, parsing, processing, and formatting.
- * Includes caching for performance and comprehensive error handling with fallback formatting.
+ * Main formatter class that orchestrates the Slack-to-Markdown conversion process through
+ * a comprehensive multi-stage pipeline. Handles format detection, intelligent parsing,
+ * content processing, deduplication, validation, and strategic formatting.
+ * 
+ * ## Pipeline Flow
+ * 1. **Input Validation** - Size limits and preprocessing
+ * 2. **Format Detection** - Identifies Slack export format type
+ * 3. **Intelligent Parsing** - Extracts structured messages with fallback
+ * 4. **Content Processing** - Unified content transformation pipeline
+ * 5. **Deduplication** - Removes duplicate and embedded content
+ * 6. **Validation** - Structure integrity and content validation
+ * 7. **Strategic Formatting** - Format-specific markdown generation
+ * 8. **Post-processing** - Final cleanup and optimization
+ * 
+ * ## Caching Strategy
+ * - Input/output caching with size management (2MB limit)
+ * - Thread statistics caching for performance
+ * - Cache invalidation on settings updates
+ * 
+ * ## Error Handling
+ * - Comprehensive error recovery with fallback formatting
+ * - Graceful degradation for parsing failures
+ * - Performance protection with input size limits
+ * 
  * @implements {ISlackFormatter}
+ * @since 1.0.0
+ * @example
+ * ```typescript
+ * const formatter = new SlackFormatter(settings, userMap, emojiMap);
+ * 
+ * // Basic formatting
+ * const markdown = formatter.formatSlackContent(slackText);
+ * 
+ * // With frontmatter for Obsidian
+ * const note = formatter.buildNoteWithFrontmatter(slackText);
+ * 
+ * // Get processing statistics
+ * const stats = formatter.getThreadStats();
+ * console.log(`Processed ${stats.messageCount} messages from ${stats.uniqueUsers} users`);
+ * ```
+ * @see {@link ISlackFormatter} - Interface definition
+ * @see {@link UnifiedProcessor} - Content transformation pipeline
+ * @see {@link IntelligentMessageParser} - Message parsing strategy
  */
 export class SlackFormatter implements ISlackFormatter {
     /** Plugin settings configuration */
@@ -119,10 +163,27 @@ export class SlackFormatter implements ISlackFormatter {
     private debugMode: boolean;
 
     /**
-     * Creates a new SlackFormatter instance.
-     * @param {SlackFormatSettings} settings - Plugin settings configuration
-     * @param {Record<string, string>} userMap - Mapping of user IDs to display names
-     * @param {Record<string, string>} emojiMap - Mapping of emoji codes to Unicode characters
+     * Creates a new SlackFormatter instance and initializes all pipeline components.
+     * Sets up the complete processing pipeline including parsers, processors, strategies,
+     * and validation components based on the provided configuration.
+     * 
+     * @param {SlackFormatSettings} settings - Plugin settings configuration including format preferences, debug flags, and processing limits
+     * @param {Record<string, string>} userMap - Mapping of Slack user IDs (e.g., "U12345") to human-readable display names
+     * @param {Record<string, string>} emojiMap - Mapping of Slack emoji codes (e.g., ":smile:") to Unicode characters or custom emoji representations
+     * @throws {Error} If required components fail to initialize (caught internally and logged)
+     * @since 1.0.0
+     * @example
+     * ```typescript
+     * const settings = {
+     *   debug: true,
+     *   maxLines: 1000,
+     *   frontmatterCssClass: 'slack-conversation'
+     * };
+     * const userMap = { 'U12345': 'John Doe', 'U67890': 'Jane Smith' };
+     * const emojiMap = { ':smile:': '😊', ':thumbsup:': '👍' };
+     * 
+     * const formatter = new SlackFormatter(settings, userMap, emojiMap);
+     * ```
      */
     constructor(
         settings: SlackFormatSettings,
@@ -161,10 +222,22 @@ export class SlackFormatter implements ISlackFormatter {
     }
 
     /**
-     * Check if text is likely from Slack based on pattern detection.
-     * Uses the ImprovedFormatDetector for probability-based scoring.
-     * @param {string} text - The text to analyze
-     * @returns {boolean} True if text appears to be from Slack
+     * Analyzes text content to determine if it appears to be from Slack export.
+     * Uses advanced pattern detection including user mentions, timestamps, format indicators,
+     * and structural patterns characteristic of Slack conversations.
+     * 
+     * @param {string} text - The raw text content to analyze for Slack patterns
+     * @returns {boolean} True if text contains sufficient Slack-like patterns to warrant processing
+     * @since 1.0.0
+     * @example
+     * ```typescript
+     * const slackText = "10:30 AM\n<@U12345> Hello everyone!\n10:31 AM\n<@U67890> Hi there!";
+     * const regularText = "Just some regular conversation text";
+     * 
+     * console.log(formatter.isLikelySlack(slackText)); // true
+     * console.log(formatter.isLikelySlack(regularText)); // false
+     * ```
+     * @see {@link ImprovedFormatDetector.isLikelySlack} - Underlying detection logic
      */
     isLikelySlack(text: string): boolean {
         return this.formatDetector.isLikelySlack(text);
@@ -471,11 +544,70 @@ export class SlackFormatter implements ISlackFormatter {
     }
 
     /**
-     * Main formatting method that processes Slack content through the full pipeline.
-     * Includes caching, error handling, and input size validation.
-     * @param {string} input - Raw Slack conversation text
-     * @returns {string} Formatted Markdown content
-     * @throws {Error} Caught internally and handled with fallback formatting
+     * Main entry point for Slack-to-Markdown conversion. Processes raw Slack export content
+     * through the complete formatting pipeline with comprehensive error handling, caching,
+     * and performance protection.
+     * 
+     * ## Processing Pipeline
+     * 1. Input validation and size checks (5MB/50k lines max)
+     * 2. Cache lookup for previously processed content
+     * 3. Format detection (standard/bracket/mixed/dm/thread)
+     * 4. Intelligent message parsing with flexible fallback
+     * 5. Content deduplication and continuation merging
+     * 6. Message structure validation
+     * 7. Unified content processing (links, mentions, formatting)
+     * 8. Strategic formatting based on detected type
+     * 9. Post-processing cleanup and normalization
+     * 10. Cache update and statistics calculation
+     * 
+     * ## Performance Features
+     * - Input size validation with informative error messages
+     * - Result caching with 2MB size management
+     * - Graceful fallback for parsing failures
+     * - Processing time tracking and optimization
+     * 
+     * @param {string} input - Raw Slack conversation text from export or copy-paste
+     * @returns {string} Formatted Markdown content optimized for Obsidian with proper callout formatting
+     * @throws {Error} All errors are caught internally and handled with fallback formatting that preserves original content
+     * @since 1.0.0
+     * @example
+     * ```typescript
+     * // Basic usage
+     * const slackExport = `10:30 AM
+     * <@U12345> Hey team, here's the update:
+     * • Project is on track
+     * • Testing phase starts Monday
+     * 
+     * 10:32 AM
+     * <@U67890> Sounds good! Any blockers?`;
+     * 
+     * const markdown = formatter.formatSlackContent(slackExport);
+     * // Returns:
+     * // > [!slack]+ Message from John Doe
+     * // > **10:30 AM**
+     * // > 
+     * // > Hey team, here's the update:
+     * // > • Project is on track
+     * // > • Testing phase starts Monday
+     * // 
+     * // > [!slack]+ Message from Jane Smith
+     * // > **10:32 AM**
+     * // > 
+     * // > Sounds good! Any blockers?
+     * 
+     * // Handle large inputs
+     * const largeContent = "..."; // 3MB of Slack content
+     * const result = formatter.formatSlackContent(largeContent);
+     * // Processes with performance warnings but completes successfully
+     * 
+     * // Handle malformed input
+     * const malformedContent = "Not really Slack content...";
+     * const fallback = formatter.formatSlackContent(malformedContent);
+     * // Returns formatted error callout with original content preserved
+     * ```
+     * @see {@link formatSlackContentInternal} - Internal processing without validation
+     * @see {@link buildNoteWithFrontmatter} - For complete Obsidian notes with metadata
+     * @see {@link getThreadStats} - For processing statistics
      */
     formatSlackContent(input: string): string {
         if (!input) return '';
@@ -516,9 +648,34 @@ export class SlackFormatter implements ISlackFormatter {
     }
 
     /**
-     * Get statistics from the last formatting operation.
-     * Returns cached stats or default values if no formatting has occurred.
-     * @returns {ThreadStats} Thread statistics including message count, users, and format
+     * Retrieves comprehensive statistics from the most recent formatting operation.
+     * Statistics are automatically calculated and cached during each formatSlackContent call.
+     * 
+     * @returns {ThreadStats} Detailed thread statistics object containing:
+     *   - messageCount: Number of successfully parsed messages
+     *   - uniqueUsers: Count of distinct users who participated
+     *   - threadReplies: Number of messages identified as thread replies
+     *   - formatStrategy: The format strategy used ('standard', 'bracket', 'mixed', etc.)
+     *   - processingTime: Time taken for processing in milliseconds (if available)
+     * @since 1.0.0
+     * @example
+     * ```typescript
+     * const slackContent = "..."; // Slack conversation
+     * formatter.formatSlackContent(slackContent);
+     * 
+     * const stats = formatter.getThreadStats();
+     * console.log(`Processed conversation with:
+     *   - ${stats.messageCount} messages
+     *   - ${stats.uniqueUsers} participants
+     *   - ${stats.threadReplies} thread replies
+     *   - Format: ${stats.formatStrategy}
+     *   - Processing time: ${stats.processingTime}ms`);
+     * 
+     * // Use stats for UI feedback or analytics
+     * if (stats.messageCount > 100) {
+     *   console.log('Large conversation detected');
+     * }
+     * ```
      */
     getThreadStats(): ThreadStats {
         return this.lastStats || {
@@ -530,10 +687,59 @@ export class SlackFormatter implements ISlackFormatter {
     }
 
     /**
-     * Build a complete note with YAML frontmatter including thread statistics.
-     * Formats the content and prepends metadata for Obsidian.
-     * @param {string} text - Raw Slack conversation text
-     * @returns {string} Complete note with frontmatter and formatted content
+     * Creates a complete Obsidian note with YAML frontmatter and formatted Slack content.
+     * Combines the full formatting pipeline with metadata generation for seamless
+     * integration into Obsidian vaults. Includes conversation statistics and custom CSS classes.
+     * 
+     * ## Generated Frontmatter
+     * - cssclasses: Custom CSS class for styling (default: 'slack-conversation')
+     * - participants: Number of unique users in the conversation
+     * - messages: Total number of processed messages
+     * - format: Detected format strategy used for processing
+     * - date: Current date in ISO format (YYYY-MM-DD)
+     * - Custom title: If specified in settings
+     * 
+     * @param {string} text - Raw Slack conversation text to format and wrap
+     * @returns {string} Complete Obsidian note with YAML frontmatter followed by formatted Markdown content
+     * @since 1.0.0
+     * @example
+     * ```typescript
+     * const slackConversation = `10:30 AM
+     * <@U12345> Let's discuss the project timeline
+     * 10:31 AM  
+     * <@U67890> Sounds good, when can we start?`;
+     * 
+     * const note = formatter.buildNoteWithFrontmatter(slackConversation);
+     * // Returns:
+     * // ---
+     * // cssclasses: slack-conversation
+     * // participants: 2
+     * // messages: 2
+     * // format: standard
+     * // date: 2024-01-15
+     * // ---
+     * // 
+     * // > [!slack]+ Message from John Doe
+     * // > **10:30 AM**
+     * // > 
+     * // > Let's discuss the project timeline
+     * // 
+     * // > [!slack]+ Message from Jane Smith
+     * // > **10:31 AM**
+     * // > 
+     * // > Sounds good, when can we start?
+     * 
+     * // With custom settings
+     * const formatterWithTitle = new SlackFormatter({
+     *   frontmatterCssClass: 'team-chat',
+     *   frontmatterTitle: '# Team Discussion'
+     * }, userMap, emojiMap);
+     * 
+     * const noteWithTitle = formatterWithTitle.buildNoteWithFrontmatter(slackConversation);
+     * // Includes "# Team Discussion" after the frontmatter
+     * ```
+     * @see {@link formatSlackContent} - For content formatting without frontmatter
+     * @see {@link getThreadStats} - For statistics included in frontmatter
      */
     buildNoteWithFrontmatter(text: string): string {
         const formatted = this.formatSlackContent(text);
@@ -588,11 +794,58 @@ export class SlackFormatter implements ISlackFormatter {
     }
 
     /**
-     * Update formatter settings and parsed maps.
-     * Propagates changes to all components and clears the cache.
-     * @param {SlackFormatSettings} settings - New settings configuration
-     * @param {ParsedMaps} parsedMaps - New user and emoji mappings
+     * Updates formatter configuration and propagates changes throughout the entire pipeline.
+     * Reinitializes all components with new settings, clears caches, and ensures
+     * consistent behavior across all processors and strategies.
+     * 
+     * ## Updated Components
+     * - All format strategies (standard, bracket, mixed)
+     * - Unified content processor
+     * - Intelligent and flexible message parsers
+     * - Preprocessing and postprocessing stages
+     * - Validation and deduplication processors
+     * - Output formatting standards
+     * 
+     * ## Cache Management
+     * - Clears input/output cache to prevent stale results
+     * - Resets thread statistics
+     * - Forces re-detection of format types
+     * 
+     * @param {SlackFormatSettings} settings - New settings configuration with updated preferences, limits, and formatting options
+     * @param {ParsedMaps} parsedMaps - Updated user and emoji mappings containing new user IDs and emoji codes
      * @returns {void}
+     * @since 1.0.0
+     * @example
+     * ```typescript
+     * // Initial setup
+     * const formatter = new SlackFormatter(initialSettings, userMap, emojiMap);
+     * 
+     * // Update settings with new preferences
+     * const updatedSettings = {
+     *   ...initialSettings,
+     *   debug: true,
+     *   maxLines: 2000,
+     *   frontmatterCssClass: 'updated-slack-style'
+     * };
+     * 
+     * // Add new users discovered in recent exports
+     * const updatedUserMap = {
+     *   ...userMap,
+     *   'U98765': 'New Team Member',
+     *   'U54321': 'Another User'
+     * };
+     * 
+     * // Update the formatter
+     * formatter.updateSettings(updatedSettings, {
+     *   userMap: updatedUserMap,
+     *   emojiMap: emojiMap
+     * });
+     * 
+     * // Next formatting operation will use new settings
+     * const result = formatter.formatSlackContent(newContent);
+     * ```
+     * @see {@link SlackFormatSettings} - Settings object structure
+     * @see {@link ParsedMaps} - User and emoji mapping structure
      */
     updateSettings(settings: SlackFormatSettings, parsedMaps: ParsedMaps): void {
         this.settings = settings;

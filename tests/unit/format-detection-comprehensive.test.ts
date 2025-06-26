@@ -1,6 +1,7 @@
 import { describe, it, expect } from '@jest/globals';
 import { ImprovedFormatDetector } from '../../src/formatter/stages/improved-format-detector';
 import { readFileSync } from 'fs';
+import { TestLogger } from '../helpers';
 
 describe('Enhanced Format Detection', () => {
     let detector: ImprovedFormatDetector;
@@ -12,12 +13,12 @@ describe('Enhanced Format Detection', () => {
     it('should detect standard format correctly for test-slack-content.txt', () => {
         const standardInput = readFileSync('./test-slack-content.txt', 'utf8');
         
-        console.log('\n=== STANDARD FORMAT DETECTION ===');
-        console.log('Input preview:', standardInput.substring(0, 200) + '...');
+        TestLogger.log('\n=== STANDARD FORMAT DETECTION ===');
+        TestLogger.log('Input preview:', standardInput.substring(0, 200) + '...');
         
         const detectedFormat = detector.detectFormat(standardInput);
         
-        console.log('Detected format:', detectedFormat);
+        TestLogger.log('Detected format:', detectedFormat);
         
         // Should detect as standard format due to "Username  Time" patterns without DM indicators
         expect(detectedFormat).toBe('standard');
@@ -26,12 +27,12 @@ describe('Enhanced Format Detection', () => {
     it('should detect thread format correctly for test-thread-content.txt', () => {
         const threadInput = readFileSync('./test-thread-content.txt', 'utf8');
         
-        console.log('\n=== THREAD FORMAT DETECTION ===');
-        console.log('Input preview:', threadInput.substring(0, 200) + '...');
+        TestLogger.log('\n=== THREAD FORMAT DETECTION ===');
+        TestLogger.log('Input preview:', threadInput.substring(0, 200) + '...');
         
         const detectedFormat = detector.detectFormat(threadInput);
         
-        console.log('Detected format:', detectedFormat);
+        TestLogger.log('Detected format:', detectedFormat);
         
         // Should detect as thread format due to "13 replies", "---" separator, and thread_ts URLs
         expect(detectedFormat).toBe('thread');
@@ -46,8 +47,8 @@ describe('Enhanced Format Detection', () => {
         ].join('\n\n');
         
         const dmFormat = detector.detectFormat(dmPatterns);
-        console.log('\n=== DM Pattern Test ===');
-        console.log('Detected:', dmFormat);
+        TestLogger.log('\n=== DM Pattern Test ===');
+        TestLogger.log('Detected:', dmFormat);
         
         // Test Thread indicators
         const threadPatterns = [
@@ -59,8 +60,8 @@ describe('Enhanced Format Detection', () => {
         ].join('\n\n');
         
         const threadFormat = detector.detectFormat(threadPatterns);
-        console.log('\n=== Thread Pattern Test ===');
-        console.log('Detected:', threadFormat);
+        TestLogger.log('\n=== Thread Pattern Test ===');
+        TestLogger.log('Detected:', threadFormat);
         
         // DM should be detected for DM patterns
         expect(dmFormat).toBe('dm');
@@ -106,9 +107,9 @@ Continuation content
         const dmResult = detector.detectFormat(ambiguousDM);
         const threadResult = detector.detectFormat(ambiguousThread);
         
-        console.log('\n=== Format Disambiguation ===');
-        console.log('Ambiguous DM detected as:', dmResult);
-        console.log('Ambiguous Thread detected as:', threadResult);
+        TestLogger.log('\n=== Format Disambiguation ===');
+        TestLogger.log('Ambiguous DM detected as:', dmResult);
+        TestLogger.log('Ambiguous Thread detected as:', threadResult);
         
         // Should correctly distinguish based on context
         expect(dmResult).toBe('dm');
@@ -137,8 +138,8 @@ thanks for sharing those details, that's helpful!`;
 
         const result = detector.detectFormat(multiPersonDM);
         
-        console.log('\n=== Multi-Person DM Detection ===');
-        console.log('Detected format:', result);
+        TestLogger.log('\n=== Multi-Person DM Detection ===');
+        TestLogger.log('Detected format:', result);
         
         // Should detect as DM despite C archive URLs due to contextual indicators
         expect(result).toBe('dm');
@@ -162,8 +163,8 @@ Thanks everyone!`;
 
         const result = detector.detectFormat(channelConversation);
         
-        console.log('\n=== Channel Detection ===');
-        console.log('Detected format:', result);
+        TestLogger.log('\n=== Channel Detection ===');
+        TestLogger.log('Detected format:', result);
         
         // Should detect as channel due to channel-specific actions
         expect(result).toBe('channel');
@@ -173,17 +174,17 @@ Thanks everyone!`;
         try {
             const multiDmContent = readFileSync('./test-multi-dm-complex.txt', 'utf8');
             
-            console.log('\n=== Multi-Person DM File Test ===');
-            console.log('Content preview:', multiDmContent.substring(0, 200) + '...');
+            TestLogger.log('\n=== Multi-Person DM File Test ===');
+            TestLogger.log('Content preview:', multiDmContent.substring(0, 200) + '...');
             
             const detectedFormat = detector.detectFormat(multiDmContent);
             
-            console.log('Detected format:', detectedFormat);
+            TestLogger.log('Detected format:', detectedFormat);
             
             // Should detect as DM format despite C archive URLs
             expect(detectedFormat).toBe('dm');
         } catch (error) {
-            console.log('Test file not found, skipping test:', error);
+            TestLogger.log('Test file not found, skipping test:', error);
         }
     });
 
@@ -210,9 +211,9 @@ Different message
         const standardResult = detector.detectFormat(standardFormat);
         const bracketResult = detector.detectFormat(bracketFormat);
         
-        console.log('\n=== Backward Compatibility ===');
-        console.log('Standard format detected as:', standardResult);
-        console.log('Bracket format detected as:', bracketResult);
+        TestLogger.log('\n=== Backward Compatibility ===');
+        TestLogger.log('Standard format detected as:', standardResult);
+        TestLogger.log('Bracket format detected as:', bracketResult);
         
         // Should maintain existing format detection
         expect(standardResult).toBe('standard');

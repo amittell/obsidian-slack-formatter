@@ -1,6 +1,7 @@
 import { SlackFormatter } from '../../src/formatter/slack-formatter';
 import * as fs from 'fs';
 import * as path from 'path';
+import { TestLogger } from '../helpers';
 
 describe('Manual Test - Real Conversation', () => {
     let formatter: SlackFormatter;
@@ -30,17 +31,17 @@ describe('Manual Test - Real Conversation', () => {
             'utf8'
         );
 
-        console.log('=== Input Text ===');
-        console.log('Length:', testText.length, 'characters');
-        console.log('First 500 chars:', testText.substring(0, 500));
-        console.log('\n');
+        TestLogger.log('=== Input Text ===');
+        TestLogger.log('Length:', testText.length, 'characters');
+        TestLogger.log('First 500 chars:', testText.substring(0, 500));
+        TestLogger.log('\n');
 
         // Format the text
         const result = formatter.formatSlackContent(testText);
 
-        console.log('=== Formatted Result ===');
-        console.log(result);
-        console.log('\n');
+        TestLogger.log('=== Formatted Result ===');
+        TestLogger.log(result);
+        TestLogger.log('\n');
 
         // Save the result
         fs.writeFileSync(
@@ -60,16 +61,16 @@ describe('Manual Test - Real Conversation', () => {
         
         // Check if messages were properly separated
         const messageBlocks = result.match(/> \[!slack\]\+ Message from/g);
-        console.log('Number of message blocks found:', messageBlocks?.length || 0);
+        TestLogger.log('Number of message blocks found:', messageBlocks?.length || 0);
         
         // Debug: show what usernames are being found
         const usernameMatches = result.match(/> \[!slack\]\+ Message from ([^\n]+)/g);
-        console.log('Usernames found:', usernameMatches || []);
+        TestLogger.log('Usernames found:', usernameMatches || []);
         
         // Debug: show total result length
-        console.log('Result length:', result.length);
-        console.log('First 1000 chars of result:');
-        console.log(result.substring(0, 1000));
+        TestLogger.log('Result length:', result.length);
+        TestLogger.log('First 1000 chars of result:');
+        TestLogger.log(result.substring(0, 1000));
         
         // We expect at least 5 messages based on the input
         expect(messageBlocks?.length).toBeGreaterThanOrEqual(5);

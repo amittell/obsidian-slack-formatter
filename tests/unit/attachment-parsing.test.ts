@@ -1,5 +1,6 @@
 import { describe, it, expect } from '@jest/globals';
 import { IntelligentMessageParser } from '../../src/formatter/stages/intelligent-message-parser';
+import { TestLogger } from '../helpers';
 
 describe('Attachment Parsing Fix', () => {
     it('should not parse file attachment titles as separate messages', () => {
@@ -20,10 +21,10 @@ The part im missing is customer validation - are you guys able to help me out wi
         const parser = new IntelligentMessageParser();
         const messages = parser.parse(input);
         
-        console.log('\n=== ATTACHMENT PARSING TEST ===');
-        console.log('Number of messages:', messages.length);
+        TestLogger.log('\n=== ATTACHMENT PARSING TEST ===');
+        TestLogger.log('Number of messages:', messages.length);
         messages.forEach((msg, i) => {
-            console.log(`Message ${i}: "${msg.username}" -> "${msg.text?.substring(0, 50)}..."`);
+            TestLogger.log(`Message ${i}: "${msg.username}" -> "${msg.text?.substring(0, 50)}..."`);
         });
 
         // Should have 1 message, not separate messages for "Google Docs", "Google Doc", etc.
@@ -60,10 +61,10 @@ Word document`;
         const parser = new IntelligentMessageParser();
         const messages = parser.parse(input);
         
-        console.log('\n=== FILE TYPES TEST ===');
-        console.log('Number of messages:', messages.length);
+        TestLogger.log('\n=== FILE TYPES TEST ===');
+        TestLogger.log('Number of messages:', messages.length);
         messages.forEach((msg, i) => {
-            console.log(`Message ${i}: "${msg.username}"`);
+            TestLogger.log(`Message ${i}: "${msg.username}"`);
         });
 
         // Should have 1 message, not separate messages for PDF, Zip, DOC
@@ -91,10 +92,10 @@ API integration`;
         const parser = new IntelligentMessageParser();
         const messages = parser.parse(input);
         
-        console.log('\n=== SERVICE NAMES TEST ===');
-        console.log('Number of messages:', messages.length);
+        TestLogger.log('\n=== SERVICE NAMES TEST ===');
+        TestLogger.log('Number of messages:', messages.length);
         messages.forEach((msg, i) => {
-            console.log(`Message ${i}: "${msg.username}"`);
+            TestLogger.log(`Message ${i}: "${msg.username}"`);
         });
 
         // Should have 1 message, not separate messages for GitHub, Notion, Slack

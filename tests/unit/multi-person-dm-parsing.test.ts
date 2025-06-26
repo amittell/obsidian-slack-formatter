@@ -4,6 +4,7 @@ import { IntelligentMessageParser } from '../../src/formatter/stages/intelligent
 import { FlexibleMessageParser } from '../../src/formatter/stages/flexible-message-parser';
 import { ImprovedFormatDetector } from '../../src/formatter/stages/improved-format-detector';
 import { DEFAULT_SETTINGS } from '../../src/settings';
+import { TestLogger } from '../helpers';
 
 describe('Multi-Person DM Parsing Fixes', () => {
     const multiPersonDMSample = `![](https://ca.slack-edge.com/E0181S17H6Z-U023H2QHYG1-79ffd588753a-48)
@@ -49,13 +50,13 @@ Here are some additional details about our progress`;
         
         const messages = parser.parse(multiPersonDMSample, true);
         
-        console.log('=== IntelligentMessageParser Results ===');
-        console.log(`Number of messages: ${messages.length}`);
+        TestLogger.log('=== IntelligentMessageParser Results ===');
+        TestLogger.log(`Number of messages: ${messages.length}`);
         messages.forEach((msg, i) => {
-            console.log(`Message ${i + 1}:`);
-            console.log(`  Username: "${msg.username}"`);
-            console.log(`  Timestamp: "${msg.timestamp || 'none'}"`);
-            console.log(`  Text preview: "${msg.text?.substring(0, 100) || 'empty'}..."`);
+            TestLogger.log(`Message ${i + 1}:`);
+            TestLogger.log(`  Username: "${msg.username}"`);
+            TestLogger.log(`  Timestamp: "${msg.timestamp || 'none'}"`);
+            TestLogger.log(`  Text preview: "${msg.text?.substring(0, 100) || 'empty'}..."`);
         });
         
         // Should parse into at least 2 messages (the main messages from Amy and Alex)
@@ -84,13 +85,13 @@ Here are some additional details about our progress`;
         
         const messages = parser.parse(multiPersonDMSample, true);
         
-        console.log('=== FlexibleMessageParser Results ===');
-        console.log(`Number of messages: ${messages.length}`);
+        TestLogger.log('=== FlexibleMessageParser Results ===');
+        TestLogger.log(`Number of messages: ${messages.length}`);
         messages.forEach((msg, i) => {
-            console.log(`Message ${i + 1}:`);
-            console.log(`  Username: "${msg.username}"`);
-            console.log(`  Timestamp: "${msg.timestamp || 'none'}"`);
-            console.log(`  Text preview: "${msg.text?.substring(0, 100) || 'empty'}..."`);
+            TestLogger.log(`Message ${i + 1}:`);
+            TestLogger.log(`  Username: "${msg.username}"`);
+            TestLogger.log(`  Timestamp: "${msg.timestamp || 'none'}"`);
+            TestLogger.log(`  Text preview: "${msg.text?.substring(0, 100) || 'empty'}..."`);
         });
         
         // Should parse into multiple messages
@@ -118,8 +119,8 @@ Here are some additional details about our progress`;
         
         const result = formatter.formatSlackContent(multiPersonDMSample, settings, parsedMaps);
         
-        console.log('=== SlackFormatter Results ===');
-        console.log(result);
+        TestLogger.log('=== SlackFormatter Results ===');
+        TestLogger.log(result);
         
         // Should contain formatted message blocks
         expect(result).toContain('> [!slack]+');
@@ -136,7 +137,7 @@ Here are some additional details about our progress`;
         
         // Count message blocks
         const messageBlocks = (result.match(/> \[!slack\]\+/g) || []).length;
-        console.log(`Number of message blocks: ${messageBlocks}`);
+        TestLogger.log(`Number of message blocks: ${messageBlocks}`);
         
         // Should have multiple message blocks
         expect(messageBlocks).toBeGreaterThanOrEqual(2);

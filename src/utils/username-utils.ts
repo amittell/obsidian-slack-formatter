@@ -9,15 +9,34 @@ import { removeAllEmoji } from './emoji-utils';
 
 /**
  * Replace Slack user mentions with wiki links.
- * Handles multiple mention formats:
- * - <@U123ABC> - User ID format
- * - @username - Direct mention format
+ * 
+ * Converts various Slack mention formats to Obsidian-compatible wikilinks.
+ * Handles user ID resolution, mention sanitization, and special cases.
+ * 
+ * Mention Formats Supported:
+ * - <@U123ABC> - User ID format (resolves via userMap)
+ * - @username - Direct mention format (careful email detection)
  * - <@username> - Username without ID
- * - <!channel>, <!here>, <!everyone> - Special mentions
+ * - [@username](url) - Markdown-style Slack mentions
+ * - <!channel>, <!here>, <!everyone> - Special mentions (bold format)
+ * 
+ * Security Features:
+ * - Email address protection (avoids converting email @ symbols)
+ * - Input validation and sanitization
+ * - Graceful fallback for invalid usernames
+ * - Wikilink character sanitization
  * 
  * @param {string} text - The text containing user mentions
  * @param {Record<string, string>} userMap - Map of user IDs to display names
  * @returns {string} Text with mentions converted to [[wikilinks]] or **bold** for special mentions
+ * @complexity O(n) where n is text length
+ * @example
+ * ```typescript
+ * const userMap = { 'U123ABC': 'John Doe' };
+ * const result = formatUserMentions('Hey <@U123ABC>!', userMap);
+ * // Returns: 'Hey [[John Doe]]!'
+ * ```
+ * @since 1.0.0
  */
 export function formatUserMentions(text: string, userMap: Record<string, string>): string {
     try {
@@ -156,15 +175,37 @@ export const APP_MESSAGE_PATTERNS = {
 
 /**
  * Clean up immediately doubled usernames/names with format awareness.
- * Handles various duplication patterns:
- * - "Alex MittellAlex Mittell" -> "Alex Mittell" (DM format)
- * - "Bill MeiBill Mei![:emoji:](url)" -> "Bill Mei" (Thread format)
- * - "JohnJohn" -> "John"
- * - Case-insensitive duplicates
+ * 
+ * Core algorithm for resolving username duplication issues in Slack exports.
+ * Different export formats can cause usernames to appear doubled due to
+ * formatting inconsistencies or export artifacts.
+ * 
+ * Duplication Patterns Handled:
+ * - Exact duplicates: "Alex MittellAlex Mittell" -> "Alex Mittell"
+ * - Spaced duplicates: "John Doe John Doe" -> "John Doe"
+ * - Format-specific patterns: "Bill MeiBill Mei![:emoji:](url)" -> "Bill Mei"
+ * - Case-insensitive duplicates: "john JOHN" -> "john"
+ * - Separated parts: "John JohnSmith Smith" -> "John Smith"
+ * - International characters: Support for Unicode names
+ * 
+ * Algorithm Steps:
+ * 1. Performance check for very long strings (>500 chars)
+ * 2. Format-specific preprocessing (Thread vs DM)
+ * 3. Multi-pass regex deduplication with international character support
+ * 4. Word-level case-insensitive deduplication
+ * 5. Emoji and decoration removal
+ * 6. Final cleanup and normalization
  * 
  * @param {string} text - The text containing potential doubled usernames
  * @param {MessageFormat} [format] - The message format context for enhanced processing
  * @returns {string} Text with doubled usernames cleaned up
+ * @complexity O(n) for normal strings, O(1) for very long strings (performance optimization)
+ * @example
+ * ```typescript
+ * const cleaned = cleanupDoubledUsernames('John DoeJohn Doe', MessageFormat.DM);
+ * // Returns: 'John Doe'
+ * ```
+ * @since 1.0.0
  */
 export function cleanupDoubledUsernames(text: string, format?: MessageFormat): string {
     try {
@@ -394,17 +435,43 @@ export function formatUsername(username: string): string {
 
 /**
  * Enhanced username extraction with comprehensive format awareness and validation.
- * Handles app messages, doubled usernames, emoji removal, and edge cases.
+ * 
+ * Core username processing algorithm that handles multiple Slack export formats
+ * and applies sophisticated cleaning and validation logic.
+ * 
+ * Processing Pipeline:
+ * 1. App message detection and extraction (highest priority)
+ * 2. Format-aware username deduplication
+ * 3. Multi-layer decoration removal (emoji, URLs, special chars)
+ * 4. International character preservation
+ * 5. Username normalization and validation
+ * 6. Fallback to "Unknown User" for invalid results
+ * 
+ * Format-Specific Handling:
+ * - APP: Extract from URL patterns like "(https://app.com/...)AppName"
+ * - THREAD: Handle "UserUser![:emoji:](url)" patterns
+ * - DM: Process "UserNameUserName" duplications
+ * - CHANNEL: Standard username processing
+ * 
+ * Validation Rules:
+ * - Length limits (1-10000 characters)
+ * - Word count limits (1-1000 words)
+ * - Invalid name filtering ("unknown user", dates, times)
+ * - Requires at least one letter (supports international scripts)
  * 
  * @param {string} text - The text containing a username with potential decorations
  * @param {MessageFormat} [format] - The message format context for enhanced processing
  * @returns {string} Clean username or "Unknown User" if invalid
+ * @complexity O(n) where n is text length
  * @example
+ * ```typescript
  * extractUsername("John Doe :smile:") // "John Doe"
- * extractUsername("Jane 👋") // "Jane"
- * extractUsername("User123!!!") // "User123"
  * extractUsername("Bill MeiBill Mei![:emoji:](url)", MessageFormat.THREAD) // "Bill Mei"
- * extractUsername(" (https://app.slack.com/services/B123)GitHub", MessageFormat.APP) // "GitHub"
+ * extractUsername("(https://app.slack.com/services/B123)GitHub", MessageFormat.APP) // "GitHub"
+ * ```
+ * @see {@link cleanupDoubledUsernames} for deduplication logic
+ * @see {@link isValidUsername} for validation rules
+ * @since 1.0.0
  */
 export function extractUsername(text: string, format?: MessageFormat): string {
     try {
@@ -525,10 +592,34 @@ export function extractUsernameFromDMFormat(line: string): string {
 
 /**
  * Detect message format based on line content.
- * Analyzes patterns to determine if this is DM, Thread, App, or Channel format.
+ * 
+ * Analyzes line patterns to determine the Slack export format type.
+ * This helps apply format-specific processing rules for optimal
+ * username and content extraction.
+ * 
+ * Detection Algorithm:
+ * 1. App message patterns: URLs with app indicators
+ * 2. Thread format: username + emoji + timestamp combination
+ * 3. DM format: standalone timestamp links
+ * 4. Combined patterns: username + timestamp (prefer thread)
+ * 5. Fallback: UNKNOWN for unrecognized patterns
+ * 
+ * Format Characteristics:
+ * - APP: (https://app.com/...)AppName patterns
+ * - THREAD: Complex multi-element lines with emoji codes
+ * - DM: Simple timestamp-only lines or doubled usernames
+ * - CHANNEL: Similar to thread but without emoji complexity
+ * - UNKNOWN: Unrecognized or ambiguous patterns
  * 
  * @param {string} line - The line to analyze
  * @returns {MessageFormat} Detected format or UNKNOWN
+ * @complexity O(1) - multiple regex tests with early termination
+ * @example
+ * ```typescript
+ * const format = detectMessageFormat('[12:34](https://slack.com/archives/D123/p456)');
+ * // Returns: MessageFormat.DM
+ * ```
+ * @since 1.0.0
  */
 export function detectMessageFormat(line: string): MessageFormat {
     try {
@@ -565,7 +656,20 @@ export function detectMessageFormat(line: string): MessageFormat {
 }
 
 /**
- * Check if text represents an app message
+ * Check if text represents an app message.
+ * 
+ * Detects Slack app integration messages by looking for characteristic
+ * URL patterns that indicate the message was sent by a bot or app.
+ * 
+ * App Message Patterns:
+ * - (https://app.slack.com/services/...)AppName
+ * - https://app.slack.com/services/... AppName
+ * - Contains services URL patterns
+ * 
+ * @param {string} text - Text to analyze for app message patterns
+ * @returns {boolean} True if text appears to be an app message
+ * @complexity O(1) - three regex tests
+ * @since 1.0.0
  */
 export function isAppMessage(text: string): boolean {
     return APP_MESSAGE_PATTERNS.URL_PREFIX.test(text) ||
@@ -574,7 +678,21 @@ export function isAppMessage(text: string): boolean {
 }
 
 /**
- * Extract username from app message format
+ * Extract username from app message format.
+ * 
+ * Handles the specific parsing required for app/bot messages where
+ * the app name appears after a URL in various formats.
+ * 
+ * Extraction Patterns:
+ * 1. URL in parentheses: (https://app.com/services/...)AppName
+ * 2. URL without parentheses: https://app.com/services/... AppName
+ * 3. Doubled app names: GitHubGitHub APP -> GitHub
+ * 
+ * @param {string} text - App message text to extract username from
+ * @returns {string} Extracted app name or original text on failure
+ * @complexity O(1) - sequential pattern matching
+ * @internal Used by extractUsername for app messages
+ * @since 1.0.0
  */
 export function extractAppUsername(text: string): string {
     try {
@@ -631,7 +749,30 @@ function removeEmojisFromText(text: string): string {
 }
 
 /**
- * Remove all decorations (emoji, URLs, special chars) from username
+ * Remove all decorations (emoji, URLs, special chars) from username.
+ * 
+ * Comprehensive cleaning function that removes various types of
+ * decorations while preserving international characters and names.
+ * 
+ * Decorations Removed:
+ * - Emoji codes (:smile:, :+1::skin-tone-2:)
+ * - Slack emoji URLs (![:emoji:](url))
+ * - Unicode emoji (comprehensive range)
+ * - URLs (markdown and plain)
+ * - Special characters (but preserve international scripts)
+ * - APP indicators
+ * - Trailing punctuation
+ * 
+ * International Character Support:
+ * - Latin Extended (accented characters)
+ * - Cyrillic (Russian, etc.)
+ * - CJK (Chinese, Japanese, Korean)
+ * - Hebrew, Arabic scripts
+ * 
+ * @param {string} text - Text with decorations to remove
+ * @returns {string} Clean text with decorations removed
+ * @complexity O(n) where n is text length
+ * @since 1.0.0
  */
 export function removeAllDecorations(text: string): string {
     try {
@@ -675,7 +816,28 @@ export function removeAllDecorations(text: string): string {
 }
 
 /**
- * Normalize username with consistent formatting
+ * Normalize username with consistent formatting.
+ * 
+ * Applies consistent formatting rules to usernames while preserving
+ * international characters and handling edge cases.
+ * 
+ * Normalization Rules:
+ * - Remove leading/trailing non-letter characters
+ * - Preserve international characters (Unicode scripts)
+ * - Allow internal spaces, hyphens, underscores, dots, apostrophes
+ * - Clean up multiple spaces
+ * - Apply length limits (MAX_LENGTH from config)
+ * 
+ * Character Preservation:
+ * - Latin scripts with diacritics (àáâãäå)
+ * - Cyrillic (абвгдеж)
+ * - CJK ideographs (中文, 日本語, 한국어)
+ * - Hebrew (עברית), Arabic (العربية)
+ * 
+ * @param {string} username - Username to normalize
+ * @returns {string} Normalized username or empty string if invalid
+ * @complexity O(n) where n is username length
+ * @since 1.0.0
  */
 export function normalizeUsername(username: string): string {
     try {
@@ -712,7 +874,29 @@ export function normalizeUsername(username: string): string {
 }
 
 /**
- * Validate username against quality rules
+ * Validate username against quality rules.
+ * 
+ * Applies comprehensive validation to determine if a string represents
+ * a valid username. Used to filter out obvious non-names and metadata.
+ * 
+ * Validation Rules:
+ * - Length: 1-10000 characters (configurable)
+ * - Word count: 1-1000 words (configurable)
+ * - Must contain at least one letter (international scripts supported)
+ * - Not in invalid names list ("unknown user", days, months)
+ * - Not all numbers
+ * - Not time patterns (12:34)
+ * 
+ * Invalid Names List:
+ * - Generic: "unknown user", "user", "bot", "slack", "app"
+ * - Days: "monday", "tuesday", etc.
+ * - Months: "jan", "feb", etc.
+ * 
+ * @param {string} username - Username to validate
+ * @returns {boolean} True if username passes all validation rules
+ * @complexity O(1) for most checks, O(w) for word count where w is number of words
+ * @see {@link USERNAME_CONFIG} for configuration constants
+ * @since 1.0.0
  */
 export function isValidUsername(username: string): boolean {
     try {

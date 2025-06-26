@@ -1,5 +1,6 @@
 import { describe, it, expect } from '@jest/globals';
 import { IntelligentMessageParser } from '../../src/formatter/stages/intelligent-message-parser';
+import { TestLogger } from '../helpers';
 
 describe('Comprehensive Fixes Validation', () => {
     it('should handle complex message with continuation and attachments', () => {
@@ -31,19 +32,19 @@ Technical specification document for the connector implementation.`;
         const parser = new IntelligentMessageParser();
         const messages = parser.parse(input);
         
-        console.log('\n=== COMPREHENSIVE TEST OUTPUT ===');
-        console.log('Number of messages:', messages.length);
+        TestLogger.log('\n=== COMPREHENSIVE TEST OUTPUT ===');
+        TestLogger.log('Number of messages:', messages.length);
         messages.forEach((msg, i) => {
-            console.log(`\nMessage ${i}:`);
-            console.log(`  Username: "${msg.username}"`);
-            console.log(`  Timestamp: "${msg.timestamp}"`);
-            console.log(`  Text length: ${msg.text?.length || 0}`);
-            console.log(`  Text preview: "${msg.text?.substring(0, 100)}..."`);
+            TestLogger.log(`\nMessage ${i}:`);
+            TestLogger.log(`  Username: "${msg.username}"`);
+            TestLogger.log(`  Timestamp: "${msg.timestamp}"`);
+            TestLogger.log(`  Text length: ${msg.text?.length || 0}`);
+            TestLogger.log(`  Text preview: "${msg.text?.substring(0, 100)}..."`);
             
             // Show key content indicators
             const text = msg.text || '';
-            console.log(`  Contains continuation content: ${text.includes('Additional content after timestamp')}`);
-            console.log(`  Contains attachment refs: ${text.includes('Google Docs') && text.includes('PDF')}`);
+            TestLogger.log(`  Contains continuation content: ${text.includes('Additional content after timestamp')}`);
+            TestLogger.log(`  Contains attachment refs: ${text.includes('Google Docs') && text.includes('PDF')}`);
         });
 
         // Should have exactly 1 message, with all content properly merged
@@ -92,9 +93,9 @@ Really important that this parsing is correct.`;
         const parser = new IntelligentMessageParser();
         const messages = parser.parse(input);
         
-        console.log('\n=== EDGE CASES TEST OUTPUT ===');
-        console.log('Number of messages:', messages.length);
-        console.log(`Message username: "${messages[0]?.username}"`);
+        TestLogger.log('\n=== EDGE CASES TEST OUTPUT ===');
+        TestLogger.log('Number of messages:', messages.length);
+        TestLogger.log(`Message username: "${messages[0]?.username}"`);
         
         // Should have exactly 1 message
         expect(messages.length).toBe(1);
@@ -150,11 +151,11 @@ All of these should be content, not separate messages.`;
         const parser = new IntelligentMessageParser();
         const messages = parser.parse(input);
         
-        console.log('\n=== FALSE POSITIVES TEST OUTPUT ===');
-        console.log('Number of messages:', messages.length);
+        TestLogger.log('\n=== FALSE POSITIVES TEST OUTPUT ===');
+        TestLogger.log('Number of messages:', messages.length);
         messages.forEach((msg, i) => {
-            console.log(`Message ${i}: Username="${msg.username}", Timestamp="${msg.timestamp}"`);
-            console.log(`  Text preview: "${msg.text?.substring(0, 80)}..."`);
+            TestLogger.log(`Message ${i}: Username="${msg.username}", Timestamp="${msg.timestamp}"`);
+            TestLogger.log(`  Text preview: "${msg.text?.substring(0, 80)}..."`);
         });
         
         // Should have exactly 1 message, not separate messages for each service/file type

@@ -2,6 +2,7 @@ import { describe, it, expect } from '@jest/globals';
 import { SlackFormatter } from '../../src/formatter/slack-formatter';
 import { DEFAULT_SETTINGS } from '../../src/settings';
 import { readFileSync } from 'fs';
+import { TestLogger } from '../helpers';
 
 describe('Complex Multi-Person DM Format', () => {
     it('should correctly format multi-person DM with avatars and attachments', () => {
@@ -37,20 +38,20 @@ describe('Complex Multi-Person DM Format', () => {
         // Format the content
         const result = formatter.formatSlackContent(input, settings, parsedMaps);
         
-        console.log('=== Formatted Output ===\n');
-        console.log(result);
+        TestLogger.log('=== Formatted Output ===\n');
+        TestLogger.log(result);
         
         // Count messages and analyze content
         const messageBlocks = (result.match(/> \[!slack\]\+/g) || []).length;
         const unknownUserCount = (result.match(/Unknown User/g) || []).length;
         const avatarCount = (result.match(/!\[\]/g) || []).length;
         
-        console.log('\n=== Formatting Analysis ===');
-        console.log(`Message blocks: ${messageBlocks}`);
-        console.log(`Unknown users: ${unknownUserCount}`);
-        console.log(`Avatar images: ${avatarCount}`);
-        console.log(`Emoji converted to Unicode: ${result.includes('👍')}`);
-        console.log(`File attachments parsed as messages: ${result.includes('Message from Zip') || result.includes('Message from Pdf')}`);
+        TestLogger.log('\n=== Formatting Analysis ===');
+        TestLogger.log(`Message blocks: ${messageBlocks}`);
+        TestLogger.log(`Unknown users: ${unknownUserCount}`);
+        TestLogger.log(`Avatar images: ${avatarCount}`);
+        TestLogger.log(`Emoji converted to Unicode: ${result.includes('👍')}`);
+        TestLogger.log(`File attachments parsed as messages: ${result.includes('Message from Zip') || result.includes('Message from Pdf')}`);
         
         // Basic checks
         expect(result).toBeTruthy();

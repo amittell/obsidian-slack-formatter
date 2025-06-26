@@ -1,5 +1,6 @@
 import { describe, it, expect } from '@jest/globals';
 import { IntelligentMessageParser } from '../../src/formatter/stages/intelligent-message-parser';
+import { TestLogger } from '../helpers';
 
 describe('Test boundary extraction', () => {
     it('should extract correct content from boundaries', () => {
@@ -70,21 +71,21 @@ So, first attempt was copying and pasting this very thread`;
         // Test the boundary creation
         const boundaries = parserAny.findMessageBoundaries(lines, structure);
         
-        console.log('\n=== BOUNDARIES ===');
+        TestLogger.log('\n=== BOUNDARIES ===');
         boundaries.forEach((b, i) => {
-            console.log(`Boundary ${i}: lines ${b.start}-${b.end}`);
-            console.log(`  Start: "${lines[b.start]}"`);
-            console.log(`  End: "${lines[b.end]}"`);
+            TestLogger.log(`Boundary ${i}: lines ${b.start}-${b.end}`);
+            TestLogger.log(`  Start: "${lines[b.start]}"`);
+            TestLogger.log(`  End: "${lines[b.end]}"`);
         });
         
         // Test message extraction
         const messages = parserAny.extractMessages(lines, boundaries, structure);
         
-        console.log('\n=== EXTRACTED MESSAGES ===');
+        TestLogger.log('\n=== EXTRACTED MESSAGES ===');
         messages.forEach((msg, i) => {
-            console.log(`Message ${i}:`);
-            console.log(`  Username: "${msg.username}"`);
-            console.log(`  Text: "${msg.text}"`);
+            TestLogger.log(`Message ${i}:`);
+            TestLogger.log(`  Username: "${msg.username}"`);
+            TestLogger.log(`  Text: "${msg.text}"`);
         });
         
         expect(boundaries.length).toBe(1);

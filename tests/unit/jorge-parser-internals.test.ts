@@ -1,4 +1,5 @@
 import { IntelligentMessageParser } from '../../src/formatter/stages/intelligent-message-parser';
+import { TestLogger } from '../helpers';
 
 describe('Jorge Parser Internals Debug', () => {
     let parser: IntelligentMessageParser;
@@ -14,33 +15,33 @@ describe('Jorge Parser Internals Debug', () => {
         const testLine = "Jorge Macias";
         
         if (process.env.DEBUG_TESTS) {
-            console.log('\n=== TESTING PARSER INTERNALS ===');
-            console.log(`Input line: "${testLine}"`);
+            TestLogger.log('\n=== TESTING PARSER INTERNALS ===');
+            TestLogger.log(`Input line: "${testLine}"`);
         }
         
         // Test looksLikeUsername
         const looksLikeUsername = parserAny.looksLikeUsername(testLine);
         if (process.env.DEBUG_TESTS) {
-            console.log(`looksLikeUsername: ${looksLikeUsername}`);
+            TestLogger.log(`looksLikeUsername: ${looksLikeUsername}`);
         }
         
         // Test cleanUsername
         const cleanUsername = parserAny.cleanUsername(testLine);
         if (process.env.DEBUG_TESTS) {
-            console.log(`cleanUsername: "${cleanUsername}"`);
+            TestLogger.log(`cleanUsername: "${cleanUsername}"`);
         }
         
         // Test extractUserAndTime
         const extractUserAndTime = parserAny.extractUserAndTime(testLine);
         if (process.env.DEBUG_TESTS) {
-            console.log(`extractUserAndTime:`, extractUserAndTime);
+            TestLogger.log(`extractUserAndTime:`, extractUserAndTime);
         }
         
         // Test hasTimestampPattern on timestamp line
         const timestampLine = "Jun 9th at 6:28 PM";
         const hasTimestamp = parserAny.hasTimestampPattern(timestampLine);
         if (process.env.DEBUG_TESTS) {
-            console.log(`hasTimestampPattern("${timestampLine}"): ${hasTimestamp}`);
+            TestLogger.log(`hasTimestampPattern("${timestampLine}"): ${hasTimestamp}`);
         }
         
         // Test full metadata extraction
@@ -51,11 +52,11 @@ describe('Jorge Parser Internals Debug', () => {
         ];
         
         if (process.env.DEBUG_TESTS) {
-            console.log('\n=== TESTING METADATA EXTRACTION ===');
+            TestLogger.log('\n=== TESTING METADATA EXTRACTION ===');
         }
         const metadata = parserAny.extractMetadata(messageLines, {});
         if (process.env.DEBUG_TESTS) {
-            console.log('Metadata result:', metadata);
+            TestLogger.log('Metadata result:', metadata);
         }
         
         expect(looksLikeUsername).toBe(true);
@@ -74,13 +75,13 @@ describe('Jorge Parser Internals Debug', () => {
         ];
         
         if (process.env.DEBUG_TESTS) {
-            console.log('\n=== TESTING BOUNDARY DETECTION ===');
+            TestLogger.log('\n=== TESTING BOUNDARY DETECTION ===');
         }
         
         // Test structure analysis
         const structure = parserAny.analyzeStructure(lines);
         if (process.env.DEBUG_TESTS) {
-            console.log('Structure analysis:', {
+            TestLogger.log('Structure analysis:', {
                 format: structure.format,
                 confidence: structure.confidence,
                 patterns: structure.patterns
@@ -90,7 +91,7 @@ describe('Jorge Parser Internals Debug', () => {
         // Test boundary detection
         const boundaries = parserAny.findMessageBoundaries(lines, structure);
         if (process.env.DEBUG_TESTS) {
-            console.log('Message boundaries:', boundaries);
+            TestLogger.log('Message boundaries:', boundaries);
         }
         
         // Use robust assertions that don't make fragile assumptions

@@ -1,5 +1,6 @@
 import { describe, it, expect } from '@jest/globals';
 import { IntelligentMessageParser } from '../../src/formatter/stages/intelligent-message-parser';
+import { TestLogger } from '../helpers';
 
 describe('Owen Chandler Message Splitting', () => {
     it('should split Owen Chandler into 2 separate messages at #CONTEXT# boundary', () => {
@@ -15,16 +16,16 @@ You're finding the rep's longest monologue in a transcript.`;
         const messages = parser.parse(input);
         
         if (process.env.DEBUG_TESTS) {
-            console.log('\n=== OWEN CHANDLER SPLITTING TEST ===');
-            console.log(`Total messages detected: ${messages.length}`);
+            TestLogger.log('\n=== OWEN CHANDLER SPLITTING TEST ===');
+            TestLogger.log(`Total messages detected: ${messages.length}`);
             
             messages.forEach((msg, i) => {
-                console.log(`\nMessage ${i + 1}:`);
-                console.log(`  Username: "${msg.username}"`);
-                console.log(`  Timestamp: "${msg.timestamp || 'none'}"`);
-                console.log(`  Text length: ${msg.text?.length || 0}`);
-                console.log(`  Starts with #CONTEXT#: ${msg.text?.trim().startsWith('#CONTEXT#')}`);
-                console.log(`  Text preview: "${msg.text?.substring(0, 100) || ''}..."`);
+                TestLogger.log(`\nMessage ${i + 1}:`);
+                TestLogger.log(`  Username: "${msg.username}"`);
+                TestLogger.log(`  Timestamp: "${msg.timestamp || 'none'}"`);
+                TestLogger.log(`  Text length: ${msg.text?.length || 0}`);
+                TestLogger.log(`  Starts with #CONTEXT#: ${msg.text?.trim().startsWith('#CONTEXT#')}`);
+                TestLogger.log(`  Text preview: "${msg.text?.substring(0, 100) || ''}..."`);
             });
         }
         
@@ -32,7 +33,7 @@ You're finding the rep's longest monologue in a transcript.`;
         const owenMessages = messages.filter(msg => msg.username === 'Owen Chandler');
         
         if (process.env.DEBUG_TESTS) {
-            console.log(`\nOwen Chandler messages: ${owenMessages.length}`);
+            TestLogger.log(`\nOwen Chandler messages: ${owenMessages.length}`);
         }
         
         // Based on task description, Owen should have 2 separate messages
@@ -45,14 +46,14 @@ You're finding the rep's longest monologue in a transcript.`;
             const nonContextMessage = owenMessages.find(msg => !msg.text?.includes('#CONTEXT#'));
             
             if (process.env.DEBUG_TESTS) {
-                console.log(`Message with #CONTEXT#: ${contextMessage ? 'Found' : 'Not found'}`);
-                console.log(`Message without #CONTEXT#: ${nonContextMessage ? 'Found' : 'Not found'}`);
+                TestLogger.log(`Message with #CONTEXT#: ${contextMessage ? 'Found' : 'Not found'}`);
+                TestLogger.log(`Message without #CONTEXT#: ${nonContextMessage ? 'Found' : 'Not found'}`);
                 
                 if (owenMessages.length === 1) {
-                    console.log('❌ CURRENT: Only 1 Owen message (merging issue)');
-                    console.log('Expected: #CONTEXT# should create separate message');
+                    TestLogger.log('❌ CURRENT: Only 1 Owen message (merging issue)');
+                    TestLogger.log('Expected: #CONTEXT# should create separate message');
                 } else {
-                    console.log('✅ SUCCESS: Multiple Owen messages detected');
+                    TestLogger.log('✅ SUCCESS: Multiple Owen messages detected');
                 }
             }
         }
@@ -86,10 +87,10 @@ You're finding the rep's longest monologue in a transcript.`;
         expect(contextMessage?.text?.trim().startsWith('#CONTEXT#')).toBe(true);
         
         if (process.env.DEBUG_TESTS) {
-            console.log(`\n=== SUMMARY ===`);
-            console.log(`Owen messages: ${owenMessages.length}`);
-            console.log(`Total messages: ${messages.length}`);
-            console.log(`Has #CONTEXT# message: ${hasContextMessage}`);
+            TestLogger.log(`\n=== SUMMARY ===`);
+            TestLogger.log(`Owen messages: ${owenMessages.length}`);
+            TestLogger.log(`Total messages: ${messages.length}`);
+            TestLogger.log(`Has #CONTEXT# message: ${hasContextMessage}`);
         }
     });
 });

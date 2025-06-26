@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from '@jest/globals';
 import { IntelligentMessageParser } from '../../src/formatter/stages/intelligent-message-parser';
 import { FlexibleMessageParser } from '../../src/formatter/stages/flexible-message-parser';
+import { TestLogger } from '../helpers';
 
 describe('Unknown User Regression Test Suite', () => {
     let intelligentParser: IntelligentMessageParser;
@@ -225,7 +226,7 @@ Valid message for comparison`;
             // Unknown User messages should be minimized through smart parsing
             const unknownUserMessages = messages.filter(m => m.username === 'Unknown User');
             if (process.env.DEBUG_TESTS) {
-                console.log(`Unknown User messages: ${unknownUserMessages.length}`);
+                TestLogger.log(`Unknown User messages: ${unknownUserMessages.length}`);
             }
         });
     });
@@ -359,10 +360,10 @@ System notification here`;
             const namedMessages = messages.filter(m => m.username !== 'Unknown User');
             
             if (process.env.DEBUG_TESTS) {
-                console.log(`Total messages parsed: ${totalMessages}`);
-                console.log(`Unknown User messages: ${unknownUserMessages.length}`);
-                console.log(`Named messages: ${namedMessages.length}`);
-                console.log(`Unknown User percentage: ${((unknownUserMessages.length / totalMessages) * 100).toFixed(1)}%`);
+                TestLogger.log(`Total messages parsed: ${totalMessages}`);
+                TestLogger.log(`Unknown User messages: ${unknownUserMessages.length}`);
+                TestLogger.log(`Named messages: ${namedMessages.length}`);
+                TestLogger.log(`Unknown User percentage: ${((unknownUserMessages.length / totalMessages) * 100).toFixed(1)}%`);
             }
             
             // Regression test: Unknown User percentage should be low

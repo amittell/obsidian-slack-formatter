@@ -1,5 +1,6 @@
 import { describe, it, expect } from '@jest/globals';
 import { IntelligentMessageParser } from '../../src/formatter/stages/intelligent-message-parser';
+import { TestLogger } from '../helpers';
 
 describe('Test extractContent', () => {
     it('should extract all content lines', () => {
@@ -19,19 +20,19 @@ describe('Test extractContent', () => {
         
         const parserAny = parser as any;
         
-        console.log('\n=== CONTENT LINES ===');
+        TestLogger.log('\n=== CONTENT LINES ===');
         contentLines.forEach((line, i) => {
-            console.log(`  ${i}: "${line}"`);
+            TestLogger.log(`  ${i}: "${line}"`);
         });
         
         const result = parserAny.extractContent(contentLines);
         
-        console.log('\n=== EXTRACTED CONTENT ===');
-        console.log(`Text: "${result.text}"`);
-        console.log(`Text lines:`);
+        TestLogger.log('\n=== EXTRACTED CONTENT ===');
+        TestLogger.log(`Text: "${result.text}"`);
+        TestLogger.log(`Text lines:`);
         const textLines = result.text.split('\n');
         textLines.forEach((line, i) => {
-            console.log(`  ${i}: "${line}"`);
+            TestLogger.log(`  ${i}: "${line}"`);
         });
         
         expect(result.text).toContain('Yeah, this is going to be fantastic');

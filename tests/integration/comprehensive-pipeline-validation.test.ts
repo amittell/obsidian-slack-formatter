@@ -4,6 +4,7 @@ import { SlackFormatter } from '../../src/formatter/slack-formatter';
 import { StandardFormatStrategy } from '../../src/formatter/strategies/standard-format-strategy';
 import { SlackMessage } from '../../src/models';
 import { DEFAULT_SETTINGS } from '../../src/settings';
+import { TestLogger } from '../helpers';
 
 describe('Comprehensive Formatting Pipeline Validation', () => {
     let intelligentParser: IntelligentMessageParser;
@@ -114,29 +115,29 @@ This thread was picked up by our in-app web widget and will no longer sync to Sl
 
     describe('Stage 1: Parsing Validation', () => {
         it('should parse Clay conversation without Unknown User regression', () => {
-            console.log('\n=== STAGE 1: PARSING VALIDATION ===');
-            console.log(`Input text length: ${rawClayConversation.length} characters`);
+            TestLogger.log('\n=== STAGE 1: PARSING VALIDATION ===');
+            TestLogger.log(`Input text length: ${rawClayConversation.length} characters`);
             
             const messages = intelligentParser.parse(rawClayConversation, false);
             
-            console.log(`Total messages detected: ${messages.length}`);
+            TestLogger.log(`Total messages detected: ${messages.length}`);
             
             // Log each detected message for verification
             messages.forEach((message, index) => {
                 const preview = message.text?.substring(0, 60).replace(/\n/g, ' ') || '';
-                console.log(`Message ${index + 1}: "${message.username}" - "${preview}..."`);
+                TestLogger.log(`Message ${index + 1}: "${message.username}" - "${preview}..."`);
             });
             
             // CRITICAL: Count Unknown User messages
             const unknownUserMessages = messages.filter(m => m.username === 'Unknown User');
             const unknownUserCount = unknownUserMessages.length;
             
-            console.log(`\n❌ Unknown User messages: ${unknownUserCount}`);
+            TestLogger.log(`\n❌ Unknown User messages: ${unknownUserCount}`);
             
             if (unknownUserCount > 0) {
-                console.log('REGRESSION DETECTED - Unknown User messages:');
+                TestLogger.log('REGRESSION DETECTED - Unknown User messages:');
                 unknownUserMessages.forEach((msg, i) => {
-                    console.log(`  Unknown User ${i + 1}: "${msg.text?.substring(0, 100)}..."`);
+                    TestLogger.log(`  Unknown User ${i + 1}: "${msg.text?.substring(0, 100)}..."`);
                 });
             }
             
@@ -144,8 +145,8 @@ This thread was picked up by our in-app web widget and will no longer sync to Sl
             const expectedUsers = ['Owen Chandler', 'Clay', 'Jorge Macias', 'Bo (Clay)', 'Channeled'];
             const detectedUsers = [...new Set(messages.map(m => m.username))];
             
-            console.log(`\nExpected users: ${expectedUsers.join(', ')}`);
-            console.log(`Detected users: ${detectedUsers.join(', ')}`);
+            TestLogger.log(`\nExpected users: ${expectedUsers.join(', ')}`);
+            TestLogger.log(`Detected users: ${detectedUsers.join(', ')}`);
             
             // Validate message count (should be 6-8 messages based on conversation structure)
             expect(messages.length).toBeGreaterThanOrEqual(6);
@@ -161,11 +162,11 @@ This thread was picked up by our in-app web widget and will no longer sync to Sl
             expect(messages.some(m => m.username === 'Bo (Clay)')).toBe(true);
             expect(messages.some(m => m.username === 'Channeled')).toBe(true);
             
-            console.log('✅ STAGE 1 PASSED: Parsing without Unknown User regression');
+            TestLogger.log('✅ STAGE 1 PASSED: Parsing without Unknown User regression');
         });
 
         it('should properly separate message content', () => {
-            console.log('\n=== MESSAGE CONTENT SEPARATION VALIDATION ===');
+            TestLogger.log('\n=== MESSAGE CONTENT SEPARATION VALIDATION ===');
             
             const messages = intelligentParser.parse(rawClayConversation, false);
             
@@ -173,10 +174,10 @@ This thread was picked up by our in-app web widget and will no longer sync to Sl
             const owenMessages = messages.filter(m => m.username === 'Owen Chandler');
             expect(owenMessages.length).toBeGreaterThanOrEqual(2);
             
-            console.log(`Owen Chandler messages detected: ${owenMessages.length}`);
+            TestLogger.log(`Owen Chandler messages detected: ${owenMessages.length}`);
             owenMessages.forEach((msg, i) => {
                 const preview = msg.text?.substring(0, 50).replace(/\n/g, ' ') || '';
-                console.log(`  Owen message ${i + 1}: "${preview}..."`);
+                TestLogger.log(`  Owen message ${i + 1}: "${preview}..."`);
             });
             
             // Check that the first Owen message contains Gong content
@@ -191,17 +192,17 @@ This thread was picked up by our in-app web widget and will no longer sync to Sl
             expect(firstOwenMessage?.text).not.toContain('#CONTEXT#');
             expect(secondOwenMessage?.text).not.toContain('Gong integration');
             
-            console.log('✅ MESSAGE SEPARATION VALIDATED: Owen messages properly separated');
+            TestLogger.log('✅ MESSAGE SEPARATION VALIDATED: Owen messages properly separated');
         });
     });
 
     describe('Stage 2: Full Pipeline Formatting', () => {
         it('should format the complete conversation correctly through SlackFormatter', () => {
-            console.log('\n=== STAGE 2: FULL PIPELINE FORMATTING ===');
+            TestLogger.log('\n=== STAGE 2: FULL PIPELINE FORMATTING ===');
             
             const formattedOutput = slackFormatter.formatSlackContent(rawClayConversation);
             
-            console.log(`Formatted output length: ${formattedOutput.length} characters`);
+            TestLogger.log(`Formatted output length: ${formattedOutput.length} characters`);
             
             // Save formatted output for inspection
             const fs = require('fs');
@@ -210,7 +211,7 @@ This thread was picked up by our in-app web widget and will no longer sync to Sl
                 path.join(__dirname, 'comprehensive-pipeline-output.md'), 
                 formattedOutput
             );
-            console.log('Formatted output saved to: comprehensive-pipeline-output.md');
+            TestLogger.log('Formatted output saved to: comprehensive-pipeline-output.md');
             
             // Basic validation
             expect(formattedOutput).toBeTruthy();
@@ -233,11 +234,11 @@ This thread was picked up by our in-app web widget and will no longer sync to Sl
             // CRITICAL: Should NOT contain Unknown User in formatted output
             expect(formattedOutput).not.toContain('Unknown User');
             
-            console.log('✅ STAGE 2 PASSED: Complete pipeline formatting successful');
+            TestLogger.log('✅ STAGE 2 PASSED: Complete pipeline formatting successful');
         });
 
         it('should generate proper callout formatting with BaseFormatStrategy', () => {
-            console.log('\n=== CALLOUT FORMATTING VALIDATION ===');
+            TestLogger.log('\n=== CALLOUT FORMATTING VALIDATION ===');
             
             // First parse the messages
             const messages = intelligentParser.parse(rawClayConversation, false);
@@ -245,47 +246,47 @@ This thread was picked up by our in-app web widget and will no longer sync to Sl
             // Then format using StandardFormatStrategy
             const formattedOutput = standardFormatStrategy.formatToMarkdown(messages);
             
-            console.log(`StandardFormatStrategy output length: ${formattedOutput.length} characters`);
+            TestLogger.log(`StandardFormatStrategy output length: ${formattedOutput.length} characters`);
             
             // Count callout headers
             const calloutHeaders = (formattedOutput.match(/> \[!slack\]\+/g) || []).length;
-            console.log(`Callout headers found: ${calloutHeaders}`);
+            TestLogger.log(`Callout headers found: ${calloutHeaders}`);
             
             // Should have proper callout formatting
             expect(formattedOutput).toContain('> [!slack]+');
             
             // Should have proper message separators
             const messageSeparators = (formattedOutput.match(/\n\n---\n\n/g) || []).length;
-            console.log(`Message separators found: ${messageSeparators}`);
+            TestLogger.log(`Message separators found: ${messageSeparators}`);
             
             // Should have at least 4-5 separators for 5-6 messages
             expect(messageSeparators).toBeGreaterThanOrEqual(4);
             
             // Split into message blocks for analysis
             const messageBlocks = formattedOutput.split(/\n\n---\n\n/);
-            console.log(`Message blocks detected: ${messageBlocks.length}`);
+            TestLogger.log(`Message blocks detected: ${messageBlocks.length}`);
             
             messageBlocks.forEach((block, index) => {
                 const lines = block.trim().split('\n');
                 const firstLine = lines[0] || '';
                 const hasCalloutHeader = firstLine.includes('> [!slack]+');
                 
-                console.log(`Block ${index + 1}:`);
-                console.log(`  Has callout header: ${hasCalloutHeader}`);
-                console.log(`  First line: "${firstLine.substring(0, 60)}..."`);
-                console.log(`  Total lines: ${lines.length}`);
+                TestLogger.log(`Block ${index + 1}:`);
+                TestLogger.log(`  Has callout header: ${hasCalloutHeader}`);
+                TestLogger.log(`  First line: "${firstLine.substring(0, 60)}..."`);
+                TestLogger.log(`  Total lines: ${lines.length}`);
                 
                 // Each block should have a callout header
                 expect(hasCalloutHeader).toBe(true);
             });
             
-            console.log('✅ CALLOUT FORMATTING VALIDATED: Proper > [!slack]+ headers generated');
+            TestLogger.log('✅ CALLOUT FORMATTING VALIDATED: Proper > [!slack]+ headers generated');
         });
     });
 
     describe('Stage 3: Content Integrity Validation', () => {
         it('should preserve all content without truncation or corruption', () => {
-            console.log('\n=== STAGE 3: CONTENT INTEGRITY VALIDATION ===');
+            TestLogger.log('\n=== STAGE 3: CONTENT INTEGRITY VALIDATION ===');
             
             const formattedOutput = slackFormatter.formatSlackContent(rawClayConversation);
             
@@ -305,10 +306,10 @@ This thread was picked up by our in-app web widget and will no longer sync to Sl
                 'original poster'
             ];
             
-            console.log('Checking critical content preservation:');
+            TestLogger.log('Checking critical content preservation:');
             criticalContent.forEach(content => {
                 const found = formattedOutput.includes(content);
-                console.log(`  "${content}": ${found ? '✅' : '❌'}`);
+                TestLogger.log(`  "${content}": ${found ? '✅' : '❌'}`);
                 expect(formattedOutput).toContain(content);
             });
             
@@ -319,11 +320,11 @@ This thread was picked up by our in-app web widget and will no longer sync to Sl
             const boLongMessage = formattedOutput.match(/That's a tricky problem[\s\S]*?Let me know if you have more questions/);
             expect(boLongMessage).toBeTruthy();
             
-            console.log('✅ CONTENT INTEGRITY VALIDATED: All critical content preserved');
+            TestLogger.log('✅ CONTENT INTEGRITY VALIDATED: All critical content preserved');
         });
 
         it('should maintain proper username attribution throughout', () => {
-            console.log('\n=== USERNAME ATTRIBUTION VALIDATION ===');
+            TestLogger.log('\n=== USERNAME ATTRIBUTION VALIDATION ===');
             
             const formattedOutput = slackFormatter.formatSlackContent(rawClayConversation);
             
@@ -333,9 +334,9 @@ This thread was picked up by our in-app web widget and will no longer sync to Sl
                 match.replace(/>\s*\*\*/, '').replace(/\*\*/, '')
             );
             
-            console.log('Usernames found in formatted output:');
+            TestLogger.log('Usernames found in formatted output:');
             extractedUsernames.forEach((username, index) => {
-                console.log(`  ${index + 1}. "${username}"`);
+                TestLogger.log(`  ${index + 1}. "${username}"`);
             });
             
             // Should contain all expected users
@@ -344,7 +345,7 @@ This thread was picked up by our in-app web widget and will no longer sync to Sl
                 const found = extractedUsernames.some(extracted => 
                     extracted.includes(expectedUser) || expectedUser.includes(extracted)
                 );
-                console.log(`Expected user "${expectedUser}": ${found ? '✅' : '❌'}`);
+                TestLogger.log(`Expected user "${expectedUser}": ${found ? '✅' : '❌'}`);
                 expect(found).toBe(true);
             });
             
@@ -354,13 +355,13 @@ This thread was picked up by our in-app web widget and will no longer sync to Sl
             );
             expect(hasUnknownUser).toBe(false);
             
-            console.log('✅ USERNAME ATTRIBUTION VALIDATED: All users properly attributed');
+            TestLogger.log('✅ USERNAME ATTRIBUTION VALIDATED: All users properly attributed');
         });
     });
 
     describe('Stage 4: Regression Prevention', () => {
         it('should handle problematic Clay APP format without creating Unknown User', () => {
-            console.log('\n=== CLAY APP FORMAT REGRESSION TEST ===');
+            TestLogger.log('\n=== CLAY APP FORMAT REGRESSION TEST ===');
             
             // Test the specific problematic format that was causing Unknown User
             const problematicClayFormat = ` (https://app.slack.com/services/B071TQU3SAH)Clay
@@ -370,9 +371,9 @@ Hi there, thanks so much for sharing this!`;
             
             const messages = intelligentParser.parse(problematicClayFormat, false);
             
-            console.log(`Clay APP format - Messages detected: ${messages.length}`);
+            TestLogger.log(`Clay APP format - Messages detected: ${messages.length}`);
             messages.forEach((msg, i) => {
-                console.log(`  Message ${i + 1}: "${msg.username}" - "${msg.text?.substring(0, 50)}..."`);
+                TestLogger.log(`  Message ${i + 1}: "${msg.username}" - "${msg.text?.substring(0, 50)}..."`);
             });
             
             // Should parse as exactly 1 message
@@ -387,11 +388,11 @@ Hi there, thanks so much for sharing this!`;
             // Should contain the message content
             expect(messages[0].text).toContain('Hi there, thanks so much');
             
-            console.log('✅ CLAY APP FORMAT REGRESSION PREVENTED');
+            TestLogger.log('✅ CLAY APP FORMAT REGRESSION PREVENTED');
         });
 
         it('should handle complex timestamp patterns without content merging', () => {
-            console.log('\n=== TIMESTAMP PATTERN REGRESSION TEST ===');
+            TestLogger.log('\n=== TIMESTAMP PATTERN REGRESSION TEST ===');
             
             // Test complex timestamp patterns that were causing content merging
             const complexTimestampFormat = `Owen Chandler
@@ -406,9 +407,9 @@ Second message content`;
             
             const messages = intelligentParser.parse(complexTimestampFormat, false);
             
-            console.log(`Complex timestamp - Messages detected: ${messages.length}`);
+            TestLogger.log(`Complex timestamp - Messages detected: ${messages.length}`);
             messages.forEach((msg, i) => {
-                console.log(`  Message ${i + 1}: "${msg.username}" - "${msg.text?.substring(0, 30)}..."`);
+                TestLogger.log(`  Message ${i + 1}: "${msg.username}" - "${msg.text?.substring(0, 30)}..."`);
             });
             
             // Should detect 2 separate Owen messages
@@ -425,13 +426,13 @@ Second message content`;
             expect(messages[1].text).toContain('Second message');
             expect(messages[1].text).not.toContain('First message');
             
-            console.log('✅ TIMESTAMP PATTERN REGRESSION PREVENTED');
+            TestLogger.log('✅ TIMESTAMP PATTERN REGRESSION PREVENTED');
         });
     });
 
     describe('Stage 5: Performance and Quality Metrics', () => {
         it('should maintain acceptable performance with the complete pipeline', () => {
-            console.log('\n=== PERFORMANCE VALIDATION ===');
+            TestLogger.log('\n=== PERFORMANCE VALIDATION ===');
             
             const iterations = 5;
             const times: number[] = [];
@@ -452,21 +453,21 @@ Second message content`;
             const maxTime = Math.max(...times);
             const minTime = Math.min(...times);
             
-            console.log(`Performance metrics:`);
-            console.log(`  Average time: ${avgTime.toFixed(1)}ms`);
-            console.log(`  Min time: ${minTime}ms`);
-            console.log(`  Max time: ${maxTime}ms`);
-            console.log(`  Processing rate: ${(rawClayConversation.length / avgTime * 1000).toFixed(0)} chars/second`);
+            TestLogger.log(`Performance metrics:`);
+            TestLogger.log(`  Average time: ${avgTime.toFixed(1)}ms`);
+            TestLogger.log(`  Min time: ${minTime}ms`);
+            TestLogger.log(`  Max time: ${maxTime}ms`);
+            TestLogger.log(`  Processing rate: ${(rawClayConversation.length / avgTime * 1000).toFixed(0)} chars/second`);
             
             // Performance should be reasonable
             expect(avgTime).toBeLessThan(500); // 500ms max average
             expect(maxTime).toBeLessThan(1000); // 1 second max
             
-            console.log('✅ PERFORMANCE VALIDATED: Acceptable processing times');
+            TestLogger.log('✅ PERFORMANCE VALIDATED: Acceptable processing times');
         });
 
         it('should generate a comprehensive quality report', () => {
-            console.log('\n=== COMPREHENSIVE QUALITY REPORT ===');
+            TestLogger.log('\n=== COMPREHENSIVE QUALITY REPORT ===');
             
             // Parse and format
             const messages = intelligentParser.parse(rawClayConversation, false);
@@ -501,8 +502,8 @@ Second message content`;
                 }
             };
             
-            console.log('COMPREHENSIVE QUALITY REPORT:');
-            console.log(JSON.stringify(report, null, 2));
+            TestLogger.log('COMPREHENSIVE QUALITY REPORT:');
+            TestLogger.log(JSON.stringify(report, null, 2));
             
             // All validations should pass
             expect(report.parsing.unknownUserMessages).toBe(0);
@@ -510,7 +511,7 @@ Second message content`;
             expect(report.validation.allUsersPresent).toBe(true);
             expect(report.validation.criticalContentPreserved).toBe(true);
             
-            console.log('✅ COMPREHENSIVE VALIDATION COMPLETE: All quality metrics passed');
+            TestLogger.log('✅ COMPREHENSIVE VALIDATION COMPLETE: All quality metrics passed');
         });
     });
 });

@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from '@jest/globals';
 import { IntelligentMessageParser } from '../../src/formatter/stages/intelligent-message-parser';
 import { FlexibleMessageParser } from '../../src/formatter/stages/flexible-message-parser';
 import { SlackFormatter } from '../../src/formatter/slack-formatter';
+import { TestLogger } from '../helpers';
 
 describe('Clay Conversation Integration Validation', () => {
     let intelligentParser: IntelligentMessageParser;
@@ -58,7 +59,7 @@ Great point! Let me know if you need any other analysis on this.`;
 
     // Shared function for logging test section headers
     const logTestSection = (sectionName: string) => {
-        console.log(`\n=== ${sectionName} ===`);
+        TestLogger.log(`\n=== ${sectionName} ===`);
     };
 
     // Shared function for validating Unknown User regression
@@ -66,12 +67,12 @@ Great point! Let me know if you need any other analysis on this.`;
         const unknownUserMessages = messages.filter(m => m.username === 'Unknown User');
         const unknownUserCount = unknownUserMessages.length;
         
-        console.log(`Unknown User messages: ${unknownUserCount}`);
+        TestLogger.log(`Unknown User messages: ${unknownUserCount}`);
         
         if (unknownUserCount > 0) {
-            console.log('❌ CRITICAL REGRESSION: Unknown User messages detected:');
+            TestLogger.log('❌ CRITICAL REGRESSION: Unknown User messages detected:');
             unknownUserMessages.forEach((msg, i) => {
-                console.log(`Unknown User ${i}: "${msg.text?.substring(0, 100)}..."`);
+                TestLogger.log(`Unknown User ${i}: "${msg.text?.substring(0, 100)}..."`);
             });
         }
         
@@ -80,9 +81,9 @@ Great point! Let me know if you need any other analysis on this.`;
 
     // Shared function for logging message details
     const logMessageDetails = (messages: any[], prefix: string = 'Message') => {
-        console.log(`Total messages detected: ${messages.length}`);
+        TestLogger.log(`Total messages detected: ${messages.length}`);
         messages.forEach((message, index) => {
-            console.log(`${prefix} ${index}: "${message.username}" - "${message.text?.substring(0, 50)}..."`);
+            TestLogger.log(`${prefix} ${index}: "${message.username}" - "${message.text?.substring(0, 50)}..."`);
         });
     };
 
@@ -112,7 +113,7 @@ Great point! Let me know if you need any other analysis on this.`;
             const usernames = messages.map(m => m.username);
             const uniqueUsers = [...new Set(usernames)];
             
-            console.log(`Unique users detected: ${uniqueUsers.join(', ')}`);
+            TestLogger.log(`Unique users detected: ${uniqueUsers.join(', ')}`);
             
             // Should detect Owen Chandler (appears twice)
             expect(usernames.filter(u => u.includes('Owen')).length).toBeGreaterThanOrEqual(1);
@@ -168,10 +169,10 @@ Great point! Let me know if you need any other analysis on this.`
             testCases.forEach(({ name, content }) => {
                 const messages = intelligentParser.parse(content, false);
                 
-                console.log(`${name} - Messages: ${messages.length}`);
+                TestLogger.log(`${name} - Messages: ${messages.length}`);
                 if (messages.length > 0) {
-                    console.log(`  Username: "${messages[0].username}"`);
-                    console.log(`  Text: "${messages[0].text?.substring(0, 50)}..."`);
+                    TestLogger.log(`  Username: "${messages[0].username}"`);
+                    TestLogger.log(`  Text: "${messages[0].text?.substring(0, 50)}..."`);
                 }
                 
                 expect(messages.length).toBe(1);
@@ -185,7 +186,7 @@ Great point! Let me know if you need any other analysis on this.`
             
             const formattedOutput = slackFormatter.format(clayConversation);
             
-            console.log(`Formatted output length: ${formattedOutput.length} characters`);
+            TestLogger.log(`Formatted output length: ${formattedOutput.length} characters`);
             
             expect(formattedOutput).toBeTruthy();
             expect(formattedOutput.length).toBeGreaterThan(0);
@@ -205,7 +206,7 @@ Great point! Let me know if you need any other analysis on this.`
             // Should NOT contain Unknown User in formatted output
             expect(formattedOutput).not.toContain('Unknown User');
             
-            console.log('Full SlackFormatter integration: VALIDATED');
+            TestLogger.log('Full SlackFormatter integration: VALIDATED');
         });
     });
 
@@ -219,9 +220,9 @@ Great point! Let me know if you need any other analysis on this.`
             
             const processingTime = endTime - startTime;
             
-            console.log(`Processing time: ${processingTime}ms`);
-            console.log(`Messages parsed: ${messages.length}`);
-            console.log(`Performance: ${(clayConversation.length / processingTime * 1000).toFixed(0)} chars/second`);
+            TestLogger.log(`Processing time: ${processingTime}ms`);
+            TestLogger.log(`Messages parsed: ${messages.length}`);
+            TestLogger.log(`Performance: ${(clayConversation.length / processingTime * 1000).toFixed(0)} chars/second`);
             
             // Should process quickly (< 100ms for small conversation)
             expect(processingTime).toBeLessThan(100);
@@ -252,9 +253,9 @@ Great point! Let me know if you need any other analysis on this.`
             const avgTime = times.reduce((sum, time) => sum + time, 0) / times.length;
             const maxTime = Math.max(...times);
             
-            console.log(`Average processing time: ${avgTime.toFixed(1)}ms`);
-            console.log(`Max processing time: ${maxTime}ms`);
-            console.log(`Performance consistency: ${(times.every(t => t < 50) ? 'GOOD' : 'NEEDS_IMPROVEMENT')}`);
+            TestLogger.log(`Average processing time: ${avgTime.toFixed(1)}ms`);
+            TestLogger.log(`Max processing time: ${maxTime}ms`);
+            TestLogger.log(`Performance consistency: ${(times.every(t => t < 50) ? 'GOOD' : 'NEEDS_IMPROVEMENT')}`);
             
             // Performance should be consistent and fast
             expect(avgTime).toBeLessThan(50);

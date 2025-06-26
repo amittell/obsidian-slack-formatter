@@ -1,6 +1,7 @@
 import { describe, it, expect } from '@jest/globals';
 import { SlackFormatter } from '../../src/formatter/slack-formatter';
 import { DEFAULT_SETTINGS } from '../../src/settings';
+import { TestLogger } from '../helpers';
 
 describe('User Sample Integration Test', () => {
     it('should correctly format the user-provided sample', () => {
@@ -19,9 +20,9 @@ but it seems like any file switching fixes it`;
 
         const result = formatter.formatSlackContent(input);
         
-        console.log('\n=== FORMATTED OUTPUT ===');
-        console.log(result);
-        console.log('=== END OUTPUT ===\n');
+        TestLogger.log('\n=== FORMATTED OUTPUT ===');
+        TestLogger.log(result);
+        TestLogger.log('=== END OUTPUT ===\n');
         
         // Check that it's formatted as a callout
         expect(result).toMatch(/^> \[!slack\]/);
@@ -36,6 +37,6 @@ but it seems like any file switching fixes it`;
         
         // The formatter successfully merged the continuation content
         // even though it might not have perfect message separation
-        console.log('✅ The continuation content IS included in the output!');
+        TestLogger.log('✅ The continuation content IS included in the output!');
     });
 });

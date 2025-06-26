@@ -1,5 +1,6 @@
 import { describe, it, expect } from '@jest/globals';
 import { IntelligentMessageParser } from '../../src/formatter/stages/intelligent-message-parser';
+import { TestLogger } from '../helpers';
 
 describe('Fix Verification - Unknown User Issue', () => {
     it('should NOT create Unknown User messages from the problematic input', () => {
@@ -21,9 +22,9 @@ but it seems like any file switching fixes it`;
         
         const messages = parser.parse(input, false);
         
-        console.log('\n=== PARSED MESSAGES ===');
+        TestLogger.log('\n=== PARSED MESSAGES ===');
         messages.forEach((msg, i) => {
-            console.log(`Message ${i}: "${msg.username}" -> "${msg.text?.substring(0, 50)}..."`);
+            TestLogger.log(`Message ${i}: "${msg.username}" -> "${msg.text?.substring(0, 50)}..."`);
         });
 
         // Should have 3 messages

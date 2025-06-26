@@ -11,7 +11,6 @@
 
 import { IntelligentMessageParser } from '../../src/formatter/stages/intelligent-message-parser';
 import { DEFAULT_SETTINGS } from '../../src/settings';
-import { TestLogger } from '../helpers';
 
 describe('GROUP E: Comprehensive Message Count Validation', () => {
     it('should detect exactly 4-5 messages with correct attribution (GROUND TRUTH VALIDATION)', () => {
@@ -50,69 +49,69 @@ These techniques can help make your communication more engaging and effective du
         const parser = new IntelligentMessageParser(DEFAULT_SETTINGS, { userMap: {}, emojiMap: {} });
         const messages = parser.parse(fullClayConversation);
 
-        TestLogger.log('\n=== COMPREHENSIVE MESSAGE COUNT VALIDATION ===');
-        TestLogger.log(`TOTAL MESSAGES DETECTED: ${messages.length}`);
-        TestLogger.log('\n--- DETAILED MESSAGE ANALYSIS ---');
+        console.log('\n=== COMPREHENSIVE MESSAGE COUNT VALIDATION ===');
+        console.log(`TOTAL MESSAGES DETECTED: ${messages.length}`);
+        console.log('\n--- DETAILED MESSAGE ANALYSIS ---');
 
         messages.forEach((msg, i) => {
-            TestLogger.log(`\nMessage ${i + 1}:`);
-            TestLogger.log(`  Username: "${msg.username}"`);
-            TestLogger.log(`  Timestamp: "${msg.timestamp}"`);
-            TestLogger.log(`  Content length: ${msg.text?.length || 0} chars`);
+            console.log(`\nMessage ${i + 1}:`);
+            console.log(`  Username: "${msg.username}"`);
+            console.log(`  Timestamp: "${msg.timestamp}"`);
+            console.log(`  Content length: ${msg.text?.length || 0} chars`);
             
             if (msg.text) {
                 const preview = msg.text.length > 120 ? `${msg.text.substring(0, 120)}...` : msg.text;
-                TestLogger.log(`  Content preview: "${preview}"`);
+                console.log(`  Content preview: "${preview}"`);
             }
         });
 
         // GROUND TRUTH VALIDATION: Expected Messages
-        TestLogger.log('\n--- GROUND TRUTH VALIDATION ---');
+        console.log('\n--- GROUND TRUTH VALIDATION ---');
         
         // 1. Owen Chandler - Initial message
         const owenInitial = messages.filter(msg => 
             msg.username === 'Owen Chandler' && 
             msg.text?.includes('transcript analysis')
         );
-        TestLogger.log(`✓ Owen Chandler (Initial): ${owenInitial.length} found`);
+        console.log(`✓ Owen Chandler (Initial): ${owenInitial.length} found`);
         
         // 2. Owen Chandler - Context message  
         const owenContext = messages.filter(msg =>
             msg.username === 'Owen Chandler' &&
             msg.text?.includes('#CONTEXT#')
         );
-        TestLogger.log(`✓ Owen Chandler (Context): ${owenContext.length} found`);
+        console.log(`✓ Owen Chandler (Context): ${owenContext.length} found`);
         
         // 3. Clay APP message
         const clayApp = messages.filter(msg =>
             msg.username === 'Clay' &&
             msg.text?.includes('Hi there, thanks so much')
         );
-        TestLogger.log(`✓ Clay APP: ${clayApp.length} found`);
+        console.log(`✓ Clay APP: ${clayApp.length} found`);
         
         // 4. Jorge Macias message
         const jorge = messages.filter(msg =>
             msg.username === 'Jorge Macias' &&
             msg.text?.includes('easy, tell prospects to never cough')
         );
-        TestLogger.log(`✓ Jorge Macias: ${jorge.length} found`);
+        console.log(`✓ Jorge Macias: ${jorge.length} found`);
         
         // 5. Bo (Clay) message
         const boClay = messages.filter(msg =>
             msg.username === 'Bo (Clay)' &&
             msg.text?.includes('Have you tried testing it on a known transcript')
         );
-        TestLogger.log(`✓ Bo (Clay): ${boClay.length} found`);
+        console.log(`✓ Bo (Clay): ${boClay.length} found`);
 
         // Check for Unknown User regression
         const unknownUsers = messages.filter(msg => msg.username === 'Unknown User');
-        TestLogger.log(`✗ Unknown User messages: ${unknownUsers.length}`);
+        console.log(`✗ Unknown User messages: ${unknownUsers.length}`);
 
-        TestLogger.log('\n--- SUCCESS METRICS ---');
+        console.log('\n--- SUCCESS METRICS ---');
         const expectedMessages = owenInitial.length + owenContext.length + clayApp.length + jorge.length + boClay.length;
-        TestLogger.log(`Expected messages found: ${expectedMessages}/5`);
-        TestLogger.log(`Total messages detected: ${messages.length}`);
-        TestLogger.log(`Unknown User regression: ${unknownUsers.length === 0 ? 'PASSED' : 'FAILED'}`);
+        console.log(`Expected messages found: ${expectedMessages}/5`);
+        console.log(`Total messages detected: ${messages.length}`);
+        console.log(`Unknown User regression: ${unknownUsers.length === 0 ? 'PASSED' : 'FAILED'}`);
 
         // CORE VALIDATIONS
         
@@ -145,7 +144,7 @@ These techniques can help make your communication more engaging and effective du
         expect(jorge[0].text).toContain('never cough or make noise during calls');
         expect(boClay[0].text).toContain('suggestions for improving your speech patterns');
         
-        TestLogger.log('\n✅ ALL VALIDATIONS PASSED - MESSAGE COUNT VALIDATION SUCCESSFUL');
+        console.log('\n✅ ALL VALIDATIONS PASSED - MESSAGE COUNT VALIDATION SUCCESSFUL');
     });
 
     it('should handle edge case: Owen messages may merge or separate', () => {
@@ -160,11 +159,11 @@ This is for a sales call review.`;
         const parser = new IntelligentMessageParser(DEFAULT_SETTINGS, { userMap: {}, emojiMap: {} });
         const messages = parser.parse(owenOnlyContent);
 
-        TestLogger.log('\n=== OWEN MESSAGE MERGE TEST ===');
-        TestLogger.log(`Owen-only messages detected: ${messages.length}`);
+        console.log('\n=== OWEN MESSAGE MERGE TEST ===');
+        console.log(`Owen-only messages detected: ${messages.length}`);
         
         messages.forEach((msg, i) => {
-            TestLogger.log(`Owen Message ${i + 1}: "${msg.text}"`);
+            console.log(`Owen Message ${i + 1}: "${msg.text}"`);
         });
 
         // Should be 1 or 2 messages, never 0
@@ -190,9 +189,9 @@ Personal advice message.`;
         const parser = new IntelligentMessageParser(DEFAULT_SETTINGS, { userMap: {}, emojiMap: {} });
         const messages = parser.parse(clayDifferentiationTest);
 
-        TestLogger.log('\n=== CLAY DIFFERENTIATION VALIDATION ===');
+        console.log('\n=== CLAY DIFFERENTIATION VALIDATION ===');
         messages.forEach((msg, i) => {
-            TestLogger.log(`Message ${i + 1}: Username="${msg.username}", Date="${msg.timestamp}"`);
+            console.log(`Message ${i + 1}: Username="${msg.username}", Date="${msg.timestamp}"`);
         });
 
         expect(messages.length).toBe(2);
@@ -206,6 +205,6 @@ Personal advice message.`;
         expect(clayAppMessage?.timestamp).toContain('Jun 8th');
         expect(boClayMessage?.timestamp).toContain('Jun 10th');
         
-        TestLogger.log('✅ Clay differentiation validation passed');
+        console.log('✅ Clay differentiation validation passed');
     });
 });

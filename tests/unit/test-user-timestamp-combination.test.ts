@@ -1,5 +1,6 @@
 import { describe, it, expect } from '@jest/globals';
 import { IntelligentMessageParser } from '../../src/formatter/stages/intelligent-message-parser';
+import { TestLogger } from '../helpers';
 
 describe('Test hasUserTimestampCombination', () => {
     it('should correctly detect user+timestamp combinations', () => {
@@ -33,11 +34,11 @@ describe('Test hasUserTimestampCombination', () => {
             'but it seems like any file switching fixes it'
         ];
         
-        console.log('\n=== Testing hasUserTimestampCombination ===');
+        TestLogger.log('\n=== Testing hasUserTimestampCombination ===');
         testCases.forEach((testCase, i) => {
             const result = parserAny.hasUserTimestampCombination(testCase);
             const expected = i < 6; // First 6 should match, rest should not
-            console.log(`${i}: "${testCase.substring(0, 50)}..." -> ${result} (expected: ${expected})`);
+            TestLogger.log(`${i}: "${testCase.substring(0, 50)}..." -> ${result} (expected: ${expected})`);
             
             if (i < 3) {
                 // These are the real cases that MUST work

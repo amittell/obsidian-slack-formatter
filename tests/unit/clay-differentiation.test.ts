@@ -1,5 +1,6 @@
 import { describe, it, expect } from '@jest/globals';
 import { IntelligentMessageParser } from '../../src/formatter/stages/intelligent-message-parser';
+import { TestLogger } from '../helpers';
 
 describe('Clay APP vs Bo (Clay) Differentiation', () => {
     it('should properly differentiate Clay APP and Bo (Clay) messages', () => {
@@ -31,17 +32,17 @@ These techniques can help make your communication more engaging and effective.`;
         
         const messages = parser.parse(input);
         
-        console.log('\n=== CLAY DIFFERENTIATION DEBUG ===');
-        console.log('Number of messages:', messages.length);
+        TestLogger.log('\n=== CLAY DIFFERENTIATION DEBUG ===');
+        TestLogger.log('Number of messages:', messages.length);
         messages.forEach((msg, i) => {
-            console.log(`\nMessage ${i + 1}:`);
-            console.log(`  Username: "${msg.username}"`);
-            console.log(`  Timestamp: "${msg.timestamp}"`);
-            console.log(`  Text length: ${msg.text?.length || 0}`);
+            TestLogger.log(`\nMessage ${i + 1}:`);
+            TestLogger.log(`  Username: "${msg.username}"`);
+            TestLogger.log(`  Timestamp: "${msg.timestamp}"`);
+            TestLogger.log(`  Text length: ${msg.text?.length || 0}`);
             
             if (msg.text) {
                 const preview = msg.text.length > 100 ? `${msg.text.substring(0, 100)}...` : msg.text;
-                console.log(`  Text: "${preview}"`);
+                TestLogger.log(`  Text: "${preview}"`);
             }
         });
         
@@ -58,15 +59,15 @@ These techniques can help make your communication more engaging and effective.`;
                     msg.text?.includes('suggestions for improving your speech patterns'));
         });
         
-        console.log(`\n--- DIFFERENTIATION ANALYSIS ---`);
-        console.log(`Clay APP messages found: ${clayAppMessages.length}`);
+        TestLogger.log(`\n--- DIFFERENTIATION ANALYSIS ---`);
+        TestLogger.log(`Clay APP messages found: ${clayAppMessages.length}`);
         clayAppMessages.forEach((msg, i) => {
-            console.log(`  Clay APP ${i + 1}: Username="${msg.username}", Date="${msg.timestamp}"`);
+            TestLogger.log(`  Clay APP ${i + 1}: Username="${msg.username}", Date="${msg.timestamp}"`);
         });
         
-        console.log(`Bo (Clay) messages found: ${boClayMessages.length}`);
+        TestLogger.log(`Bo (Clay) messages found: ${boClayMessages.length}`);
         boClayMessages.forEach((msg, i) => {
-            console.log(`  Bo (Clay) ${i + 1}: Username="${msg.username}", Date="${msg.timestamp}"`);
+            TestLogger.log(`  Bo (Clay) ${i + 1}: Username="${msg.username}", Date="${msg.timestamp}"`);
         });
         
         // Verify we detect both types correctly
@@ -100,10 +101,10 @@ Short customer service response.`;
         const parser = new IntelligentMessageParser();
         const messages = parser.parse(clayAppOnly);
         
-        console.log('\n=== CLAY APP ONLY TEST ===');
-        console.log('Messages:', messages.length);
+        TestLogger.log('\n=== CLAY APP ONLY TEST ===');
+        TestLogger.log('Messages:', messages.length);
         messages.forEach((msg, i) => {
-            console.log(`Message ${i + 1}: "${msg.username}" - "${msg.text}"`);
+            TestLogger.log(`Message ${i + 1}: "${msg.username}" - "${msg.text}"`);
         });
         
         expect(messages.length).toBe(1);
@@ -119,10 +120,10 @@ Longer advice message with detailed suggestions and multiple paragraphs of conte
         const parser = new IntelligentMessageParser();
         const messages = parser.parse(boClayOnly);
         
-        console.log('\n=== BO (CLAY) ONLY TEST ===');
-        console.log('Messages:', messages.length);
+        TestLogger.log('\n=== BO (CLAY) ONLY TEST ===');
+        TestLogger.log('Messages:', messages.length);
         messages.forEach((msg, i) => {
-            console.log(`Message ${i + 1}: "${msg.username}" - "${msg.text}"`);
+            TestLogger.log(`Message ${i + 1}: "${msg.username}" - "${msg.text}"`);
         });
         
         expect(messages.length).toBe(1);

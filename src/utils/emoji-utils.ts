@@ -1,7 +1,11 @@
 /**
  * Emoji handling utilities for Slack-to-Unicode conversion.
  * Provides comprehensive emoji processing including standard codes,
- * custom emojis, and Slack production asset URLs.
+ * custom emojis, Slack production asset URLs, and Unicode emoji handling
+ * with internationalization support and performance optimization.
+ * 
+ * @module emoji-utils
+ * @since 1.0.0
  */
 
 /**
@@ -120,9 +124,29 @@ export const SLACK_EMOJI_URL_MAP: { [key: string]: string } = {
 }
 
 /**
- * Extract emoji codepoint from Slack production emoji asset URL
- * @param url Slack emoji asset URL
- * @returns Unicode codepoint or null if not found
+ * Extract Unicode codepoint from Slack production emoji asset URL.
+ * Parses Slack's standardized emoji asset URLs to extract the Unicode
+ * codepoint identifier used for mapping to actual emoji characters.
+ * 
+ * @param url - Slack production emoji asset URL
+ * @returns Unicode codepoint string (e.g., "1f44d") or null if not extractable
+ * @throws Does not throw - returns null for malformed URLs
+ * @example
+ * ```typescript
+ * extractEmojiCodepointFromUrl(
+ *   'https://a.slack-edge.com/production-standard-emoji-assets/14.0/apple-large/1f44d.png'
+ * )
+ * // Returns: '1f44d'
+ * 
+ * extractEmojiCodepointFromUrl('https://example.com/not-emoji.png')
+ * // Returns: null
+ * ```
+ * @since 1.0.0
+ * @private
+ * @see {@link SLACK_EMOJI_URL_MAP} for codepoint to emoji mapping
+ * 
+ * Performance: O(1) regex matching. Efficient for bulk URL processing.
+ * Edge cases: Handles various URL formats, @2x variants, and malformed URLs.
  */
 function extractEmojiCodepointFromUrl(url: string): string | null {
     // Match patterns like:
@@ -133,11 +157,37 @@ function extractEmojiCodepointFromUrl(url: string): string | null {
 }
 
 /**
- * Convert Slack emoji image URLs to appropriate emoji representations
- * @param url Slack emoji URL
- * @param emojiName Optional emoji name from the markdown syntax
- * @param emojiMap Custom emoji mappings
- * @returns Best emoji representation
+ * Convert Slack emoji image URLs to appropriate emoji representations.
+ * Intelligently processes both standard and custom Slack emoji URLs,
+ * with fallback strategies for optimal emoji representation.
+ * 
+ * @param url - Slack emoji image URL (standard or custom)
+ * @param emojiName - Optional emoji name from markdown syntax
+ * @param emojiMap - Custom emoji mappings to merge with defaults
+ * @returns Best available emoji representation (Unicode or :code:)
+ * @throws Does not throw - provides fallback representations
+ * @example
+ * ```typescript
+ * convertSlackEmojiUrl(
+ *   'https://a.slack-edge.com/production-standard-emoji-assets/14.0/apple-large/1f44d.png',
+ *   'thumbsup',
+ *   {}
+ * )
+ * // Returns: '👍'
+ * 
+ * convertSlackEmojiUrl(
+ *   'https://emoji.slack-edge.com/T123/custom_emoji/abc123.png',
+ *   'custom_emoji',
+ *   {}
+ * )
+ * // Returns: ':custom_emoji:'
+ * ```
+ * @since 1.0.0
+ * @private
+ * @see {@link replaceEmoji} for public emoji replacement API
+ * 
+ * Performance: O(1) with URL pattern matching and map lookups.
+ * Edge cases: Handles broken URLs, missing names, and unknown emoji types.
  */
 function convertSlackEmojiUrl(url: string, emojiName: string | null, emojiMap: Record<string, string>): string {
     const mergedMap = { ...DEFAULT_EMOJI_MAP, ...emojiMap };
@@ -182,14 +232,41 @@ function convertSlackEmojiUrl(url: string, emojiName: string | null, emojiMap: R
 
 /**
  * Replace Slack emoji codes and image URLs with actual emoji characters.
- * Handles multiple formats:
- * - :emoji: standard codes
- * - ![:emoji:](url) Slack emoji with URLs (both standard and custom)
- * - ![](url) broken image markdown that should be emojis
+ * Comprehensive emoji processing function that handles multiple Slack emoji formats
+ * including broken URLs, custom emojis, and standard emoji codes with robust error handling.
+ * 
+ * Supported formats:
+ * - `:emoji:` - Standard emoji codes
+ * - `![:emoji:](url)` - Slack emoji with URLs (standard and custom)
+ * - `![](url)` - Broken image markdown for emojis
  * - Unicode emoji (preserved as-is)
- * @param {string} text - The text containing emoji codes to replace
- * @param {Record<string, string>} emojiMap - Custom emoji mappings to merge with defaults
- * @returns {string} Text with emoji codes replaced by Unicode characters
+ * - Broken Slack URLs with spaces (auto-corrected)
+ * 
+ * @param text - The text containing emoji codes and URLs to replace
+ * @param emojiMap - Custom emoji mappings to merge with defaults
+ * @returns Text with emoji codes replaced by Unicode characters or emoji codes
+ * @throws Does not throw - handles malformed input gracefully
+ * @example
+ * ```typescript
+ * replaceEmoji(':thumbsup: Great job!', {})
+ * // Returns: '👍 Great job!'
+ * 
+ * replaceEmoji('![:custom:](https://emoji.slack-edge.com/T123/custom/abc.png)', {})
+ * // Returns: ':custom:'
+ * 
+ * replaceEmoji('![](https://a.slack-edge.com/.../1f44d.png)', {})
+ * // Returns: '👍'
+ * 
+ * replaceEmoji('Already 😀 Unicode', {})
+ * // Returns: 'Already 😀 Unicode' (unchanged)
+ * ```
+ * @since 1.0.0
+ * @see {@link DEFAULT_EMOJI_MAP} for available standard emojis
+ * @see {@link formatReactions} for reaction-specific formatting
+ * 
+ * Performance: O(n) with multiple regex passes. Optimized for typical message lengths.
+ * Edge cases: Fixes broken Slack URLs, handles malformed markdown, preserves user avatars.
+ * Internationalization: Supports Unicode emoji and international custom emoji names.
  */
 export function replaceEmoji(text: string, emojiMap: Record<string, string>): string {
     const mergedMap = { ...DEFAULT_EMOJI_MAP, ...emojiMap };
@@ -229,11 +306,34 @@ export function replaceEmoji(text: string, emojiMap: Record<string, string>): st
 }
 
 /**
- * Format emoji reactions into a readable string.
- * Converts reaction objects to a space-separated string of emoji and counts.
- * @param {Array<{name: string; count: number}>} reactions - Array of reaction objects
- * @param {Record<string, string>} emojiMap - Custom emoji mappings to merge with defaults
- * @returns {string} Formatted string like "👍 3 ❤️ 2" or empty string if no reactions
+ * Format emoji reactions into a readable string representation.
+ * Converts reaction objects to a human-readable format with emoji characters
+ * and counts, handling both standard and custom emoji reactions.
+ * 
+ * @param reactions - Array of reaction objects with name and count properties
+ * @param emojiMap - Custom emoji mappings to merge with defaults
+ * @returns Formatted string like "👍 3 ❤️ 2" or empty string if no reactions
+ * @throws Does not throw - handles null/undefined input gracefully
+ * @example
+ * ```typescript
+ * formatReactions([
+ *   { name: 'thumbsup', count: 3 },
+ *   { name: 'heart', count: 2 },
+ *   { name: 'custom_emoji', count: 1 }
+ * ], {})
+ * // Returns: '👍 3 ❤️ 2 :custom_emoji: 1'
+ * 
+ * formatReactions([], {})
+ * // Returns: ''
+ * 
+ * formatReactions(null, {})
+ * // Returns: ''
+ * ```
+ * @since 1.0.0
+ * @see {@link replaceEmoji} for general emoji processing
+ * 
+ * Performance: O(n) where n is number of reactions. Efficient for typical reaction counts.
+ * Edge cases: Handles null input, empty arrays, and unknown emoji names gracefully.
  */
 export function formatReactions(reactions: Array<{ name: string; count: number }>, emojiMap: Record<string, string>): string {
     // Add guard clause for null/undefined or empty array
@@ -252,15 +352,37 @@ export function formatReactions(reactions: Array<{ name: string; count: number }
 }
 
 /**
- * Removes all emoji from text including Unicode emoji and Slack emoji codes.
- * Useful for cleaning usernames and timestamps.
- * Handles:
- * - Slack emoji with URLs ![:emoji:](url)
- * - Broken emoji images ![](url)
- * - Standard emoji codes :emoji:
- * - Unicode emoji characters
- * @param {string} text - The text to clean
- * @returns {string} Text with all emoji removed and spaces normalized
+ * Remove all emoji from text including Unicode emoji and Slack emoji codes.
+ * Comprehensive emoji removal utility for cleaning usernames, timestamps,
+ * and other text content that should not contain emoji.
+ * 
+ * Removes:
+ * - Slack emoji with URLs: `![:emoji:](url)`
+ * - Broken emoji images: `![](url)`
+ * - Standard emoji codes: `:emoji:`
+ * - Unicode emoji characters (full Unicode range)
+ * 
+ * @param text - The text to clean of all emoji content
+ * @returns Text with all emoji removed and whitespace normalized
+ * @throws Does not throw - handles null/undefined input gracefully
+ * @example
+ * ```typescript
+ * removeAllEmoji('Hello 👍 :smile: ![:custom:](url) World')
+ * // Returns: 'Hello World'
+ * 
+ * removeAllEmoji('Clean text')
+ * // Returns: 'Clean text'
+ * 
+ * removeAllEmoji('')
+ * // Returns: ''
+ * ```
+ * @since 1.0.0
+ * @see {@link cleanEmojiFromUsername} for username-specific cleaning
+ * @see {@link containsEmoji} for emoji detection
+ * 
+ * Performance: O(n) with comprehensive Unicode regex. Optimized for typical text lengths.
+ * Edge cases: Handles complex Unicode sequences, multiple consecutive emoji, preserves spaces.
+ * Internationalization: Removes full Unicode emoji range including regional indicators.
  */
 export function removeAllEmoji(text: string): string {
     // Remove Slack emoji with URLs
@@ -282,9 +404,39 @@ export function removeAllEmoji(text: string): string {
 }
 
 /**
- * Checks if text contains any emoji (codes, URLs, or Unicode).
- * @param {string} text - The text to check
- * @returns {boolean} True if text contains any form of emoji
+ * Check if text contains any form of emoji (codes, URLs, or Unicode).
+ * Fast detection utility for determining if text contains emoji content
+ * before applying more expensive processing operations.
+ * 
+ * Detects:
+ * - Standard emoji codes: `:emoji:`
+ * - Slack emoji with URLs: `![:emoji:](url)`
+ * - Broken emoji images: `![](url)`
+ * - Unicode emoji characters
+ * 
+ * @param text - The text to check for emoji presence
+ * @returns True if any form of emoji is detected, false otherwise
+ * @throws Does not throw - handles null/undefined input gracefully
+ * @example
+ * ```typescript
+ * containsEmoji('Hello 👍 world')
+ * // Returns: true
+ * 
+ * containsEmoji('Hello :smile: world')
+ * // Returns: true
+ * 
+ * containsEmoji('Plain text')
+ * // Returns: false
+ * 
+ * containsEmoji('')
+ * // Returns: false
+ * ```
+ * @since 1.0.0
+ * @see {@link removeAllEmoji} for emoji removal
+ * @see {@link extractEmojiCodes} for emoji extraction
+ * 
+ * Performance: O(n) with early termination. Very fast for emoji-free text.
+ * Edge cases: Handles various emoji formats and Unicode ranges efficiently.
  */
 export function containsEmoji(text: string): boolean {
     // Check for emoji codes
@@ -303,10 +455,35 @@ export function containsEmoji(text: string): boolean {
 }
 
 /**
- * Extracts emoji codes from text (without colons).
- * Finds all emoji codes from various formats and returns unique codes.
- * @param {string} text - The text to extract emoji codes from
- * @returns {string[]} Array of unique emoji codes without colons
+ * Extract emoji codes from text across multiple formats.
+ * Finds and extracts all emoji identifiers from various Slack emoji formats,
+ * returning unique codes for analysis or processing.
+ * 
+ * Extracts from:
+ * - Slack emoji with URLs: `![:emoji:](url)`
+ * - Broken Slack emoji images: `![](url)`
+ * - Standard emoji codes: `:emoji:`
+ * 
+ * @param text - The text to extract emoji codes from
+ * @returns Array of unique emoji codes (without colons)
+ * @throws Does not throw - handles malformed input gracefully
+ * @example
+ * ```typescript
+ * extractEmojiCodes('Hello :smile: and ![:thumbsup:](url) :smile:')
+ * // Returns: ['smile', 'thumbsup']
+ * 
+ * extractEmojiCodes('No emoji here')
+ * // Returns: []
+ * 
+ * extractEmojiCodes('')
+ * // Returns: []
+ * ```
+ * @since 1.0.0
+ * @see {@link containsEmoji} for emoji detection
+ * @see {@link replaceEmoji} for emoji replacement
+ * 
+ * Performance: O(n) with regex matching and Set deduplication. Efficient for analysis.
+ * Edge cases: Handles duplicate codes, malformed URLs, and mixed emoji formats.
  */
 export function extractEmojiCodes(text: string): string[] {
     const codes: string[] = [];
@@ -342,10 +519,29 @@ export function extractEmojiCodes(text: string): string[] {
 }
 
 /**
- * Clean emoji from username while preserving the rest.
- * Wrapper around removeAllEmoji for semantic clarity.
- * @param {string} username - The username to clean
- * @returns {string} Username with all emoji removed
+ * Clean emoji from username while preserving the rest of the text.
+ * Specialized wrapper around removeAllEmoji for username processing
+ * with semantic clarity and username-specific considerations.
+ * 
+ * @param username - The username string to clean of emoji
+ * @returns Username with all emoji removed and whitespace normalized
+ * @throws Does not throw - handles null/undefined input gracefully
+ * @example
+ * ```typescript
+ * cleanEmojiFromUsername('john_doe 😀')
+ * // Returns: 'john_doe'
+ * 
+ * cleanEmojiFromUsername(':smile: happy_user :thumbsup:')
+ * // Returns: 'happy_user'
+ * 
+ * cleanEmojiFromUsername('regular_username')
+ * // Returns: 'regular_username'
+ * ```
+ * @since 1.0.0
+ * @see {@link removeAllEmoji} for general emoji removal
+ * 
+ * Performance: O(n) - same as removeAllEmoji. Optimized for username lengths.
+ * Edge cases: Preserves underscores, periods, and other valid username characters.
  */
 export function cleanEmojiFromUsername(username: string): string {
     return removeAllEmoji(username);

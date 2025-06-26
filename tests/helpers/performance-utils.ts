@@ -42,36 +42,47 @@ export interface PerformanceThresholds {
 }
 
 /**
- * Measures execution time and memory usage of a function
+ * Measures execution time and optionally memory usage of a function
  */
 export function measurePerformance<T>(
     fn: () => T,
     inputSize: number,
     outputSizeExtractor?: (result: T) => number
 ): PerformanceMetrics {
-    const startMemory = process.memoryUsage();
+    // Only collect memory statistics if performance monitoring is enabled
+    const shouldCollectMemory = process.env.SHOW_PERFORMANCE === 'true' || 
+                               process.env.TEST_DEBUG === 'true' || 
+                               process.env.NODE_ENV === 'development';
+    
+    const startMemory = shouldCollectMemory ? process.memoryUsage() : null;
     const startTime = process.hrtime.bigint();
     
     const result = fn();
     
     const endTime = process.hrtime.bigint();
-    const endMemory = process.memoryUsage();
+    const endMemory = shouldCollectMemory ? process.memoryUsage() : null;
     
     const executionTime = Number(endTime - startTime) / 1_000_000; // Convert to milliseconds
     const outputSize = outputSizeExtractor ? outputSizeExtractor(result) : undefined;
     const charactersPerSecond = inputSize / executionTime * 1000;
     
-    return {
+    const metrics: PerformanceMetrics = {
         executionTime,
-        memoryUsage: {
-            heapUsed: endMemory.heapUsed - startMemory.heapUsed,
-            heapTotal: endMemory.heapTotal,
-            external: endMemory.external - startMemory.external
-        },
         inputSize,
         outputSize,
         charactersPerSecond
     };
+    
+    // Only include memory data if it was collected
+    if (shouldCollectMemory && startMemory && endMemory) {
+        metrics.memoryUsage = {
+            heapUsed: endMemory.heapUsed - startMemory.heapUsed,
+            heapTotal: endMemory.heapTotal,
+            external: endMemory.external - startMemory.external
+        };
+    }
+    
+    return metrics;
 }
 
 /**
@@ -211,9 +222,18 @@ export function validatePerformance(
 }
 
 /**
- * Logs performance benchmark results
+ * Logs performance benchmark results conditionally based on environment settings
  */
 export function logPerformanceBenchmark(benchmark: PerformanceBenchmark, showDetails: boolean = false): void {
+    // Only log performance details if explicitly enabled
+    const shouldShowPerformance = process.env.SHOW_PERFORMANCE === 'true' || 
+                                  process.env.TEST_DEBUG === 'true' || 
+                                  process.env.NODE_ENV === 'development';
+    
+    if (!shouldShowPerformance) {
+        return; // Skip expensive logging operations
+    }
+    
     console.log(`\n=== PERFORMANCE BENCHMARK: ${benchmark.name} ===`);
     console.log(`Iterations: ${benchmark.iterations}`);
     console.log(`Input size: ${benchmark.averageMetrics.inputSize.toLocaleString()} characters`);

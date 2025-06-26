@@ -3,6 +3,7 @@ import { readFileSync } from 'fs';
 import { FlexibleMessageParser } from '../../src/formatter/stages/flexible-message-parser';
 import { IntelligentMessageParser } from '../../src/formatter/stages/intelligent-message-parser';
 import { SlackFormatter } from '../../src/formatter/slack-formatter';
+import { TestLogger } from '../helpers';
 
 describe('End-to-End Conversation Processing Suite', () => {
     let flexibleParser: FlexibleMessageParser;
@@ -26,20 +27,20 @@ describe('End-to-End Conversation Processing Suite', () => {
         it('should process multi-person DM sample correctly', () => {
             const sampleContent = readFileSync('./archived/samples/multi-person-dm-sample.txt', 'utf8');
             
-            console.log('\n=== PROCESSING MULTI-PERSON DM SAMPLE ===');
-            console.log(`Input length: ${sampleContent.length} characters`);
+            TestLogger.log('\n=== PROCESSING MULTI-PERSON DM SAMPLE ===');
+            TestLogger.log(`Input length: ${sampleContent.length} characters`);
             
             const messages = flexibleParser.parse(sampleContent, true);
             
-            console.log(`Parsed ${messages.length} messages`);
+            TestLogger.log(`Parsed ${messages.length} messages`);
             
             // Validate message parsing
             expect(messages.length).toBeGreaterThan(0);
             
             // Check for diverse usernames
             const usernames = [...new Set(messages.map(m => m.username))];
-            console.log(`Unique users: ${usernames.length}`);
-            console.log(`Users: ${usernames.join(', ')}`);
+            TestLogger.log(`Unique users: ${usernames.length}`);
+            TestLogger.log(`Users: ${usernames.join(', ')}`);
             
             expect(usernames.length).toBeGreaterThan(1);
             expect(usernames.filter(u => u !== 'Unknown User').length).toBeGreaterThan(0);
@@ -50,18 +51,18 @@ describe('End-to-End Conversation Processing Suite', () => {
                 expect(message.text).toBeTruthy();
                 
                 if (i < 5) { // Log first 5 messages for debugging
-                    console.log(`Message ${i}: ${message.username} - "${message.text?.substring(0, 50)}..."`);
+                    TestLogger.log(`Message ${i}: ${message.username} - "${message.text?.substring(0, 50)}..."`);
                 }
             });
             
             // Check for reaction processing
             const messagesWithReactions = messages.filter(m => m.reactions && m.reactions.length > 0);
-            console.log(`Messages with reactions: ${messagesWithReactions.length}`);
+            TestLogger.log(`Messages with reactions: ${messagesWithReactions.length}`);
             
             // Validate no excessive Unknown User messages
             const unknownUserMessages = messages.filter(m => m.username === 'Unknown User');
             const unknownUserPercentage = (unknownUserMessages.length / messages.length) * 100;
-            console.log(`Unknown User percentage: ${unknownUserPercentage.toFixed(1)}%`);
+            TestLogger.log(`Unknown User percentage: ${unknownUserPercentage.toFixed(1)}%`);
             
             expect(unknownUserPercentage).toBeLessThan(25); // Less than 25% Unknown User
         });
@@ -69,12 +70,12 @@ describe('End-to-End Conversation Processing Suite', () => {
         it('should process emoji channel sample correctly', () => {
             const sampleContent = readFileSync('./archived/samples/emoji-channel-sample.txt', 'utf8');
             
-            console.log('\n=== PROCESSING EMOJI CHANNEL SAMPLE ===');
-            console.log(`Input length: ${sampleContent.length} characters`);
+            TestLogger.log('\n=== PROCESSING EMOJI CHANNEL SAMPLE ===');
+            TestLogger.log(`Input length: ${sampleContent.length} characters`);
             
             const messages = flexibleParser.parse(sampleContent, true);
             
-            console.log(`Parsed ${messages.length} messages`);
+            TestLogger.log(`Parsed ${messages.length} messages`);
             
             expect(messages.length).toBeGreaterThan(0);
             
@@ -82,21 +83,21 @@ describe('End-to-End Conversation Processing Suite', () => {
             const messagesWithEmoji = messages.filter(m => 
                 m.text?.includes(':') || m.text?.includes('![:') || /[\u{1f600}-\u{1f64f}]|[\u{1f300}-\u{1f5ff}]|[\u{1f680}-\u{1f6ff}]/u.test(m.text || '')
             );
-            console.log(`Messages with emoji content: ${messagesWithEmoji.length}`);
+            TestLogger.log(`Messages with emoji content: ${messagesWithEmoji.length}`);
             
             // Check reaction processing
             const messagesWithReactions = messages.filter(m => m.reactions && m.reactions.length > 0);
-            console.log(`Messages with reactions: ${messagesWithReactions.length}`);
+            TestLogger.log(`Messages with reactions: ${messagesWithReactions.length}`);
             
             if (messagesWithReactions.length > 0) {
                 const totalReactions = messagesWithReactions.reduce((sum, m) => 
                     sum + (m.reactions?.length || 0), 0
                 );
-                console.log(`Total reactions processed: ${totalReactions}`);
+                TestLogger.log(`Total reactions processed: ${totalReactions}`);
                 
                 // Log sample reactions
                 messagesWithReactions.slice(0, 3).forEach((message, i) => {
-                    console.log(`Reactions for message ${i}:`, message.reactions?.map(r => `${r.name}:${r.count}`));
+                    TestLogger.log(`Reactions for message ${i}:`, message.reactions?.map(r => `${r.name}:${r.count}`));
                 });
             }
             
@@ -104,12 +105,12 @@ describe('End-to-End Conversation Processing Suite', () => {
             const threadMetadata = messages.filter(m => 
                 m.text?.includes('replies') || m.text?.includes('View thread')
             );
-            console.log(`Thread metadata messages: ${threadMetadata.length}`);
+            TestLogger.log(`Thread metadata messages: ${threadMetadata.length}`);
             
             // Should minimize Unknown User messages
             const unknownUserMessages = messages.filter(m => m.username === 'Unknown User');
             const unknownUserPercentage = (unknownUserMessages.length / messages.length) * 100;
-            console.log(`Unknown User percentage: ${unknownUserPercentage.toFixed(1)}%`);
+            TestLogger.log(`Unknown User percentage: ${unknownUserPercentage.toFixed(1)}%`);
             
             expect(unknownUserPercentage).toBeLessThan(30); // Allow slightly higher for emoji-heavy content
         });
@@ -125,12 +126,12 @@ describe('End-to-End Conversation Processing Suite', () => {
                 try {
                     const sampleContent = readFileSync(filename, 'utf8');
                     
-                    console.log(`\n=== PROCESSING ${filename} ===`);
-                    console.log(`Input length: ${sampleContent.length} characters`);
+                    TestLogger.log(`\n=== PROCESSING ${filename} ===`);
+                    TestLogger.log(`Input length: ${sampleContent.length} characters`);
                     
                     const messages = flexibleParser.parse(sampleContent, true);
                     
-                    console.log(`Parsed ${messages.length} messages`);
+                    TestLogger.log(`Parsed ${messages.length} messages`);
                     
                     expect(messages.length).toBeGreaterThan(0);
                     
@@ -138,13 +139,13 @@ describe('End-to-End Conversation Processing Suite', () => {
                     const unknownUserMessages = messages.filter(m => m.username === 'Unknown User');
                     const unknownUserPercentage = (unknownUserMessages.length / messages.length) * 100;
                     
-                    console.log(`Unique users: ${usernames.length}`);
-                    console.log(`Unknown User percentage: ${unknownUserPercentage.toFixed(1)}%`);
+                    TestLogger.log(`Unique users: ${usernames.length}`);
+                    TestLogger.log(`Unknown User percentage: ${unknownUserPercentage.toFixed(1)}%`);
                     
                     expect(unknownUserPercentage).toBeLessThan(40); // Allow more variance for different formats
                     
                 } catch (error) {
-                    console.log(`Note: ${filename} not found or not readable`);
+                    TestLogger.log(`Note: ${filename} not found or not readable`);
                 }
             });
         });
@@ -177,8 +178,8 @@ Last reply 2 hours agoView thread`;
 
             const messages = flexibleParser.parse(threadConversation, true);
             
-            console.log('\n=== THREAD CONVERSATION PROCESSING ===');
-            console.log(`Parsed ${messages.length} messages`);
+            TestLogger.log('\n=== THREAD CONVERSATION PROCESSING ===');
+            TestLogger.log(`Parsed ${messages.length} messages`);
             
             expect(messages.length).toBe(4);
             
@@ -201,7 +202,7 @@ Last reply 2 hours agoView thread`;
                 expect(thumbsUp?.count).toBe(3);
             }
             
-            console.log('Thread conversation processing: PASS');
+            TestLogger.log('Thread conversation processing: PASS');
         });
 
         it('should handle DM conversations with continuation messages', () => {
@@ -231,8 +232,8 @@ Perfect! I'll send out the meeting invite`;
 
             const messages = flexibleParser.parse(dmConversation, true);
             
-            console.log('\n=== DM CONVERSATION PROCESSING ===');
-            console.log(`Parsed ${messages.length} messages`);
+            TestLogger.log('\n=== DM CONVERSATION PROCESSING ===');
+            TestLogger.log(`Parsed ${messages.length} messages`);
             
             expect(messages.length).toBe(3);
             
@@ -252,7 +253,7 @@ Perfect! I'll send out the meeting invite`;
             
             expect(messages[2].text).toContain('meeting invite');
             
-            console.log('DM conversation processing: PASS');
+            TestLogger.log('DM conversation processing: PASS');
         });
 
         it('should handle mixed format conversations', () => {
@@ -281,8 +282,8 @@ View thread`;
 
             const messages = flexibleParser.parse(mixedConversation, true);
             
-            console.log('\n=== MIXED FORMAT CONVERSATION PROCESSING ===');
-            console.log(`Parsed ${messages.length} messages`);
+            TestLogger.log('\n=== MIXED FORMAT CONVERSATION PROCESSING ===');
+            TestLogger.log(`Parsed ${messages.length} messages`);
             
             expect(messages.length).toBe(3);
             
@@ -296,7 +297,7 @@ View thread`;
             expect(messages[1].text).toContain('technical aspects');
             expect(messages[2].text).toContain('add my perspective');
             
-            console.log('Mixed format conversation processing: PASS');
+            TestLogger.log('Mixed format conversation processing: PASS');
         });
 
         it('should handle complex content with code, links, and formatting', () => {
@@ -340,8 +341,8 @@ Looks good! A few suggestions:
 
             const messages = flexibleParser.parse(complexContent, true);
             
-            console.log('\n=== COMPLEX CONTENT PROCESSING ===');
-            console.log(`Parsed ${messages.length} messages`);
+            TestLogger.log('\n=== COMPLEX CONTENT PROCESSING ===');
+            TestLogger.log(`Parsed ${messages.length} messages`);
             
             expect(messages.length).toBe(2);
             
@@ -361,7 +362,7 @@ Looks good! A few suggestions:
             expect(messages[1].text).toContain('> The Unicode handling');
             expect(messages[1].text).toContain('*Overall:* ✅ Approved');
             
-            console.log('Complex content processing: PASS');
+            TestLogger.log('Complex content processing: PASS');
         });
     });
 
@@ -415,14 +416,14 @@ Great work everyone! Let's sync up at 2 PM
 8 replies
 Last reply 1 hour agoView thread`;
 
-            console.log('\n=== FULL PIPELINE INTEGRATION TEST ===');
+            TestLogger.log('\n=== FULL PIPELINE INTEGRATION TEST ===');
             
             // Test with both parsers
             const flexibleMessages = flexibleParser.parse(fullConversation, true);
             const intelligentMessages = intelligentParser.parse(fullConversation, false);
             
-            console.log(`Flexible parser: ${flexibleMessages.length} messages`);
-            console.log(`Intelligent parser: ${intelligentMessages.length} messages`);
+            TestLogger.log(`Flexible parser: ${flexibleMessages.length} messages`);
+            TestLogger.log(`Intelligent parser: ${intelligentMessages.length} messages`);
             
             // Both should produce reasonable results
             expect(flexibleMessages.length).toBeGreaterThan(0);
@@ -431,7 +432,7 @@ Last reply 1 hour agoView thread`;
             // Test SlackFormatter integration
             const formattedResult = slackFormatter.format(fullConversation);
             
-            console.log(`Formatted output length: ${formattedResult.length} characters`);
+            TestLogger.log(`Formatted output length: ${formattedResult.length} characters`);
             
             expect(formattedResult).toBeTruthy();
             expect(formattedResult.length).toBeGreaterThan(0);
@@ -446,7 +447,7 @@ Last reply 1 hour agoView thread`;
             expect(formattedResult).toContain('Testing results');
             expect(formattedResult).toContain('UI mockups');
             
-            console.log('Full pipeline integration: PASS');
+            TestLogger.log('Full pipeline integration: PASS');
         });
 
         it('should handle large conversation files efficiently', () => {
@@ -471,8 +472,8 @@ This message contains various elements like :emoji: and **formatting**.
                 }
             }
             
-            console.log('\n=== LARGE CONVERSATION PERFORMANCE TEST ===');
-            console.log(`Input size: ${largeConversation.length} characters`);
+            TestLogger.log('\n=== LARGE CONVERSATION PERFORMANCE TEST ===');
+            TestLogger.log(`Input size: ${largeConversation.length} characters`);
             
             const startTime = Date.now();
             const messages = flexibleParser.parse(largeConversation, true);
@@ -480,9 +481,9 @@ This message contains various elements like :emoji: and **formatting**.
             
             const processingTime = endTime - startTime;
             
-            console.log(`Processing time: ${processingTime}ms`);
-            console.log(`Messages parsed: ${messages.length}`);
-            console.log(`Performance: ${(largeConversation.length / processingTime * 1000).toFixed(0)} chars/second`);
+            TestLogger.log(`Processing time: ${processingTime}ms`);
+            TestLogger.log(`Messages parsed: ${messages.length}`);
+            TestLogger.log(`Performance: ${(largeConversation.length / processingTime * 1000).toFixed(0)} chars/second`);
             
             expect(messages.length).toBe(100);
             expect(processingTime).toBeLessThan(5000); // Should complete within 5 seconds
@@ -491,10 +492,10 @@ This message contains various elements like :emoji: and **formatting**.
             const unknownUserMessages = messages.filter(m => m.username === 'Unknown User');
             const unknownUserPercentage = (unknownUserMessages.length / messages.length) * 100;
             
-            console.log(`Unknown User percentage: ${unknownUserPercentage.toFixed(1)}%`);
+            TestLogger.log(`Unknown User percentage: ${unknownUserPercentage.toFixed(1)}%`);
             expect(unknownUserPercentage).toBeLessThan(5); // Should be very low for clean input
             
-            console.log('Large conversation performance: PASS');
+            TestLogger.log('Large conversation performance: PASS');
         });
     });
 
@@ -527,7 +528,7 @@ DM message`
                 }
             ];
             
-            console.log('\n=== END-TO-END QUALITY METRICS ===');
+            TestLogger.log('\n=== END-TO-END QUALITY METRICS ===');
             
             const results = testConversations.map(({ name, content }) => {
                 const startTime = Date.now();
@@ -546,19 +547,19 @@ DM message`
                     processingTime: endTime - startTime
                 };
                 
-                console.log(`${name}:`);
-                console.log(`  Messages: ${result.totalMessages}`);
-                console.log(`  Named users: ${result.namedUsers}`);
-                console.log(`  Unknown users: ${result.unknownUsers}`);
-                console.log(`  Accuracy: ${result.accuracy.toFixed(1)}%`);
-                console.log(`  Processing time: ${result.processingTime}ms`);
+                TestLogger.log(`${name}:`);
+                TestLogger.log(`  Messages: ${result.totalMessages}`);
+                TestLogger.log(`  Named users: ${result.namedUsers}`);
+                TestLogger.log(`  Unknown users: ${result.unknownUsers}`);
+                TestLogger.log(`  Accuracy: ${result.accuracy.toFixed(1)}%`);
+                TestLogger.log(`  Processing time: ${result.processingTime}ms`);
                 
                 return result;
             });
             
             // Validate overall quality
             const overallAccuracy = results.reduce((sum, r) => sum + r.accuracy, 0) / results.length;
-            console.log(`\nOverall accuracy: ${overallAccuracy.toFixed(1)}%`);
+            TestLogger.log(`\nOverall accuracy: ${overallAccuracy.toFixed(1)}%`);
             
             expect(overallAccuracy).toBeGreaterThan(70); // At least 70% overall accuracy
             

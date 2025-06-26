@@ -2,7 +2,8 @@ import fs from 'fs';
 import path from 'path';
 import { SlackFormatter } from '../../src/formatter/slack-formatter'; // Relative path from tests/validation
 import { DEFAULT_SETTINGS } from '../../src/settings'; // Relative path
-import { parseJsonMap } from '../../src/utils'; // Relative path
+import { parseJsonMap } from '../../src/utils';
+import { TestLogger } from '../helpers'; // Relative path
 
 // Determine project root assuming tests run from the project root directory
 const projectRoot = process.cwd();
@@ -12,9 +13,9 @@ const samplesDir = path.resolve(projectRoot, 'samples');
 let sampleFiles: string[] = [];
 try {
     sampleFiles = fs.readdirSync(samplesDir).filter(file => file.endsWith('.txt'));
-    console.log(`Found sample files: ${sampleFiles.join(', ')}`);
+    TestLogger.log(`Found sample files: ${sampleFiles.join(', ')}`);
 } catch (err) {
-    console.error(`Error reading samples directory at ${samplesDir}:`, err);
+    TestLogger.error(`Error reading samples directory at ${samplesDir}:`, err);
     // Optionally, throw the error or exit if samples are critical
     // throw new Error(`Could not read samples directory: ${samplesDir}`);
 }
@@ -30,7 +31,7 @@ const formatter = new SlackFormatter(settings, userMap, emojiMap);
 describe('Slack Formatter Validation Samples', () => {
     if (sampleFiles.length === 0) {
         test.skip('should skip tests because no sample files were found', () => {
-            console.warn(`No sample files found in ${samplesDir}. Skipping validation tests.`);
+            TestLogger.warn(`No sample files found in ${samplesDir}. Skipping validation tests.`);
             expect(true).toBe(true); // Dummy assertion to make Jest happy
         });
         return;
@@ -58,7 +59,7 @@ describe('Slack Formatter Validation Samples', () => {
                  const currentFormatter = new SlackFormatter(currentSettings, currentUserMap, currentEmojiMap);
                 formattedOutput = currentFormatter.formatSlackContent(sampleContent);
             } catch (err) {
-                 console.error(`Error formatting ${sampleFile}:`, err);
+                 TestLogger.error(`Error formatting ${sampleFile}:`, err);
                  // Optionally re-throw or fail the test differently
                  // We'll let the snapshot failure indicate the error for now.
                  formattedOutput = `FORMATTING ERROR for ${sampleFile}: ${err}`;

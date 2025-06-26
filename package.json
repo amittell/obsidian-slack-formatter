@@ -9,7 +9,15 @@
     "build": "node esbuild.config.mjs production",
     "build:fast": "node esbuild.config.mjs production",
     "test": "jest",
-    "analyze": "node scripts/optimize-build.js"
+    "test:core": "jest tests/unit/comprehensive-message-count-validation.test.ts tests/unit/clay-differentiation.test.ts",
+    "test:integration": "jest tests/integration/formatter.test.ts",
+    "test:coverage": "jest --coverage",
+    "docs:generate": "jsdoc -c jsdoc.json",
+    "docs:validate": "jsdoc -c jsdoc.json --dry-run",
+    "docs:check": "node scripts/check-documentation.js",
+    "type-check": "tsc --project tsconfig.ci.json",
+    "analyze": "node scripts/optimize-build.js",
+    "ci": "npm run test:core && npm run docs:check && npm run build"
   },
   "dependencies": {
     "esbuild": "^0.25.1",

@@ -1,5 +1,6 @@
 import { describe, it, expect } from '@jest/globals';
 import { IntelligentMessageParser } from '../../src/formatter/stages/intelligent-message-parser';
+import { TestLogger } from '../helpers';
 
 describe('Minimal failing case', () => {
     it('should include content after [time](url) continuation', () => {
@@ -15,18 +16,18 @@ Content after continuation`;
         const parser = new IntelligentMessageParser();
         const messages = parser.parse(input);
         
-        console.log('\n=== MINIMAL TEST OUTPUT ===');
-        console.log('Number of messages:', messages.length);
+        TestLogger.log('\n=== MINIMAL TEST OUTPUT ===');
+        TestLogger.log('Number of messages:', messages.length);
         messages.forEach((msg, i) => {
-            console.log(`\nMessage ${i}:`);
-            console.log(`  Username: "${msg.username}"`);
-            console.log(`  Timestamp: "${msg.timestamp}"`);
-            console.log(`  Text: ${JSON.stringify(msg.text)}`);
-            console.log(`  Text length: ${msg.text.length}`);
+            TestLogger.log(`\nMessage ${i}:`);
+            TestLogger.log(`  Username: "${msg.username}"`);
+            TestLogger.log(`  Timestamp: "${msg.timestamp}"`);
+            TestLogger.log(`  Text: ${JSON.stringify(msg.text)}`);
+            TestLogger.log(`  Text length: ${msg.text.length}`);
             const lines = msg.text.split('\n');
-            console.log(`  Number of lines in text: ${lines.length}`);
+            TestLogger.log(`  Number of lines in text: ${lines.length}`);
             lines.forEach((line, j) => {
-                console.log(`    Line ${j}: "${line}"`);
+                TestLogger.log(`    Line ${j}: "${line}"`);
             });
         });
         

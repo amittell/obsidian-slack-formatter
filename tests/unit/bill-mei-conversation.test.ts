@@ -1,5 +1,6 @@
 import { SlackFormatter } from '../../src/formatter/slack-formatter';
 import { DEFAULT_SETTINGS } from '../../src/settings';
+import { TestLogger } from '../helpers';
 
 describe('Bill Mei Conversation Test', () => {
     it('should format complex thread conversation without Unknown Users', () => {
@@ -165,16 +166,16 @@ ugh, the move away from raw reasoning traces is such a problem, particularly in 
         
         // Check for Unknown User messages
         const unknownUserCount = (result.match(/\[\[Unknown User\]\]/g) || []).length;
-        console.log('Unknown User count:', unknownUserCount);
+        TestLogger.log('Unknown User count:', unknownUserCount);
         
         // Extract message blocks
         const messageBlocks = result.match(/> \[!slack\]\+ Message from ([^\n]+)/g) || [];
-        console.log('Total message blocks found:', messageBlocks.length);
-        console.log('Message authors:', messageBlocks.map(b => b.replace(/> \[!slack\]\+ Message from /, '')));
+        TestLogger.log('Total message blocks found:', messageBlocks.length);
+        TestLogger.log('Message authors:', messageBlocks.map(b => b.replace(/> \[!slack\]\+ Message from /, '')));
         
         // Check for specific content
-        console.log('Contains "current meta":', result.includes('current meta'));
-        console.log('Contains bullet points:', result.includes('- o3'));
+        TestLogger.log('Contains "current meta":', result.includes('current meta'));
+        TestLogger.log('Contains bullet points:', result.includes('- o3'));
         // Note: Thread metadata like "17 replies" is not preserved in the output
         
         // Verify no Unknown Users
@@ -194,8 +195,8 @@ ugh, the move away from raw reasoning traces is such a problem, particularly in 
         expect(result).toContain('- Sonnet 4 or Gemini 2.5 Pro');
         
         // Show first few lines of output for debugging
-        console.log('\n=== First few lines of output ===');
+        TestLogger.log('\n=== First few lines of output ===');
         const lines = result.split('\n').slice(0, 20);
-        console.log(lines.join('\n'));
+        TestLogger.log(lines.join('\n'));
     });
 });

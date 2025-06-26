@@ -4,6 +4,9 @@ import { Logger, DiagnosticContext } from '../../utils/logger';
 /**
  * Pattern weights for format detection scoring.
  * Contains normalized scores for each format type and overall confidence.
+ * 
+ * @interface FormatScore
+ * @since 1.0.0
  */
 interface FormatScore {
     standard: number;
@@ -110,10 +113,34 @@ export class ImprovedFormatDetector {
 
     /**
      * Detects the format strategy based on optimized pattern scoring.
-     * Analyzes the first 50 lines to determine the most likely format.
-     * Uses caching to improve performance for repeated calls.
+     * 
+     * Main entry point for format detection. Uses probabilistic scoring
+     * across multiple format indicators to determine the most likely format.
+     * 
+     * Algorithm Overview:
+     * 1. Generate content hash for caching (performance optimization)
+     * 2. Analyze first 50-60 lines with pre-compiled regex patterns
+     * 3. Score content against all format types (DM, Thread, Channel, etc.)
+     * 4. Apply format-specific logic and tiebreakers
+     * 5. Cache result for future calls
+     * 
+     * Format Priority (most to least specific):
+     * - Thread: Has explicit thread indicators (thread_ts, replies count)
+     * - DM: Strong DM patterns (doubled usernames, DM URLs)
+     * - Channel: Channel-specific indicators
+     * - Bracket: Bracket format patterns
+     * - Standard: Default fallback
+     * 
      * @param {string} content - The Slack conversation content to analyze
-     * @returns {FormatStrategyType} The detected format type ('standard', 'bracket', or 'mixed')
+     * @returns {FormatStrategyType} The detected format type
+     * @complexity O(n) where n is number of lines analyzed (50-60 lines max)
+     * @example
+     * ```typescript
+     * const detector = new ImprovedFormatDetector();
+     * const format = detector.detectFormat(slackExportContent);
+     * console.log(`Detected format: ${format}`);
+     * ```
+     * @since 1.0.0
      */
     detectFormat(content: string): FormatStrategyType {
         const operationId = `format-detect-${Date.now()}`;
@@ -155,10 +182,12 @@ export class ImprovedFormatDetector {
 
         const score = this.scoreContent(content);
         
-        // Only create scoreData object in debug mode to improve performance
-        let scoreData: any;
+        // Always set confidence but only create expensive scoreData object in debug mode
+        diagnosticContext.confidence = Number(score.confidence.toFixed(2));
+        
+        // Only create scoreData object and perform expensive logging in debug mode
         if (Logger.isDebugEnabled()) {
-            scoreData = {
+            const scoreData = {
                 standard: Number(score.standard.toFixed(2)),
                 bracket: Number(score.bracket.toFixed(2)),
                 mixed: Number(score.mixed.toFixed(2)),
@@ -168,11 +197,8 @@ export class ImprovedFormatDetector {
                 confidence: Number(score.confidence.toFixed(2))
             };
             
-            diagnosticContext.confidence = scoreData.confidence;
             Logger.diagnostic('ImprovedFormatDetector', 'Format scoring completed', diagnosticContext, scoreData);
             Logger.info('ImprovedFormatDetector', 'Format scores', scoreData);
-        } else {
-            diagnosticContext.confidence = Number(score.confidence.toFixed(2));
         }
 
         let result: FormatStrategyType;
@@ -239,6 +265,16 @@ export class ImprovedFormatDetector {
         
         // Log final decision only in debug mode to improve performance
         if (Logger.isDebugEnabled()) {
+            const scoreData = {
+                standard: Number(score.standard.toFixed(2)),
+                bracket: Number(score.bracket.toFixed(2)),
+                mixed: Number(score.mixed.toFixed(2)),
+                dm: Number(score.dm.toFixed(2)),
+                thread: Number(score.thread.toFixed(2)),
+                channel: Number(score.channel.toFixed(2)),
+                confidence: Number(score.confidence.toFixed(2))
+            };
+            
             Logger.diagnostic('ImprovedFormatDetector', `Format detection completed: ${result}`, diagnosticContext, {
                 finalResult: result,
                 scores: scoreData,
@@ -254,10 +290,32 @@ export class ImprovedFormatDetector {
 
     /**
      * Optimized content scoring for different format patterns.
-     * Uses pre-compiled patterns and optimized matching logic.
-     * @private
+     * 
+     * Core scoring algorithm that analyzes content against all format types.
+     * Uses pre-compiled regex patterns for performance and applies 
+     * sophisticated boosting logic for format differentiation.
+     * 
+     * Scoring Algorithm:
+     * 1. Split content into lines (analyze first 60 lines)
+     * 2. Test each line against pre-compiled pattern categories
+     * 3. Count matches per format type
+     * 4. Apply base scoring (matches/totalLines)
+     * 5. Apply format-specific boosting multipliers
+     * 6. Handle special cases (multi-person DMs vs Channels)
+     * 7. Normalize all scores to 0-1 range
+     * 
+     * Key Innovation - Multi-person DM Detection:
+     * Distinguishes between multi-person DMs and Channels by looking for:
+     * - Avatar images + doubled usernames (DM layout)
+     * - C-archive URLs without channel-specific patterns
+     * - User mention link patterns
+     * 
      * @param {string} content - The content to score
      * @returns {FormatScore} Normalized scores for each format type
+     * @complexity O(n*m) where n=lines, m=patterns per category
+     * @internal Core scoring method
+     * @see {@link matchPatternCategory} for pattern matching
+     * @since 1.0.0
      */
     private scoreContent(content: string): FormatScore {
         const lines = content.split('\n').slice(0, 60); // Analyze first 60 lines to catch thread indicators
@@ -390,8 +448,18 @@ export class ImprovedFormatDetector {
     }
     
     /**
-     * Optimized pattern matching for a specific category
-     * @private
+     * Optimized pattern matching for a specific category.
+     * 
+     * Tests a line against all patterns in a specific category (standard,
+     * bracket, DM, etc.) and increments the match counter for the first
+     * matching pattern. Uses early termination for performance.
+     * 
+     * @param {string} trimmed - Trimmed line content to test
+     * @param {keyof typeof this.compiledPatterns} category - Pattern category to test
+     * @param {Record<string, number>} matches - Match counters object to update
+     * @complexity O(p) where p is number of patterns in category
+     * @internal Used by scoring algorithm
+     * @since 1.0.0
      */
     private matchPatternCategory(trimmed: string, category: keyof typeof this.compiledPatterns, matches: Record<string, number>): void {
         const patterns = this.compiledPatterns[category];
@@ -404,8 +472,17 @@ export class ImprovedFormatDetector {
     }
     
     /**
-     * Generate a simple hash for content caching
-     * @private
+     * Generate a simple hash for content caching.
+     * 
+     * Creates a lightweight hash based on content length and 
+     * first/last characters for cache key generation. Trades
+     * hash collision resistance for performance.
+     * 
+     * @param {string} content - Content to generate hash for
+     * @returns {string} Simple hash key for caching
+     * @complexity O(1) - constant time substring operations
+     * @internal Used for performance optimization
+     * @since 1.0.0
      */
     private generateContentHash(content: string): string {
         // Simple hash based on content length and first/last characters
@@ -416,8 +493,16 @@ export class ImprovedFormatDetector {
     }
     
     /**
-     * Cache result with size limit management
-     * @private
+     * Cache result with size limit management.
+     * 
+     * Implements LRU-style cache with size limits to prevent memory bloat.
+     * Removes oldest entry when cache is full.
+     * 
+     * @param {string} hash - Content hash key
+     * @param {FormatStrategyType} result - Format detection result to cache
+     * @complexity O(1) for insertion, O(1) for eviction
+     * @internal Cache management
+     * @since 1.0.0
      */
     private cacheResult(hash: string, result: FormatStrategyType): void {
         if (this.resultCache.size >= this.cacheMaxSize) {
@@ -430,9 +515,30 @@ export class ImprovedFormatDetector {
 
     /**
      * Optimized quick check if text is likely from Slack.
-     * Uses multiple pattern indicators with early termination.
+     * 
+     * Pre-filter to determine if content appears to be from Slack
+     * before running full format detection. Uses common Slack
+     * indicators with early termination for performance.
+     * 
+     * Slack Indicators:
+     * - Emoji codes (:smile:, :+1:)
+     * - Timestamps (12:34 AM, 9:15 PM)
+     * - User mentions (<@U123ABC>)
+     * - Thread text ("View thread", "5 replies")
+     * - Day headers (Monday, Tuesday)
+     * - File uploads ("uploaded a file:")
+     * - Channel events ("joined the channel")
+     * 
      * @param {string} text - The text to check
      * @returns {boolean} True if text appears to be from Slack
+     * @complexity O(1) with early termination after 2 matches
+     * @example
+     * ```typescript
+     * if (detector.isLikelySlack(content)) {
+     *   const format = detector.detectFormat(content);
+     * }
+     * ```
+     * @since 1.0.0
      */
     isLikelySlack(text: string): boolean {
         if (!text) return false;

@@ -1,6 +1,7 @@
 import { FlexibleMessageParser } from '../../src/formatter/stages/flexible-message-parser';
 import { AttachmentProcessor } from '../../src/formatter/processors/attachment-processor';
 import { Logger } from '../../src/utils/logger';
+import { TestLogger } from '../helpers';
 
 describe('Content Processing Improvements', () => {
     let parser: FlexibleMessageParser;
@@ -21,7 +22,7 @@ Hey all, I've been annoyed for a while by trying to copy and paste Slack convers
 
             const messages = parser.parse(threadContent, true);
             
-            console.log('Debug: Parsed messages:', JSON.stringify(messages, null, 2));
+            TestLogger.log('Debug: Parsed messages:', JSON.stringify(messages, null, 2));
             
             expect(messages).toHaveLength(1);
             expect(messages[0].username).toBe('Alex Mittell');
@@ -37,7 +38,7 @@ Some random content without proper message structure`;
 
             const result = attachmentProcessor.process(standaloneAvatarContent);
             
-            console.log('Debug: Processed content:', result.content);
+            TestLogger.log('Debug: Processed content:', result.content);
             
             // Standalone avatars should be filtered out or converted to comments
             expect(result.content).toContain('<!-- Avatar:');
@@ -83,7 +84,7 @@ Mixed reactions test
 
             const messages = parser.parse(mixedReactionsContent, true);
             
-            console.log('Debug: Mixed reactions messages:', JSON.stringify(messages, null, 2));
+            TestLogger.log('Debug: Mixed reactions messages:', JSON.stringify(messages, null, 2));
             
             expect(messages).toHaveLength(1);
             // For now, let's just check that we get a message
@@ -111,7 +112,7 @@ Added by [GitHub](https://stripe.slack.com/services/B021A2RAUJK "GitHub")`;
 
             const result = attachmentProcessor.process(githubPreviewContent);
             
-            console.log('Debug: GitHub preview result:', result.content);
+            TestLogger.log('Debug: GitHub preview result:', result.content);
             
             // For now, just check that processing occurred
             expect(result.modified).toBe(true);
@@ -156,7 +157,7 @@ Check out my plugin: https://github.com/amittell/obsidian-slack-formatter
 
             const messages = parser.parse(complexThreadContent, true);
             
-            console.log('Debug: Complex thread messages:', JSON.stringify(messages, null, 2));
+            TestLogger.log('Debug: Complex thread messages:', JSON.stringify(messages, null, 2));
             
             expect(messages).toHaveLength(1);
             
@@ -188,7 +189,7 @@ Second message content`;
 
             const messages = parser.parse(avatarBoundaryContent, true);
             
-            console.log('Debug: Avatar boundary messages:', JSON.stringify(messages, null, 2));
+            TestLogger.log('Debug: Avatar boundary messages:', JSON.stringify(messages, null, 2));
             
             // Should parse as 2 separate messages, not be confused by avatar
             expect(messages).toHaveLength(2);
@@ -207,7 +208,7 @@ Continuation message
 
             const messages = parser.parse(continuationContent, true);
             
-            console.log('Debug: Continuation messages:', JSON.stringify(messages, null, 2));
+            TestLogger.log('Debug: Continuation messages:', JSON.stringify(messages, null, 2));
             
             expect(messages).toHaveLength(1);
             expect(messages[0].text).toContain('Initial message');

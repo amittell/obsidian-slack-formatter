@@ -74,6 +74,22 @@ const ANALYSIS_CONFIG = {
  * Intelligent message parser that uses structural analysis instead of rigid regexes.
  * This approach learns patterns from the content structure rather than trying to
  * match every possible format variation.
+ * 
+ * The parser operates in three phases:
+ * 1. Structure Analysis - Analyzes each line to identify characteristics and patterns
+ * 2. Boundary Detection - Uses probabilistic scoring to find message boundaries
+ * 3. Content Extraction - Extracts metadata and content for each identified message
+ * 
+ * Key algorithms:
+ * - Pattern-based username/timestamp detection with confidence scoring
+ * - Multi-format support (DM, Thread, Channel, App messages)
+ * - Intelligent continuation detection for multi-line messages
+ * - Fallback strategies for edge cases and malformed content
+ * 
+ * @since 1.0.0
+ * @complexity O(n²) for boundary detection, O(n) for structure analysis
+ * @see {@link ImprovedFormatDetector} for format detection
+ * @see {@link username-utils} for username extraction utilities
  */
 export class IntelligentMessageParser {
     /** Current settings configuration */
@@ -93,8 +109,21 @@ export class IntelligentMessageParser {
     
     /**
      * Constructor for IntelligentMessageParser
-     * @param settings - Slack format settings
-     * @param parsedMaps - User and emoji mappings
+     * 
+     * Initializes the parser with settings and user/emoji mappings.
+     * Validates input parameters and sets up performance optimization caches.
+     * 
+     * @param {SlackFormatSettings} [settings] - Slack format settings configuration
+     * @param {ParsedMaps} [parsedMaps] - User and emoji ID to name mappings
+     * @throws {Error} When settings is not an object or parsedMaps structure is invalid
+     * @example
+     * ```typescript
+     * const parser = new IntelligentMessageParser(
+     *   { debug: true, includeReactions: true },
+     *   { userMap: { 'U123': 'John Doe' }, emojiMap: { 'smile': '😊' } }
+     * );
+     * ```
+     * @since 1.0.0
      */
     constructor(settings?: SlackFormatSettings, parsedMaps?: ParsedMaps) {
         // Initialize all properties first to ensure they exist
@@ -129,10 +158,18 @@ export class IntelligentMessageParser {
     }
 
     /**
-     * Safely execute a regex test operation with error handling
-     * @param regex - Regular expression to test
-     * @param text - Text to test against
-     * @returns Boolean result or false on error
+     * Safely execute a regex test operation with comprehensive error handling.
+     * 
+     * Provides defensive programming against regex catastrophic backtracking
+     * and malformed regular expressions. Essential for processing untrusted
+     * Slack export content that may contain complex Unicode or special characters.
+     * 
+     * @param {RegExp} regex - Regular expression to test
+     * @param {string} text - Text to test against
+     * @returns {boolean} Boolean result or false on error
+     * @complexity O(1) with timeout protection
+     * @internal Used by all pattern matching operations
+     * @since 1.0.0
      */
     private safeRegexTest(regex: RegExp, text: string): boolean {
         try {
@@ -160,6 +197,19 @@ export class IntelligentMessageParser {
      * @param regex - Regular expression to use
      * @returns Match result or null on error
      */
+    /**
+     * Safely execute a regex match operation with error handling.
+     * 
+     * Wraps regex.exec() to prevent crashes from malformed patterns or 
+     * catastrophic backtracking. Returns null on any error condition.
+     * 
+     * @param {string} text - Text to match against
+     * @param {RegExp} regex - Regular expression to execute
+     * @returns {RegExpMatchArray | null} Match array or null on error/no match
+     * @complexity O(n) where n is text length, with timeout protection
+     * @internal Used for safe pattern extraction
+     * @since 1.0.0
+     */
     private safeRegexMatch(text: string, regex: RegExp): RegExpMatchArray | null {
         try {
             if (!text || typeof text !== 'string') return null;
@@ -179,6 +229,19 @@ export class IntelligentMessageParser {
      * @param regex - Regular expression to execute
      * @param text - Text to execute against
      * @returns Exec result or null on error
+     */
+    /**
+     * Safely execute a regex exec operation with error handling.
+     * 
+     * Provides timeout protection and error recovery for regex operations
+     * that might encounter pathological cases in Slack export content.
+     * 
+     * @param {RegExp} regex - Regular expression to execute
+     * @param {string} text - Text to execute against
+     * @returns {RegExpExecArray | null} Execution result or null on error
+     * @complexity O(n) with timeout protection
+     * @internal Used for advanced pattern matching
+     * @since 1.0.0
      */
     private safeRegexExec(regex: RegExp, text: string): RegExpExecArray | null {
         try {
@@ -201,6 +264,20 @@ export class IntelligentMessageParser {
      * @param replacement - Replacement string or function
      * @returns Replaced string or original on error
      */
+    /**
+     * Safely execute a regex replace operation with error handling.
+     * 
+     * Protects against malformed replacement patterns and provides
+     * graceful fallback to original text on any error condition.
+     * 
+     * @param {string} text - Text to perform replacement on
+     * @param {RegExp} regex - Regular expression pattern to match
+     * @param {string | Function} replacement - Replacement string or function
+     * @returns {string} Text with replacements applied or original text on error
+     * @complexity O(n) where n is text length
+     * @internal Used for content sanitization
+     * @since 1.0.0
+     */
     private safeRegexReplace(text: string, regex: RegExp, replacement: string | ((substring: string, ...args: any[]) => string)): string {
         try {
             if (!text || typeof text !== 'string') return text || '';
@@ -221,6 +298,19 @@ export class IntelligentMessageParser {
      * @param regex - Regular expression to use as separator
      * @returns Split array or single element array on error
      */
+    /**
+     * Safely execute a regex split operation with error handling.
+     * 
+     * Provides safe string splitting with fallback to original array
+     * on any regex error condition.
+     * 
+     * @param {string} text - Text to split
+     * @param {RegExp} regex - Regular expression to split on
+     * @returns {string[]} Array of split strings or single-element array on error
+     * @complexity O(n) where n is text length
+     * @internal Used for content parsing
+     * @since 1.0.0
+     */
     private safeRegexSplit(text: string, regex: RegExp): string[] {
         try {
             if (!text || typeof text !== 'string') return [text || ''];
@@ -239,6 +329,17 @@ export class IntelligentMessageParser {
      * Update parser settings and mappings
      * @param settings - New settings configuration
      * @param parsedMaps - New user and emoji mappings
+     */
+    /**
+     * Update parser settings and user/emoji mappings.
+     * 
+     * Allows dynamic reconfiguration of the parser without creating
+     * a new instance. Validates all inputs and updates internal state.
+     * 
+     * @param {SlackFormatSettings} settings - New format settings
+     * @param {ParsedMaps} parsedMaps - Updated user and emoji mappings
+     * @throws {Error} When settings or parsedMaps are invalid
+     * @since 1.0.0
      */
     updateSettings(settings: SlackFormatSettings, parsedMaps: ParsedMaps): void {
         // Validate settings parameter
@@ -264,6 +365,16 @@ export class IntelligentMessageParser {
      * @throws {Error} If parser is in an invalid state
      * @private
      */
+    /**
+     * Validate internal parser state before processing.
+     * 
+     * Ensures all required properties are properly initialized
+     * and throws descriptive errors for invalid states.
+     * 
+     * @throws {Error} When parser state is invalid
+     * @internal Pre-processing validation
+     * @since 1.0.0
+     */
     private validateParserState(): void {
         if (!this.settings) {
             throw new Error('IntelligentMessageParser: settings is not initialized');
@@ -288,7 +399,30 @@ export class IntelligentMessageParser {
     }
 
     /**
-     * Parse Slack conversation using intelligent structural analysis
+     * Parse Slack conversation using intelligent structural analysis.
+     * 
+     * Main entry point for parsing Slack export content. Uses a three-phase
+     * approach: structure analysis, boundary detection, and content extraction.
+     * 
+     * Algorithm Overview:
+     * 1. Split content into lines and analyze each line's characteristics
+     * 2. Identify recurring patterns to determine message format
+     * 3. Use probabilistic scoring to find message boundaries
+     * 4. Extract metadata (username, timestamp) and content for each message
+     * 5. Apply format-specific processing and validation
+     * 
+     * @param {string} text - Raw Slack export content to parse
+     * @param {boolean} [isDebugEnabled] - Enable debug logging (overrides class setting)
+     * @returns {SlackMessage[]} Array of parsed Slack messages
+     * @throws {Error} When parser state is invalid or content is malformed
+     * @complexity O(n²) where n is number of lines (due to boundary detection)
+     * @example
+     * ```typescript
+     * const parser = new IntelligentMessageParser(settings, maps);
+     * const messages = parser.parse(slackExportText, true);
+     * console.log(`Parsed ${messages.length} messages`);
+     * ```
+     * @since 1.0.0
      */
     parse(text: string, isDebugEnabled?: boolean): SlackMessage[] {
         // Validate parser state before processing
@@ -321,7 +455,18 @@ export class IntelligentMessageParser {
     }
 
     /**
-     * Analyze the overall structure of the conversation to identify patterns
+     * Analyze the overall structure of the conversation to identify patterns.
+     * 
+     * Phase 1 of parsing: Examines each line to build a comprehensive
+     * understanding of the conversation structure. Creates line analysis
+     * objects with characteristics and context information.
+     * 
+     * @param {string[]} lines - Array of conversation lines
+     * @returns {ConversationStructure} Structure analysis with patterns and confidence
+     * @complexity O(n) where n is number of lines
+     * @internal Core structure analysis method
+     * @see {@link analyzeLine} for individual line analysis
+     * @since 1.0.0
      */
     private analyzeStructure(lines: string[]): ConversationStructure {
         const analysis: LineAnalysis[] = lines.map((line, index) => 
@@ -343,7 +488,24 @@ export class IntelligentMessageParser {
     }
 
     /**
-     * Analyze a single line to understand its characteristics
+     * Analyze a single line to understand its characteristics.
+     * 
+     * Creates a comprehensive analysis object containing:
+     * - Basic properties (content, length, emptiness)
+     * - Pattern characteristics (timestamps, URLs, mentions, emoji)
+     * - Context information (surrounding lines, position)
+     * - Classification hints (short/long lines, capitalization)
+     * 
+     * This analysis forms the foundation for all subsequent pattern
+     * recognition and boundary detection algorithms.
+     * 
+     * @param {string} line - The line content to analyze
+     * @param {number} index - Line index in the conversation
+     * @param {string[]} allLines - Complete array of conversation lines
+     * @returns {LineAnalysis} Comprehensive line analysis object
+     * @complexity O(1) - constant time analysis per line
+     * @internal Used by structure analysis phase
+     * @since 1.0.0
      */
     private analyzeLine(line: string, index: number, allLines: string[]): LineAnalysis {
         const trimmed = line.trim();
@@ -379,7 +541,25 @@ export class IntelligentMessageParser {
     }
 
     /**
-     * Identify recurring patterns in the conversation
+     * Identify recurring patterns in the conversation.
+     * 
+     * Analyzes all lines to categorize them into potential:
+     * - Message start candidates (username + timestamp combinations)
+     * - Standalone timestamps
+     * - Username lines
+     * - Metadata lines (reactions, threads, etc.)
+     * 
+     * Uses heuristic analysis rather than rigid regex matching to handle
+     * variations in Slack export formats. Each line is evaluated based on
+     * its characteristics and context.
+     * 
+     * @param {LineAnalysis[]} analysis - Array of analyzed lines
+     * @returns {ConversationPatterns} Categorized line indices and patterns
+     * @complexity O(n) where n is number of lines
+     * @internal Pattern identification phase
+     * @see {@link couldBeMessageStart} for message start detection
+     * @see {@link couldBeUsername} for username detection
+     * @since 1.0.0
      */
     private identifyPatterns(analysis: LineAnalysis[]): ConversationPatterns {
         const debugEnabled = process.env.DEBUG_BOUNDARY_DETECTION === 'true';
@@ -477,7 +657,36 @@ export class IntelligentMessageParser {
     }
 
     /**
-     * Determine if a line could be the start of a message
+     * Determine if a line could be the start of a message.
+     * 
+     * Core algorithm for message boundary detection. Uses probabilistic
+     * analysis to identify lines that likely begin new messages based on:
+     * 
+     * Strong Indicators:
+     * - App message patterns: (https://app.com/services/...)AppName
+     * - Combined username + timestamp on same line
+     * - Avatar images (thread format)
+     * - Standalone timestamps (DM format)
+     * 
+     * Weak Indicators:
+     * - Username-like text followed by timestamp within 2 lines
+     * - Short lines with capital letters that match known patterns
+     * 
+     * Algorithm applies layered validation:
+     * 1. Exclude obvious content patterns ("Main content", etc.)
+     * 2. Check for strong format indicators
+     * 3. Validate username patterns with context checking
+     * 4. Apply format-specific rules (Clay format, DM format)
+     * 
+     * @param {LineAnalysis} line - Line analysis object to evaluate
+     * @param {LineAnalysis[]} allLines - Complete conversation analysis
+     * @param {number} index - Line index for context checking
+     * @returns {boolean} True if line could start a message
+     * @complexity O(1) with small lookahead window
+     * @internal Core boundary detection algorithm
+     * @see {@link hasUserTimestampCombination} for combined pattern detection
+     * @see {@link looksLikeUsername} for username validation
+     * @since 1.0.0
      */
     private couldBeMessageStart(line: LineAnalysis, allLines: LineAnalysis[], index: number): boolean {
         const debugEnabled = process.env.DEBUG_BOUNDARY_DETECTION === 'true';
@@ -627,7 +836,31 @@ export class IntelligentMessageParser {
     }
 
     /**
-     * Find message boundaries using identified patterns
+     * Find message boundaries using identified patterns.
+     * 
+     * Phase 2 of parsing: Uses the identified patterns to determine
+     * where messages begin and end. This is the most complex part of
+     * the parsing algorithm.
+     * 
+     * Algorithm Steps:
+     * 1. Rank message start candidates by confidence scores
+     * 2. Filter out continuation lines that look like new messages
+     * 3. Remove consecutive duplicate usernames (split message issue)
+     * 4. Group message components that belong together
+     * 5. Create boundaries with confidence scores
+     * 
+     * Key Innovation: Groups related components instead of treating
+     * each candidate as a separate message. This prevents splitting
+     * single messages that span multiple lines in different formats.
+     * 
+     * @param {string[]} lines - Original conversation lines
+     * @param {ConversationStructure} structure - Analyzed conversation structure
+     * @returns {MessageBoundary[]} Array of message boundaries with confidence scores
+     * @complexity O(n²) due to candidate ranking and grouping algorithms
+     * @internal Core boundary detection method
+     * @see {@link rankMessageStartCandidates} for confidence scoring
+     * @see {@link groupMessageComponents} for component grouping
+     * @since 1.0.0
      */
     private findMessageBoundaries(lines: string[], structure: ConversationStructure): MessageBoundary[] {
         const debugEnabled = process.env.DEBUG_BOUNDARY_DETECTION === 'true';
@@ -1170,7 +1403,30 @@ export class IntelligentMessageParser {
     }
 
     /**
-     * Check if a line looks like a message continuation
+     * Check if a line looks like a message continuation.
+     * 
+     * Identifies lines that are part of an existing message rather than
+     * the start of a new message. This is crucial for preventing message
+     * splitting and maintaining content integrity.
+     * 
+     * Continuation Patterns:
+     * - Standalone timestamps: [12:34](url), "Today at 12:34"
+     * - Slack truncation indicators: "See more", "Show less", "..."
+     * - Reaction lines: emoji patterns with counts
+     * - Thread metadata: "View thread", "13 replies"
+     * - Link previews: domain names, article titles
+     * - Obviously message content (lowercase start, punctuation)
+     * 
+     * Algorithm uses pattern matching with diagnostic logging to track
+     * decision-making for debugging boundary detection issues.
+     * 
+     * @param {LineAnalysis} line - Line to evaluate for continuation patterns
+     * @param {LineAnalysis[]} allLines - Complete conversation analysis for context
+     * @returns {boolean} True if line is likely a continuation
+     * @complexity O(1) - pattern matching with early termination
+     * @internal Used by boundary detection to filter candidates
+     * @see {@link findMessageBoundaries} for boundary detection algorithm
+     * @since 1.0.0
      */
     private looksLikeContinuation(line: LineAnalysis, allLines: LineAnalysis[]): boolean {
         const operationId = `continuation-${Date.now()}`;
@@ -2229,6 +2485,42 @@ export class IntelligentMessageParser {
         return message.text && message.text.trim().length > 0;
     }
 
+    /**
+     * Extract username and timestamp from a message line.
+     * 
+     * Core extraction algorithm that handles multiple Slack export formats:
+     * 
+     * Pattern 1: App Messages
+     * - (https://app.slack.com/services/...)AppName
+     * - https://app.slack.com/services/... AppName
+     * 
+     * Pattern 2: Doubled Username with Linked Timestamp (Thread Format)
+     * - "UserUser [timestamp](url)" 
+     * - "Bill MeiBill Mei![:emoji:](url) [12:34](url)"
+     * 
+     * Pattern 3: Simple Username with Linked Timestamp
+     * - "User [timestamp](url)"
+     * 
+     * Pattern 4: Username followed by Time
+     * - "User 12:34 PM"
+     * - Enhanced validation to reject date constructs like "Jun 8th at 6:25 PM"
+     * 
+     * Algorithm applies layered validation:
+     * 1. App message detection (highest priority)
+     * 2. Format-specific pattern matching with regex
+     * 3. Username validation using utility functions
+     * 4. Date/time construct rejection to prevent false positives
+     * 5. Format-aware username cleanup
+     * 
+     * @param {string} line - Line containing potential username and timestamp
+     * @param {ConversationStructure} [structure] - Optional conversation structure for context
+     * @returns {{username?: string, timestamp?: string}} Extracted metadata or empty object
+     * @complexity O(1) - multiple regex operations with early termination
+     * @internal Core metadata extraction method
+     * @see {@link extractUsername} for username processing
+     * @see {@link isAppMessage} for app message detection
+     * @since 1.0.0
+     */
     private extractUserAndTime(line: string, structure?: ConversationStructure): {username?: string, timestamp?: string} {
         // Enhanced username + timestamp extraction with validation and app message support
         try {

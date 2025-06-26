@@ -1,0 +1,170 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, repo-cleanup ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Run core tests
+      run: |
+        npm test tests/unit/comprehensive-message-count-validation.test.ts
+        npm test tests/unit/clay-differentiation.test.ts
+        npm test tests/integration/formatter.test.ts
+    
+    - name: Check TypeScript compilation
+      run: npx tsc --noEmit --skipLibCheck
+    
+    - name: Run build
+      run: npm run build
+    
+    - name: Generate coverage report
+      run: npm test -- --coverage --coverageReporters=lcov
+      continue-on-error: true
+    
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage/lcov.info
+        fail_ci_if_error: false
+
+  documentation:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Use Node.js 20.x
+      uses: actions/setup-node@v4
+      with:
+        node-version: 20.x
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Check JSDoc documentation completeness
+      run: |
+        echo "Checking JSDoc documentation completeness..."
+        # Count total functions/methods in source files
+        TOTAL_FUNCTIONS=$(find src -name "*.ts" -exec grep -c "^\s*\(export \)\?\(public \|private \|protected \)\?\(static \)\?\(async \)\?\s*[a-zA-Z_][a-zA-Z0-9_]*\s*(" {} \; | awk '{sum += $1} END {print sum}')
+        echo "Total functions found: $TOTAL_FUNCTIONS"
+        
+        # Count JSDoc comments
+        JSDOC_COMMENTS=$(find src -name "*.ts" -exec grep -c "^\s*/\*\*" {} \; | awk '{sum += $1} END {print sum}')
+        echo "JSDoc comments found: $JSDOC_COMMENTS"
+        
+        # Calculate documentation coverage
+        if [ "$TOTAL_FUNCTIONS" -gt 0 ]; then
+          DOC_COVERAGE=$(echo "scale=2; $JSDOC_COMMENTS * 100 / $TOTAL_FUNCTIONS" | bc -l)
+          echo "Documentation coverage: ${DOC_COVERAGE}%"
+          
+          # Require at least 80% documentation coverage
+          if (( $(echo "$DOC_COVERAGE < 80" | bc -l) )); then
+            echo "❌ Documentation coverage too low: ${DOC_COVERAGE}% (minimum: 80%)"
+            exit 1
+          else
+            echo "✅ Documentation coverage sufficient: ${DOC_COVERAGE}%"
+          fi
+        fi
+    
+    - name: Validate JSDoc syntax
+      run: |
+        echo "Validating JSDoc syntax..."
+        # Install JSDoc if not present
+        npm install -g jsdoc
+        
+        # Generate documentation to validate syntax
+        jsdoc -c jsdoc.json --dry-run || {
+          echo "❌ JSDoc syntax validation failed"
+          exit 1
+        }
+        echo "✅ JSDoc syntax validation passed"
+    
+    - name: Check documentation examples
+      run: |
+        echo "Checking documentation examples..."
+        # Count @example tags
+        EXAMPLE_COUNT=$(find src -name "*.ts" -exec grep -c "@example" {} \; | awk '{sum += $1} END {print sum}')
+        echo "Documentation examples found: $EXAMPLE_COUNT"
+        
+        # Ensure major components have examples
+        MAJOR_COMPONENTS=$(find src/formatter -name "*.ts" | wc -l)
+        MIN_EXAMPLES=$((MAJOR_COMPONENTS / 2))
+        
+        if [ "$EXAMPLE_COUNT" -lt "$MIN_EXAMPLES" ]; then
+          echo "❌ Insufficient documentation examples: $EXAMPLE_COUNT (minimum: $MIN_EXAMPLES)"
+          exit 1
+        else
+          echo "✅ Sufficient documentation examples: $EXAMPLE_COUNT"
+        fi
+
+  lint:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Use Node.js 20.x
+      uses: actions/setup-node@v4
+      with:
+        node-version: 20.x
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Check code style (basic)
+      run: |
+        echo "Checking basic code style..."
+        # Check for consistent indentation
+        find src -name "*.ts" -exec sh -c 'if grep -q "^    " "$1" && grep -q "^	" "$1"; then echo "Mixed tabs and spaces in $1"; exit 1; fi' _ {} \;
+        echo "✅ Code style check passed"
+
+  security:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Use Node.js 20.x
+      uses: actions/setup-node@v4
+      with:
+        node-version: 20.x
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Run security audit
+      run: npm audit --audit-level moderate
+      continue-on-error: true
+    
+    - name: Check for secrets in code
+      run: |
+        echo "Checking for potential secrets..."
+        if grep -r -i "password\|secret\|key\|token" src/ --exclude-dir=node_modules | grep -v "// " | grep -v "/\*" | grep -v "\*/" | grep -v "\.test\." | head -5; then
+          echo "⚠️  Potential secrets found in code - please review"
+        else
+          echo "✅ No obvious secrets found"
+        fi

@@ -1,6 +1,7 @@
 import { describe, it, expect } from '@jest/globals';
 import { IntelligentMessageParser } from '../../src/formatter/stages/intelligent-message-parser';
 import { FlexibleMessageParser } from '../../src/formatter/stages/flexible-message-parser';
+import { TestLogger } from '../helpers';
 
 // Enhanced conditional skip logic for performance tests
 // Skip in CI environments, when running in debug mode, or when explicitly disabled
@@ -17,10 +18,10 @@ const describePerformance = shouldSkipPerformanceTests ? describe.skip : describ
 
 // Log skip reason for clarity
 if (shouldSkipPerformanceTests) {
-    console.log('⏭️  Skipping performance tests due to environment settings');
-    if (process.env.CI) console.log('   Reason: CI environment detected');
-    if (process.env.SKIP_PERFORMANCE_TESTS) console.log('   Reason: SKIP_PERFORMANCE_TESTS=true');
-    if (process.env.DEBUG) console.log('   Reason: DEBUG mode enabled');
+    TestLogger.log('⏭️  Skipping performance tests due to environment settings');
+    if (process.env.CI) TestLogger.log('   Reason: CI environment detected');
+    if (process.env.SKIP_PERFORMANCE_TESTS) TestLogger.log('   Reason: SKIP_PERFORMANCE_TESTS=true');
+    if (process.env.DEBUG) TestLogger.log('   Reason: DEBUG mode enabled');
 }
 
 describePerformance('Performance Optimization Validation', () => {
@@ -48,9 +49,9 @@ This message contains various elements and longer text to test performance.
 `;
             }
 
-            console.log('\n=== CONTEXT CACHING PERFORMANCE TEST ===');
-            console.log(`Input size: ${largeConversation.length} characters`);
-            console.log(`Expected messages: ~50`);
+            TestLogger.log('\n=== CONTEXT CACHING PERFORMANCE TEST ===');
+            TestLogger.log(`Input size: ${largeConversation.length} characters`);
+            TestLogger.log(`Expected messages: ~50`);
 
             // Run multiple iterations to test caching effectiveness
             const times: number[] = [];
@@ -64,7 +65,7 @@ This message contains various elements and longer text to test performance.
                 const processingTime = endTime - startTime;
                 times.push(processingTime);
 
-                console.log(`Iteration ${i + 1}: ${processingTime.toFixed(1)}ms, ${messages.length} messages`);
+                TestLogger.log(`Iteration ${i + 1}: ${processingTime.toFixed(1)}ms, ${messages.length} messages`);
                 
                 // Validate reasonable message count
                 expect(messages.length).toBeGreaterThan(40);
@@ -76,12 +77,12 @@ This message contains various elements and longer text to test performance.
             const maxTime = Math.max(...times);
             const variance = maxTime - minTime;
 
-            console.log(`\nPerformance metrics:`);
-            console.log(`  Average: ${avgTime.toFixed(1)}ms`);
-            console.log(`  Min: ${minTime.toFixed(1)}ms`);
-            console.log(`  Max: ${maxTime.toFixed(1)}ms`);
-            console.log(`  Variance: ${variance.toFixed(1)}ms`);
-            console.log(`  Throughput: ${(largeConversation.length / avgTime * 1000).toFixed(0)} chars/second`);
+            TestLogger.log(`\nPerformance metrics:`);
+            TestLogger.log(`  Average: ${avgTime.toFixed(1)}ms`);
+            TestLogger.log(`  Min: ${minTime.toFixed(1)}ms`);
+            TestLogger.log(`  Max: ${maxTime.toFixed(1)}ms`);
+            TestLogger.log(`  Variance: ${variance.toFixed(1)}ms`);
+            TestLogger.log(`  Throughput: ${(largeConversation.length / avgTime * 1000).toFixed(0)} chars/second`);
 
             // Performance expectations (based on optimization report)
             const avgTimeThreshold = process.env.CI ? 1000 : 500; // 1s in CI, 500ms locally
@@ -104,7 +105,7 @@ This message contains various elements and longer text to test performance.
 Test message with links: https://example.com and https://test.com
 This includes special patterns and various content types.`;
 
-            console.log('\n=== STATIC PATTERN ARRAYS TEST ===');
+            TestLogger.log('\n=== STATIC PATTERN ARRAYS TEST ===');
 
             // Run multiple times to ensure patterns are cached
             const times: number[] = [];
@@ -118,7 +119,7 @@ This includes special patterns and various content types.`;
             }
 
             const avgTime = times.reduce((sum, time) => sum + time, 0) / times.length;
-            console.log(`Average processing time for small message: ${avgTime.toFixed(2)}ms`);
+            TestLogger.log(`Average processing time for small message: ${avgTime.toFixed(2)}ms`);
 
             // Should be very fast for small messages
             const smallMessageThreshold = process.env.CI ? 20 : 10; // 20ms in CI, 10ms locally
@@ -133,7 +134,7 @@ This includes special patterns and various content types.`;
                 { userMap: {}, emojiMap: {} }
             );
 
-            console.log('\n=== MEMORY MANAGEMENT TEST ===');
+            TestLogger.log('\n=== MEMORY MANAGEMENT TEST ===');
 
             // Process multiple conversations to test cache cleanup
             for (let round = 0; round < 5; round++) {
@@ -152,14 +153,14 @@ Testing memory management across multiple conversations.
                 const messages = parser.parse(conversation, false);
                 const end = performance.now();
 
-                console.log(`Round ${round + 1}: ${(end - start).toFixed(1)}ms, ${messages.length} messages`);
+                TestLogger.log(`Round ${round + 1}: ${(end - start).toFixed(1)}ms, ${messages.length} messages`);
 
                 expect(messages.length).toBeGreaterThan(15);
                 const memoryTestThreshold = process.env.CI ? 200 : 100; // 200ms in CI, 100ms locally
                 expect(end - start).toBeLessThan(memoryTestThreshold);
             }
 
-            console.log('Memory management test completed successfully');
+            TestLogger.log('Memory management test completed successfully');
         });
     });
 
@@ -199,7 +200,7 @@ Bo (Clay)
 Bo (Clay)  Jun 9th at 10:16 AM
 Great point! Let me know if you need any other analysis on this.`;
 
-            console.log('\n=== PERFORMANCE REGRESSION TEST ===');
+            TestLogger.log('\n=== PERFORMANCE REGRESSION TEST ===');
 
             // Test IntelligentMessageParser performance
             const start1 = performance.now();
@@ -214,8 +215,8 @@ Great point! Let me know if you need any other analysis on this.`;
             const intelligentTime = end1 - start1;
             const flexibleTime = end2 - start2;
 
-            console.log(`IntelligentMessageParser: ${intelligentTime.toFixed(1)}ms, ${intelligentMessages.length} messages`);
-            console.log(`FlexibleMessageParser: ${flexibleTime.toFixed(1)}ms, ${flexibleMessages.length} messages`);
+            TestLogger.log(`IntelligentMessageParser: ${intelligentTime.toFixed(1)}ms, ${intelligentMessages.length} messages`);
+            TestLogger.log(`FlexibleMessageParser: ${flexibleTime.toFixed(1)}ms, ${flexibleMessages.length} messages`);
 
             // Both should be reasonably fast for this small conversation
             const regressionThreshold = process.env.CI ? 100 : 50; // 100ms in CI, 50ms locally
@@ -226,11 +227,11 @@ Great point! Let me know if you need any other analysis on this.`;
             expect(intelligentMessages.length).toBeGreaterThan(0);
             expect(flexibleMessages.length).toBeGreaterThan(0);
 
-            console.log('Performance regression test: PASSED');
+            TestLogger.log('Performance regression test: PASSED');
         });
 
         it('should validate overall system performance meets targets', () => {
-            console.log('\n=== SYSTEM PERFORMANCE TARGETS ===');
+            TestLogger.log('\n=== SYSTEM PERFORMANCE TARGETS ===');
             
             // Performance targets from optimization report (environment-aware)
             const performanceTargets = {
@@ -258,13 +259,13 @@ Great point! Let me know if you need any other analysis on this.`;
             
             const smallFileTime = end - start;
             
-            console.log(`Small file performance: ${smallFileTime.toFixed(2)}ms (target: < ${performanceTargets.smallFiles.maxTime}ms)`);
-            console.log(`Messages detected: ${messages.length}`);
+            TestLogger.log(`Small file performance: ${smallFileTime.toFixed(2)}ms (target: < ${performanceTargets.smallFiles.maxTime}ms)`);
+            TestLogger.log(`Messages detected: ${messages.length}`);
             
             expect(smallFileTime).toBeLessThan(performanceTargets.smallFiles.maxTime);
             expect(messages.length).toBeGreaterThan(0);
             
-            console.log('✅ System performance meets all targets');
+            TestLogger.log('✅ System performance meets all targets');
         });
     });
 });

@@ -1,5 +1,6 @@
 import { SlackFormatter } from '../../src/formatter/slack-formatter';
 import { DEFAULT_SETTINGS } from '../../src/settings';
+import { TestLogger } from '../helpers';
 
 describe('DM Format Parsing Fix', () => {
     let formatter: SlackFormatter;
@@ -28,24 +29,24 @@ Alex Mittell
 
 btw I wanted to mention tracking this related issue`;
 
-        console.log('=== TESTING DM FORMAT PARSING ===');
-        console.log('Input:');
-        console.log(dmContent);
-        console.log('\n=== PROCESSING ===');
+        TestLogger.log('=== TESTING DM FORMAT PARSING ===');
+        TestLogger.log('Input:');
+        TestLogger.log(dmContent);
+        TestLogger.log('\n=== PROCESSING ===');
 
         const result = formatter.formatSlackContent(dmContent);
         const stats = formatter.getThreadStats();
 
-        console.log('\n=== RESULT ===');
-        console.log(result);
+        TestLogger.log('\n=== RESULT ===');
+        TestLogger.log(result);
 
-        console.log('\n=== ANALYSIS ===');
-        console.log(`Message count: ${stats.messageCount}`);
-        console.log(`Format detected: ${stats.formatStrategy}`);
+        TestLogger.log('\n=== ANALYSIS ===');
+        TestLogger.log(`Message count: ${stats.messageCount}`);
+        TestLogger.log(`Format detected: ${stats.formatStrategy}`);
 
         // Count actual messages in output by looking for message patterns
         const messageBlocks = result.split(/(?=>\s*\*\*)/g).filter(block => block.trim());
-        console.log(`Actual message blocks in output: ${messageBlocks.length}`);
+        TestLogger.log(`Actual message blocks in output: ${messageBlocks.length}`);
 
         // CORE TEST: Should be 2 messages, not 1 giant merged message
         expect(stats.messageCount).toBe(2);

@@ -349,7 +349,7 @@ Mixed\t\u00A0 \nwhitespace   `;
 Here's some code:
 \`\`\`javascript
 function test() {
-    TestLogger.log("Hello\tWorld");
+    console.log("Hello\tWorld");
     return "Special chars: àáâãäå";
 }
 \`\`\`
@@ -484,7 +484,7 @@ Final valid: Test complete`;
             ];
 
             if (process.env.DEBUG_PERFORMANCE === 'true') {
-                TestLogger.log('\nText Processing Performance Results:');
+                console.log('\nText Processing Performance Results:');
             }
             
             testCases.forEach(({ name, content }) => {
@@ -496,7 +496,7 @@ Final valid: Test complete`;
                 
                 const processingTime = endTime - startTime;
                 if (process.env.DEBUG_PERFORMANCE === 'true') {
-                    TestLogger.log(`${name}: ${processingTime}ms`);
+                    console.log(`${name}: ${processingTime}ms`);
                 }
                 
                 expect(messages.length).toBe(1);
@@ -529,14 +529,14 @@ Mixed content with:
             const text = message.text || '';
             
             if (process.env.DEBUG_STATS === 'true') {
-                TestLogger.log('\nText Processing Statistics:');
-                TestLogger.log(`Total text length: ${text.length}`);
-                TestLogger.log(`Contains ASCII: ${/[A-Za-z0-9]/.test(text)}`);
-                TestLogger.log(`Contains Unicode: ${/[^\x00-\x7F]/.test(text)}`);
-                TestLogger.log(`Contains CJK: ${/[\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff\uac00-\ud7af]/.test(text)}`);
-                TestLogger.log(`Contains Arabic: ${/[\u0600-\u06ff]/.test(text)}`);
-                TestLogger.log(`Contains Emoji: ${/[\u{1f600}-\u{1f64f}]|[\u{1f300}-\u{1f5ff}]|[\u{1f680}-\u{1f6ff}]|[\u{1f1e0}-\u{1f1ff}]/u.test(text)}`);
-                TestLogger.log(`Has reactions: ${message.reactions && message.reactions.length > 0}`);
+                console.log('\nText Processing Statistics:');
+                console.log(`Total text length: ${text.length}`);
+                console.log(`Contains ASCII: ${/[A-Za-z0-9]/.test(text)}`);
+                console.log(`Contains Unicode: ${/[^\x00-\x7F]/.test(text)}`);
+                console.log(`Contains CJK: ${/[\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff\uac00-\ud7af]/.test(text)}`);
+                console.log(`Contains Arabic: ${/[\u0600-\u06ff]/.test(text)}`);
+                console.log(`Contains Emoji: ${/[\u{1f600}-\u{1f64f}]|[\u{1f300}-\u{1f5ff}]|[\u{1f680}-\u{1f6ff}]|[\u{1f1e0}-\u{1f1ff}]/u.test(text)}`);
+                console.log(`Has reactions: ${message.reactions && message.reactions.length > 0}`);
             }
             
             // Basic validation

@@ -1,5 +1,6 @@
 import { describe, it, expect } from '@jest/globals';
 import { IntelligentMessageParser } from '../../src/formatter/stages/intelligent-message-parser';
+import { TestLogger } from '../helpers';
 
 describe('See More Continuation Fix', () => {
     it('should handle Bo (Clay) See more continuation without creating Unknown User', () => {
@@ -28,20 +29,20 @@ Have you tried testing it on a known transcript where you manually verified the 
         const messages = parser.parse(input);
         
         if (process.env.DEBUG_TESTS) {
-            console.log('\n=== SEE MORE CONTINUATION FIX DEBUG ===');
-            console.log('Number of messages:', messages.length);
+            TestLogger.log('\n=== SEE MORE CONTINUATION FIX DEBUG ===');
+            TestLogger.log('Number of messages:', messages.length);
             messages.forEach((msg, i) => {
-                console.log(`\nMessage ${i + 1}:`);
-                console.log(`  Username: "${msg.username}"`);
-                console.log(`  Timestamp: "${msg.timestamp}"`);
-                console.log(`  Text: "${msg.text}"`);
+                TestLogger.log(`\nMessage ${i + 1}:`);
+                TestLogger.log(`  Username: "${msg.username}"`);
+                TestLogger.log(`  Timestamp: "${msg.timestamp}"`);
+                TestLogger.log(`  Text: "${msg.text}"`);
             });
             
             // Identify specific issues
             const unknownUserMessages = messages.filter(msg => msg.username === 'Unknown User');
-            console.log(`\nUnknown User messages found: ${unknownUserMessages.length}`);
+            TestLogger.log(`\nUnknown User messages found: ${unknownUserMessages.length}`);
             unknownUserMessages.forEach((msg, i) => {
-                console.log(`Unknown User ${i}: "${msg.text}"`);
+                TestLogger.log(`Unknown User ${i}: "${msg.text}"`);
             });
         }
         
@@ -88,12 +89,12 @@ Final content after Read more.`;
         const messages = parser.parse(input);
         
         if (process.env.DEBUG_TESTS) {
-            console.log('\n=== VARIOUS CONTINUATION PATTERNS DEBUG ===');
-            console.log('Number of messages:', messages.length);
+            TestLogger.log('\n=== VARIOUS CONTINUATION PATTERNS DEBUG ===');
+            TestLogger.log('Number of messages:', messages.length);
             messages.forEach((msg, i) => {
-                console.log(`\nMessage ${i + 1}:`);
-                console.log(`  Username: "${msg.username}"`);
-                console.log(`  Text: "${msg.text}"`);
+                TestLogger.log(`\nMessage ${i + 1}:`);
+                TestLogger.log(`  Username: "${msg.username}"`);
+                TestLogger.log(`  Text: "${msg.text}"`);
             });
         }
         

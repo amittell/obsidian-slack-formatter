@@ -1,4 +1,5 @@
 import { describe, it, expect } from '@jest/globals';
+import { TestLogger } from '../helpers';
 import { 
     cleanupDoubledUsernames, 
     MessageFormat, 
@@ -481,12 +482,12 @@ describe('Username Extraction Comprehensive Test Suite', () => {
                 if (result === expectedUser) {
                     successCount++;
                 } else {
-                    console.log(`Failed: Input="${input}", Expected="${expectedUser}", Got="${result}"`);
+                    TestLogger.log(`Failed: Input="${input}", Expected="${expectedUser}", Got="${result}"`);
                 }
             });
 
             const accuracy = (successCount / totalTests) * 100;
-            console.log(`Username Extraction Accuracy: ${accuracy.toFixed(1)}% (${successCount}/${totalTests})`);
+            TestLogger.log(`Username Extraction Accuracy: ${accuracy.toFixed(1)}% (${successCount}/${totalTests})`);
 
             expect(accuracy).toBeGreaterThan(80); // At least 80% accuracy
         });

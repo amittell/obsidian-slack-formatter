@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from '@jest/globals';
 import { IntelligentMessageParser } from '../../src/formatter/stages/intelligent-message-parser';
 import { FlexibleMessageParser } from '../../src/formatter/stages/flexible-message-parser';
+import { TestLogger } from '../helpers';
 
 describe('Boundary Detection Validation Suite', () => {
     let intelligentParser: IntelligentMessageParser;
@@ -287,7 +288,7 @@ Final valid message`;
 Here's some code:
 \`\`\`javascript
 function example() {
-    console.log("hello");
+    TestLogger.log("hello");
 }
 \`\`\`
 
@@ -462,11 +463,11 @@ Message 3`;
             
             const showStats = process.env.SHOW_BOUNDARY_STATS === 'true';
             if (showStats) {
-                console.log(`Boundary Detection Results:`);
-                console.log(`Total lines processed: ${testContent.split('\n').length}`);
-                console.log(`Messages detected: ${messages.length}`);
-                console.log(`Expected messages: 3`);
-                console.log(`Boundary accuracy: ${messages.length === 3 ? 'PASS' : 'FAIL'}`);
+                TestLogger.log(`Boundary Detection Results:`);
+                TestLogger.log(`Total lines processed: ${testContent.split('\n').length}`);
+                TestLogger.log(`Messages detected: ${messages.length}`);
+                TestLogger.log(`Expected messages: 3`);
+                TestLogger.log(`Boundary accuracy: ${messages.length === 3 ? 'PASS' : 'FAIL'}`);
             }
             
             expect(messages.length).toBe(3);

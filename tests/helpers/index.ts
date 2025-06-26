@@ -11,6 +11,9 @@ export {
     type DebugLoggerConfig
 } from './debug-utils';
 
+// Test logging utilities
+export { TestLogger } from './test-logger';
+
 // Parser setup utilities
 export {
     createParserTestSuite,

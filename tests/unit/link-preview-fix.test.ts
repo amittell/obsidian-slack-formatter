@@ -1,5 +1,6 @@
 import { SlackFormatter } from '../../src/formatter/slack-formatter';
 import { DEFAULT_SETTINGS } from '../../src/settings';
+import { TestLogger } from '../helpers';
 
 describe('Link Preview Fix Test', () => {
     it('should not create Unknown User from link preview content', () => {
@@ -34,21 +35,21 @@ Is there a way to create a bot within a Slack channel that is connected one or s
         
         // Check that there's no Unknown User
         const unknownUserCount = (result.match(/\[\[Unknown User\]\]/g) || []).length;
-        console.log('Unknown User count:', unknownUserCount);
+        TestLogger.log('Unknown User count:', unknownUserCount);
         
         // Extract message blocks to verify proper separation
         const messageBlocks = result.match(/> \[!slack\]\+ Message from ([^\n]+)/g) || [];
-        console.log('Message blocks found:', messageBlocks);
+        TestLogger.log('Message blocks found:', messageBlocks);
         
         // Verify the link preview content is included in Seth's message
         const sethMessageMatch = result.match(/> \[!slack\]\+ Message from Seth Berman[\s\S]*?(?=\n> \[!slack\]\+ Message from|$)/);
         if (sethMessageMatch) {
             const sethMessage = sethMessageMatch[0];
-            console.log('Seth Berman message length:', sethMessage.length);
-            console.log('Contains "Chapters:0:00":', sethMessage.includes('Chapters:0:00'));
-            console.log('Contains "my AI startup school talk":', sethMessage.includes('my AI startup school talk'));
-            console.log('Contains "X (formerly Twitter)":', sethMessage.includes('X (formerly Twitter)'));
-            console.log('Contains "Andrej Karpathy":', sethMessage.includes('Andrej Karpathy'));
+            TestLogger.log('Seth Berman message length:', sethMessage.length);
+            TestLogger.log('Contains "Chapters:0:00":', sethMessage.includes('Chapters:0:00'));
+            TestLogger.log('Contains "my AI startup school talk":', sethMessage.includes('my AI startup school talk'));
+            TestLogger.log('Contains "X (formerly Twitter)":', sethMessage.includes('X (formerly Twitter)'));
+            TestLogger.log('Contains "Andrej Karpathy":', sethMessage.includes('Andrej Karpathy'));
         }
         
         // Assertions
@@ -64,13 +65,13 @@ Is there a way to create a bot within a Slack channel that is connected one or s
         expect(result).toContain('Chapters:0:0'); // The output shows "Chapters:0:0" (one zero truncated)
         
         // Show formatted output for debugging
-        console.log('\n=== Formatted Output ===');
-        console.log(result);
+        TestLogger.log('\n=== Formatted Output ===');
+        TestLogger.log(result);
         
         // Let's also check if the test expectation is correct
-        console.log('\n=== Seth Message Content ===');
+        TestLogger.log('\n=== Seth Message Content ===');
         if (sethMessageMatch) {
-            console.log(sethMessageMatch[0]);
+            TestLogger.log(sethMessageMatch[0]);
         }
     });
 });

@@ -1,5 +1,6 @@
 import { describe, it, expect } from '@jest/globals';
 import { IntelligentMessageParser } from '../../src/formatter/stages/intelligent-message-parser';
+import { TestLogger } from '../helpers';
 
 describe('Test message line extraction', () => {
     it('should slice correct lines from boundaries', () => {
@@ -19,11 +20,11 @@ describe('Test message line extraction', () => {
         // Test the slice
         const messageLines = lines.slice(boundary.start, boundary.end + 1);
         
-        console.log('\n=== SLICED LINES ===');
-        console.log(`Boundary: ${boundary.start}-${boundary.end}`);
-        console.log(`Sliced ${messageLines.length} lines:`);
+        TestLogger.log('\n=== SLICED LINES ===');
+        TestLogger.log(`Boundary: ${boundary.start}-${boundary.end}`);
+        TestLogger.log(`Sliced ${messageLines.length} lines:`);
         messageLines.forEach((line, i) => {
-            console.log(`  ${i}: "${line}"`);
+            TestLogger.log(`  ${i}: "${line}"`);
         });
         
         expect(messageLines.length).toBe(7);
@@ -53,12 +54,12 @@ describe('Test message line extraction', () => {
         
         const message = parserAny.extractSingleMessage(messageLines, structure);
         
-        console.log('\n=== EXTRACTED MESSAGE ===');
-        console.log(`Username: "${message.username}"`);
-        console.log(`Text lines in message:`);
+        TestLogger.log('\n=== EXTRACTED MESSAGE ===');
+        TestLogger.log(`Username: "${message.username}"`);
+        TestLogger.log(`Text lines in message:`);
         const textLines = message.text.split('\n');
         textLines.forEach((line, i) => {
-            console.log(`  ${i}: "${line}"`);
+            TestLogger.log(`  ${i}: "${line}"`);
         });
         
         expect(message.text).toContain('So, first attempt');

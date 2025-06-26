@@ -1,5 +1,6 @@
 import { describe, it, expect } from '@jest/globals';
 import { IntelligentMessageParser } from '../../src/formatter/stages/intelligent-message-parser';
+import { TestLogger } from '../helpers';
 
 describe('Test findContinuationEnd', () => {
     it('should find correct continuation end for [time](url) format', () => {
@@ -50,9 +51,9 @@ So, first attempt was copying and pasting this very thread`;
             }
         }));
         
-        console.log('\n=== LINE ANALYSIS ===');
+        TestLogger.log('\n=== LINE ANALYSIS ===');
         lineAnalysis.forEach((line, i) => {
-            console.log(`Line ${i}: "${line.trimmed}" - isEmpty: ${line.isEmpty}`);
+            TestLogger.log(`Line ${i}: "${line.trimmed}" - isEmpty: ${line.isEmpty}`);
         });
         
         // Line 4 is "[9:18](https://slack.com/archives/012)"
@@ -60,17 +61,17 @@ So, first attempt was copying and pasting this very thread`;
         
         // Test if line 6 could be a message start
         const line6CouldBeStart = parserAny.couldBeMessageStart(lineAnalysis[6], lineAnalysis, 6);
-        console.log(`\nLine 6 could be message start: ${line6CouldBeStart}`);
+        TestLogger.log(`\nLine 6 could be message start: ${line6CouldBeStart}`);
         
         // Test findContinuationEnd for line 4
         const continuationEnd = parserAny.findContinuationEnd(lineAnalysis, 4);
         
-        console.log('\n=== Testing findContinuationEnd ===');
-        console.log(`Line 4: "${lines[4]}"`);
-        console.log(`Line 5: "${lines[5]}"`); 
-        console.log(`Line 6: "${lines[6]}"`);
-        console.log(`findContinuationEnd(4) returned: ${continuationEnd}`);
-        console.log(`Content at end line ${continuationEnd}: "${lines[continuationEnd]}"`);
+        TestLogger.log('\n=== Testing findContinuationEnd ===');
+        TestLogger.log(`Line 4: "${lines[4]}"`);
+        TestLogger.log(`Line 5: "${lines[5]}"`); 
+        TestLogger.log(`Line 6: "${lines[6]}"`);
+        TestLogger.log(`findContinuationEnd(4) returned: ${continuationEnd}`);
+        TestLogger.log(`Content at end line ${continuationEnd}: "${lines[continuationEnd]}"`);
         
         // It should return 6, not 4
         expect(continuationEnd).toBe(6);

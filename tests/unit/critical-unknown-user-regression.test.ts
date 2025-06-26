@@ -9,6 +9,7 @@
 
 import { IntelligentMessageParser } from '../../src/formatter/stages/intelligent-message-parser';
 import { DEFAULT_SETTINGS } from '../../src/settings';
+import { TestLogger } from '../helpers';
 
 describe('CRITICAL: Unknown User Regression Analysis', () => {
     it('should FAIL due to Clay APP format causing Unknown User regression', () => {
@@ -28,29 +29,29 @@ easy, tell prospects to never cough`;
         const parser = new IntelligentMessageParser(DEFAULT_SETTINGS, { userMap: {}, emojiMap: {} });
         const messages = parser.parse(problematicContent);
 
-        console.log('\n=== CRITICAL UNKNOWN USER REGRESSION TEST ===');
-        console.log('Total messages:', messages.length);
+        TestLogger.log('\n=== CRITICAL UNKNOWN USER REGRESSION TEST ===');
+        TestLogger.log('Total messages:', messages.length);
         
         const unknownUsers = messages.filter(msg => msg.username === 'Unknown User');
-        console.log('Unknown User messages:', unknownUsers.length);
+        TestLogger.log('Unknown User messages:', unknownUsers.length);
         
         if (unknownUsers.length > 0) {
-            console.log('\n❌ REGRESSION DETECTED: Unknown User messages found!');
+            TestLogger.log('\n❌ REGRESSION DETECTED: Unknown User messages found!');
             unknownUsers.forEach((msg, i) => {
-                console.log(`Unknown User ${i + 1} content: "${msg.text?.substring(0, 200)}..."`);
+                TestLogger.log(`Unknown User ${i + 1} content: "${msg.text?.substring(0, 200)}..."`);
             });
         }
 
         messages.forEach((msg, i) => {
-            console.log(`Message ${i + 1}: "${msg.username}" - "${msg.text?.substring(0, 100)}..."`);
+            TestLogger.log(`Message ${i + 1}: "${msg.username}" - "${msg.text?.substring(0, 100)}..."`);
         });
 
         // This test documents the current failure
-        console.log('\n🚨 CRITICAL FINDING:');
-        console.log('- Clay APP format breaks parser');
-        console.log('- Jorge Macias content gets dumped to Unknown User');
-        console.log('- This is a MASSIVE regression');
-        console.log('- Need to fix Clay APP parsing immediately');
+        TestLogger.log('\n🚨 CRITICAL FINDING:');
+        TestLogger.log('- Clay APP format breaks parser');
+        TestLogger.log('- Jorge Macias content gets dumped to Unknown User');
+        TestLogger.log('- This is a MASSIVE regression');
+        TestLogger.log('- Need to fix Clay APP parsing immediately');
 
         // Document current state
         expect(unknownUsers.length).toBeGreaterThan(0); // This currently fails validation
@@ -66,23 +67,23 @@ Short message.`;
         const parser = new IntelligentMessageParser(DEFAULT_SETTINGS, { userMap: {}, emojiMap: {} });
         const messages = parser.parse(clayAppBreakdown);
 
-        console.log('\n=== CLAY APP FORMAT BREAKDOWN ===');
-        console.log('Messages detected:', messages.length);
+        TestLogger.log('\n=== CLAY APP FORMAT BREAKDOWN ===');
+        TestLogger.log('Messages detected:', messages.length);
         messages.forEach((msg, i) => {
-            console.log(`Message ${i + 1}: "${msg.username}" - "${msg.text}"`);
+            TestLogger.log(`Message ${i + 1}: "${msg.username}" - "${msg.text}"`);
         });
 
         // This should work, but if it doesn't, we know the Clay APP format is the problem
         const clayMessages = messages.filter(msg => msg.username === 'Clay');
         const unknownMessages = messages.filter(msg => msg.username === 'Unknown User');
         
-        console.log('Clay messages found:', clayMessages.length);
-        console.log('Unknown messages found:', unknownMessages.length);
+        TestLogger.log('Clay messages found:', clayMessages.length);
+        TestLogger.log('Unknown messages found:', unknownMessages.length);
         
         if (unknownMessages.length > 0) {
-            console.log('❌ Clay APP format creates Unknown User messages');
+            TestLogger.log('❌ Clay APP format creates Unknown User messages');
         } else {
-            console.log('✅ Clay APP format works in isolation');
+            TestLogger.log('✅ Clay APP format works in isolation');
         }
     });
 });

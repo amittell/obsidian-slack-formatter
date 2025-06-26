@@ -9,11 +9,11 @@ describe('DM Direct Test - Real Problematic Input', () => {
         // Read the actual DM input
         const dmInput = readFileSync(join(__dirname, '../../test-slack-content.txt'), 'utf8');
         
-        console.log('=== DM Input Length ===');
-        console.log('Length:', dmInput.length);
+        TestLogger.log('=== DM Input Length ===');
+        TestLogger.log('Length:', dmInput.length);
 
-        console.log('\n=== Raw input (first 500 chars) ===');
-        console.log(dmInput.substring(0, 500));
+        TestLogger.log('\n=== Raw input (first 500 chars) ===');
+        TestLogger.log(dmInput.substring(0, 500));
 
         const settings = {
             ...DEFAULT_SETTINGS,
@@ -28,31 +28,31 @@ describe('DM Direct Test - Real Problematic Input', () => {
         // Create the formatter with proper arguments
         const formatter = new SlackFormatter(settings, {}, {});
 
-        console.log('\n=== Formatting ===');
+        TestLogger.log('\n=== Formatting ===');
 
         const formattedResult = formatter.formatSlackContent(dmInput);
         
-        console.log('\n=== Formatted Output (first 2000 chars) ===');
-        console.log(formattedResult.substring(0, 2000));
+        TestLogger.log('\n=== Formatted Output (first 2000 chars) ===');
+        TestLogger.log(formattedResult.substring(0, 2000));
         
-        console.log('\n=== Checking for Unknown User ===');
+        TestLogger.log('\n=== Checking for Unknown User ===');
         const unknownUserCount = (formattedResult.match(/Unknown User/g) || []).length;
-        console.log('Unknown User occurrences:', unknownUserCount);
+        TestLogger.log('Unknown User occurrences:', unknownUserCount);
         
         if (unknownUserCount > 0) {
-            console.log('\n=== Unknown User Context ===');
+            TestLogger.log('\n=== Unknown User Context ===');
             const lines = formattedResult.split('\n');
             lines.forEach((line, i) => {
                 if (line.includes('Unknown User')) {
-                    console.log(`Line ${i}: ${line}`);
+                    TestLogger.log(`Line ${i}: ${line}`);
                 }
             });
         }
         
         // Get thread stats if available
         const stats = formatter.getThreadStats();
-        console.log('\n=== Thread Stats ===');
-        console.log('Stats:', stats);
+        TestLogger.log('\n=== Thread Stats ===');
+        TestLogger.log('Stats:', stats);
         
         // Assertions
         expect(formattedResult).toBeTruthy();
