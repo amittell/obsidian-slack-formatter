@@ -47,6 +47,48 @@ export function formatThreadLinks(text: string): string {
  
  
 /**
+ * Normalize whitespace in text while preserving structure.
+ * @param text - The text to normalize
+ * @returns Text with normalized whitespace
+ */
+export function normalizeWhitespace(text: string): string {
+    return text
+        .replace(/\t/g, ' ')                    // Convert tabs to spaces
+        .replace(/\u00A0/g, ' ')                // Convert non-breaking spaces to regular spaces
+        .replace(/ {2,}/g, ' ')                 // Replace multiple spaces with single space
+        .replace(/^\s+|\s+$/g, '');             // Remove leading/trailing whitespace
+}
+
+/**
+ * Clean text by removing unwanted characters and normalizing whitespace.
+ * @param text - The text to clean
+ * @returns Cleaned text
+ */
+export function cleanText(text: string): string {
+    return text
+        .replace(/\t/g, ' ')                    // Convert tabs to spaces
+        .replace(/\u00A0/g, ' ')                // Convert non-breaking spaces to regular spaces
+        .replace(/ {2,}/g, ' ')                 // Replace multiple spaces with single space
+        .replace(/\r\n|\r/g, '\n')              // Normalize line endings
+        .replace(/^\s+|\s+$/g, '');             // Remove leading/trailing whitespace
+}
+
+/**
+ * Validate if text is considered valid (not empty or whitespace-only).
+ * @param text - The text to validate
+ * @returns True if text is valid
+ */
+export function isValidText(text: string): boolean {
+    if (!text || typeof text !== 'string') {
+        return false;
+    }
+    
+    // Check if text is only whitespace or control characters
+    const cleanedText = text.replace(/[\s\u0000-\u001F]/g, '');
+    return cleanedText.length > 0;
+}
+
+/**
  * Convert Slack URLs to Markdown format with error handling.
  * Handles multiple formats:
  * - <url|text> -> [text](url)

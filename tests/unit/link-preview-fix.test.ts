@@ -61,7 +61,7 @@ Is there a way to create a bot within a Slack channel that is connected one or s
         expect(result).toContain('X (formerly Twitter)');
         expect(result).toContain('Andrej Karpathy');
         expect(result).toContain('my AI startup school talk');
-        expect(result).toContain('Chapters:0:0'); // The test input has "Chapters:0:00" but output may vary
+        expect(result).toContain('Chapters:0:0'); // The output shows "Chapters:0:0" (one zero truncated)
         
         // Show formatted output for debugging
         console.log('\n=== Formatted Output ===');
