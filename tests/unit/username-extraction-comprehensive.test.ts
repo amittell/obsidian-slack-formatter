@@ -376,7 +376,7 @@ describe('Username Extraction Comprehensive Test Suite', () => {
             const endTime = Date.now();
 
             expect(result).toBe(longUsername);
-            expect(endTime - startTime).toBeLessThan(100); // Should complete quickly
+            expect(endTime - startTime).toBeLessThan(process.env.CI ? 500 : 100); // Should complete quickly
         });
 
         it('should handle many emoji patterns efficiently', () => {

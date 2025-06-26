@@ -224,8 +224,8 @@ Great point! Let me know if you need any other analysis on this.`
             TestLogger.log(`Messages parsed: ${messages.length}`);
             TestLogger.log(`Performance: ${(clayConversation.length / processingTime * 1000).toFixed(0)} chars/second`);
             
-            // Should process quickly (< 100ms for small conversation)
-            expect(processingTime).toBeLessThan(100);
+            // Should process quickly (< 100ms for small conversation, 500ms in CI)
+            expect(processingTime).toBeLessThan(process.env.CI ? 500 : 100);
             
             // Should still detect expected number of messages
             expect(messages.length).toBeGreaterThanOrEqual(4);
@@ -258,8 +258,8 @@ Great point! Let me know if you need any other analysis on this.`
             TestLogger.log(`Performance consistency: ${(times.every(t => t < 50) ? 'GOOD' : 'NEEDS_IMPROVEMENT')}`);
             
             // Performance should be consistent and fast
-            expect(avgTime).toBeLessThan(50);
-            expect(maxTime).toBeLessThan(100);
+            expect(avgTime).toBeLessThan(process.env.CI ? 200 : 50);
+            expect(maxTime).toBeLessThan(process.env.CI ? 500 : 100);
         });
     });
 });

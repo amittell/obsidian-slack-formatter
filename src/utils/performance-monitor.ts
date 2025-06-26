@@ -381,7 +381,7 @@ export class PerformanceMonitor {
             return '';
         }
 
-        const operationId = `${operation}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        const operationId = `${operation}-${Date.now()}-${crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substr(2, 9)}`;
         
         const profile: PerformanceProfile = {
             operationId,
@@ -465,6 +465,9 @@ export class PerformanceMonitor {
         }
         
         if (!this.activeProfiles.has(operationId)) {
+            if (operationId) {
+                Logger.warn('PerformanceMonitor', `Attempted to end non-existent operation: ${operationId}`);
+            }
             Logger.error('PerformanceMonitor', 'Operation ID not found in active profiles', {
                 operationId,
                 activeOperationIds: Array.from(this.activeProfiles.keys()),
