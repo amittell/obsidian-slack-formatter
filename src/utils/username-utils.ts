@@ -121,8 +121,38 @@ function sanitizeForWikiLink(username: string): string {
 export enum MessageFormat {
     DM = 'dm',           // Direct message format: timestamp first, then username
     THREAD = 'thread',   // Thread format: username first, then timestamp
+    CHANNEL = 'channel', // Channel format: similar to thread but with different patterns
+    APP = 'app',         // App message format: (https://app.slack.com/services/...)AppName
     UNKNOWN = 'unknown'  // Unknown format, use default behavior
 }
+
+/**
+ * Username validation configuration
+ */
+export const USERNAME_CONFIG = {
+    MIN_LENGTH: 1,
+    MAX_LENGTH: 10000, // Significantly increased to handle very long usernames
+    MAX_WORDS: 1000, // Significantly increased to handle very long usernames
+    INVALID_NAMES: new Set([
+        'unknown user', 'unknown', 'user', 'bot', 'slack', 'app',
+        'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday',
+        'jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'
+    ])
+} as const;
+
+/**
+ * App message pattern configurations
+ */
+export const APP_MESSAGE_PATTERNS = {
+    /** Pattern for app messages with URL prefix - fixed to not capture spaces in app name */
+    URL_PREFIX: /^\s*\(https?:\/\/[^)]+\)([A-Za-z][A-Za-z0-9\-_.]*)/,
+    /** Pattern for app messages without parentheses - fixed to not capture spaces in app name */
+    NO_PARENS: /^\s*https?:\/\/[^\s]+\s+([A-Za-z][A-Za-z0-9\-_.]*)/,
+    /** Pattern for app services URLs */
+    SERVICES_URL: /https?:\/\/[^\s\/]*slack[^\s\/]*\/services\/[A-Z0-9]+/,
+    /** Pattern for doubled app names */
+    DOUBLED_APP: /^([A-Za-z][A-Za-z0-9\s\-_.]+)\1\s*(?:APP\s*)?/i
+} as const;
 
 /**
  * Clean up immediately doubled usernames/names with format awareness.
@@ -140,6 +170,20 @@ export function cleanupDoubledUsernames(text: string, format?: MessageFormat): s
     try {
         let cleaned = text;
         
+        // For very long strings, use simpler doubled detection to avoid regex performance issues
+        if (text.length > 500) {
+            const halfLength = Math.floor(text.length / 2);
+            const firstHalf = text.substring(0, halfLength);
+            const secondHalf = text.substring(halfLength);
+            
+            // Simple check: if first half equals second half, return first half
+            if (firstHalf === secondHalf) {
+                cleaned = firstHalf;
+                // Return early to avoid expensive regex operations on long strings
+                return removeEmojisFromText(cleaned);
+            }
+        }
+        
         // Handle format-specific patterns first
         if (format === MessageFormat.THREAD) {
             // Thread format: username may have emoji codes that need preservation during cleanup
@@ -151,18 +195,21 @@ export function cleanupDoubledUsernames(text: string, format?: MessageFormat): s
             cleaned = cleanupDMFormatUsername(cleaned);
         }
         
-        // First pass: Handle exact duplicates with no space (e.g., "Amy BritoAmy Brito")
-        cleaned = cleaned.replace(/(\b[\w-]+(?:\s+[\w-]+)*)\1\b/g, '$1');
+        // Define comprehensive character class for international names
+        const nameChars = '[a-zA-Z0-9\\u00C0-\\u017F\\u0100-\\u024F\\u1E00-\\u1EFF\\u0400-\\u04FF\\u4E00-\\u9FFF\\u3040-\\u309F\\u30A0-\\u30FF\\u0590-\\u05FF\\u0600-\\u06FF\'-]';
+        
+        // First pass: Handle exact duplicates with no space (e.g., "Amy BritoAmy Brito", "李伟李伟")
+        const exactDuplicatePattern = new RegExp(`(\\b${nameChars}+(?:\\s+${nameChars}+)*)\\1\\b`, 'g');
+        cleaned = cleaned.replace(exactDuplicatePattern, '$1');
         
         // Second pass: Handle duplicates with space between (e.g., "Amy Brito Amy Brito")
-        cleaned = cleaned.replace(/(\b[\w-]+(?:\s+[\w-]+)*)\s+\1\b/g, '$1');
+        const spacedDuplicatePattern = new RegExp(`(\\b${nameChars}+(?:\\s+${nameChars}+)*)\\s+\\1\\b`, 'g');
+        cleaned = cleaned.replace(spacedDuplicatePattern, '$1');
         
-        // Third pass: Handle more complex patterns with Unicode characters (accented names)
-        cleaned = cleaned.replace(/(\b[\w\u00C0-\u017F-]+(?:\s+[\w\u00C0-\u017F-]+)*)\1\b/g, '$1');
-        
-        // Fourth pass: Handle patterns where first/last name parts are doubled separately
+        // Third pass: Handle patterns where first/last name parts are doubled separately
         // e.g., "John JohnSmith Smith" -> "John Smith"
-        cleaned = cleaned.replace(/(\b[\w\u00C0-\u017F-]+)\s+\1(\b[\w\u00C0-\u017F-]+)\s+\2\b/g, '$1 $2');
+        const separatedPartsPattern = new RegExp(`(\\b${nameChars}+)\\s+\\1(\\b${nameChars}+)\\s+\\2\\b`, 'g');
+        cleaned = cleaned.replace(separatedPartsPattern, '$1 $2');
         
         // Fifth pass: Handle case-insensitive duplicates
         const words = cleaned.split(/\s+/);
@@ -181,7 +228,15 @@ export function cleanupDoubledUsernames(text: string, format?: MessageFormat): s
             }
         }
         
-        return cleanedWords.join(' ');
+        let result = cleanedWords.join(' ');
+        
+        // Final cleanup: Remove emojis that may remain after username deduplication
+        result = removeEmojisFromText(result);
+        
+        // Clean up any double spaces that may have been created
+        result = result.replace(/\s+/g, ' ').trim();
+        
+        return result;
     } catch (error) {
         Logger.warn('username-utils', 'cleanupDoubledUsernames error:', error);
         return text;
@@ -201,21 +256,25 @@ function cleanupThreadFormatUsername(text: string): string {
         // We want to extract just "FirstnameLastname" before the emoji
         
         // First, identify if we have the doubled pattern followed by emoji
-        const threadPattern = /^(.+?)(\1)(!?\[:[\w\-+]+:\]\([^)]+\).*)$/;
+        const threadPattern = /^(.+?)(\1)(!?\[:[\w\-+]+:\]\([^)]+\))(.*)$/;
         const match = text.match(threadPattern);
         
         if (match && match[1] && match[3]) {
-            // We found a doubled username followed by emoji - keep just the first instance
-            return match[1].trim();
+            // We found a doubled username followed by emoji - keep the first instance plus any trailing text
+            const username = match[1].trim();
+            const trailingText = match[4] ? match[4].trim() : '';
+            return trailingText ? `${username} ${trailingText}` : username;
         }
         
         // Alternative pattern: Look for doubled name followed by emoji without perfect duplication
         // Handle cases where there might be slight differences in the doubled part
-        const nameEmojiPattern = /^([A-Za-z\s\u00C0-\u017F]+)\1(!?\[:[\w\-+]+:\]\([^)]+\).*)$/;
+        const nameEmojiPattern = /^([A-Za-z\s\u00C0-\u017F]+)\1(!?\[:[\w\-+]+:\]\([^)]+\))(.*)$/;
         const nameEmojiMatch = text.match(nameEmojiPattern);
         
         if (nameEmojiMatch && nameEmojiMatch[1]) {
-            return nameEmojiMatch[1].trim();
+            const username = nameEmojiMatch[1].trim();
+            const trailingText = nameEmojiMatch[3] ? nameEmojiMatch[3].trim() : '';
+            return trailingText ? `${username} ${trailingText}` : username;
         }
         
         // If no specific pattern found, just remove emoji and return
@@ -334,46 +393,53 @@ export function formatUsername(username: string): string {
 }
 
 /**
- * Extract username from various formats with format awareness.
- * Removes emoji codes, Unicode emoji, and trailing punctuation.
+ * Enhanced username extraction with comprehensive format awareness and validation.
+ * Handles app messages, doubled usernames, emoji removal, and edge cases.
  * 
  * @param {string} text - The text containing a username with potential decorations
  * @param {MessageFormat} [format] - The message format context for enhanced processing
- * @returns {string} Clean username or "Unknown User" if empty
+ * @returns {string} Clean username or "Unknown User" if invalid
  * @example
  * extractUsername("John Doe :smile:") // "John Doe"
  * extractUsername("Jane 👋") // "Jane"
  * extractUsername("User123!!!") // "User123"
  * extractUsername("Bill MeiBill Mei![:emoji:](url)", MessageFormat.THREAD) // "Bill Mei"
+ * extractUsername(" (https://app.slack.com/services/B123)GitHub", MessageFormat.APP) // "GitHub"
  */
 export function extractUsername(text: string, format?: MessageFormat): string {
     try {
-        let cleaned = text;
+        if (!text || typeof text !== 'string') {
+            return 'Unknown User';
+        }
+
+        let cleaned = text.trim();
         
-        // Apply format-aware cleaning first
-        if (format) {
-            cleaned = cleanupDoubledUsernames(cleaned, format);
+        // Handle app message format first
+        if (format === MessageFormat.APP || isAppMessage(cleaned)) {
+            const appUsername = extractAppUsername(cleaned);
+            if (appUsername && isValidUsername(appUsername)) {
+                return normalizeUsername(appUsername);
+            }
         }
         
-        // Remove emoji codes (preserve during format-aware processing above)
-        cleaned = cleaned.replace(/:[\w+-]+:/g, '').trim();
+        // Apply format-aware cleaning and emoji removal
+        if (format) {
+            cleaned = cleanupDoubledUsernames(cleaned, format);
+        } else {
+            // Apply basic doubled username cleanup even without format
+            cleaned = cleanupDoubledUsernames(cleaned);
+        }
         
-        // Remove Slack emoji URLs
-        cleaned = cleaned.replace(/!\[:[\w\-+]+:\]\([^)]+\)/g, '').trim();
+        // Remove all types of emoji and decorations
+        cleaned = removeAllDecorations(cleaned);
         
-        // Remove Unicode emoji
-        cleaned = cleaned.replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '').trim();
+        // Normalize and validate
+        const normalized = normalizeUsername(cleaned);
         
-        // Remove trailing punctuation
-        cleaned = cleaned.replace(/[.,;:!?]+$/, '').trim();
-        
-        // Clean up extra spaces
-        cleaned = cleaned.replace(/\s+/g, ' ');
-        
-        return cleaned || 'Unknown User';
+        return isValidUsername(normalized) ? normalized : 'Unknown User';
     } catch (error) {
         Logger.warn('username-utils', 'extractUsername error:', error);
-        return text;
+        return text || 'Unknown User';
     }
 }
 
@@ -459,13 +525,18 @@ export function extractUsernameFromDMFormat(line: string): string {
 
 /**
  * Detect message format based on line content.
- * Analyzes patterns to determine if this is DM or Thread format.
+ * Analyzes patterns to determine if this is DM, Thread, App, or Channel format.
  * 
  * @param {string} line - The line to analyze
  * @returns {MessageFormat} Detected format or UNKNOWN
  */
 export function detectMessageFormat(line: string): MessageFormat {
     try {
+        // Check for app message format first
+        if (isAppMessage(line)) {
+            return MessageFormat.APP;
+        }
+        
         // Check for thread format pattern: username + emoji + timestamp
         if (/^.+!?\[:[\w\-+]+:\]\([^)]+\)\s+\[.*?\]\(https?:\/\/[^)]+\)/.test(line)) {
             return MessageFormat.THREAD;
@@ -490,5 +561,202 @@ export function detectMessageFormat(line: string): MessageFormat {
     } catch (error) {
         Logger.warn('username-utils', 'detectMessageFormat error:', error);
         return MessageFormat.UNKNOWN;
+    }
+}
+
+/**
+ * Check if text represents an app message
+ */
+export function isAppMessage(text: string): boolean {
+    return APP_MESSAGE_PATTERNS.URL_PREFIX.test(text) ||
+           APP_MESSAGE_PATTERNS.NO_PARENS.test(text) ||
+           APP_MESSAGE_PATTERNS.SERVICES_URL.test(text);
+}
+
+/**
+ * Extract username from app message format
+ */
+export function extractAppUsername(text: string): string {
+    try {
+        // Pattern 1: (https://app.slack.com/services/...)AppName
+        let match = text.match(APP_MESSAGE_PATTERNS.URL_PREFIX);
+        if (match && match[1]) {
+            return match[1].trim();
+        }
+        
+        // Pattern 2: https://app.slack.com/services/... AppName (no parentheses)
+        match = text.match(APP_MESSAGE_PATTERNS.NO_PARENS);
+        if (match && match[1]) {
+            return match[1].trim();
+        }
+        
+        // Pattern 3: Handle doubled app names like "GitHubGitHub APP"
+        match = text.match(APP_MESSAGE_PATTERNS.DOUBLED_APP);
+        if (match && match[1]) {
+            return match[1].trim();
+        }
+        
+        return text.trim();
+    } catch (error) {
+        Logger.warn('username-utils', 'extractAppUsername error:', error);
+        return text;
+    }
+}
+
+/**
+ * Remove emoji codes and Unicode emojis from text
+ * @private
+ */
+function removeEmojisFromText(text: string): string {
+    try {
+        let cleaned = text;
+        
+        // Remove emoji codes (:smile:, :+1::skin-tone-2:, and consecutive patterns like :smile::heart:)
+        cleaned = cleaned.replace(/:[\w+-]+:(?::[\w-]+:)?/g, '').trim();
+        // Handle consecutive emoji codes without separators
+        cleaned = cleaned.replace(/(?::[\w+-]+:)+/g, '').trim();
+        
+        // Remove Slack emoji URLs (both with and without emoji codes)
+        cleaned = cleaned.replace(/!\[:[\w\-+]+:\]\([^)]+\)/g, '').trim();
+        cleaned = cleaned.replace(/!\[\]\([^)]+\)/g, '').trim(); // Empty emoji links ![](url)
+        
+        // Remove Unicode emoji (comprehensive range)
+        cleaned = cleaned.replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F100}-\u{1F1FF}\u{1F200}-\u{1F2FF}]/gu, '').trim();
+        
+        return cleaned.trim();
+    } catch (error) {
+        Logger.warn('username-utils', 'removeEmojisFromText error:', error);
+        return text;
+    }
+}
+
+/**
+ * Remove all decorations (emoji, URLs, special chars) from username
+ */
+export function removeAllDecorations(text: string): string {
+    try {
+        let cleaned = text;
+        
+        // Remove emoji codes (:smile:, :+1::skin-tone-2:, and consecutive patterns like :smile::heart:)
+        cleaned = cleaned.replace(/:[\w+-]+:(?::[\w-]+:)?/g, '').trim();
+        // Handle consecutive emoji codes without separators
+        cleaned = cleaned.replace(/(?::[\w+-]+:)+/g, '').trim();
+        
+        // Remove Slack emoji URLs (both with and without emoji codes)
+        cleaned = cleaned.replace(/!\[:[\w\-+]+:\]\([^)]+\)/g, '').trim();
+        cleaned = cleaned.replace(/!\[\]\([^)]+\)/g, '').trim(); // Empty emoji links ![](url)
+        
+        // Remove Unicode emoji (comprehensive range)
+        cleaned = cleaned.replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F100}-\u{1F1FF}\u{1F200}-\u{1F2FF}]/gu, '').trim();
+        
+        // Remove URLs (both markdown and plain)
+        cleaned = cleaned.replace(/!?\[.*?\]\(.*?\)/g, ''); // Remove markdown links
+        cleaned = cleaned.replace(/https?:\/\/[^\s]+/g, ''); // Remove plain URLs
+        
+        // Remove special characters and artifacts
+        cleaned = cleaned.replace(/[<>|]/g, ''); // Remove angle brackets and pipes  
+        cleaned = cleaned.replace(/\s*APP\s*/gi, ' '); // Remove APP indicator
+        
+        // Remove remaining special characters but preserve word boundaries and international characters
+        // Updated to preserve international characters including CJK, Cyrillic, Hebrew, Arabic
+        cleaned = cleaned.replace(/[^a-zA-Z0-9\u00C0-\u017F\u0100-\u024F\u1E00-\u1EFF\u0400-\u04FF\u4E00-\u9FFF\u3040-\u309F\u30A0-\u30FF\u0590-\u05FF\u0600-\u06FF\s\-_.']/g, ' ');
+        
+        // Remove trailing punctuation
+        cleaned = cleaned.replace(/[.,;:!?]+$/, '').trim();
+        
+        // Clean up extra spaces
+        cleaned = cleaned.replace(/\s+/g, ' ');
+        
+        return cleaned.trim();
+    } catch (error) {
+        Logger.warn('username-utils', 'removeAllDecorations error:', error);
+        return text;
+    }
+}
+
+/**
+ * Normalize username with consistent formatting
+ */
+export function normalizeUsername(username: string): string {
+    try {
+        if (!username || typeof username !== 'string') {
+            return '';
+        }
+        
+        let normalized = username.trim();
+        
+        // Remove leading/trailing special characters but keep internal ones for now
+        // Updated to preserve international characters and apostrophes
+        // Added CJK (Chinese, Japanese, Korean) ranges and Cyrillic
+        normalized = normalized.replace(/^[^a-zA-Z0-9\u00C0-\u017F\u0100-\u024F\u1E00-\u1EFF\u0400-\u04FF\u4E00-\u9FFF\u3040-\u309F\u30A0-\u30FF\u0590-\u05FF\u0600-\u06FF]+|[^a-zA-Z0-9\u00C0-\u017F\u0100-\u024F\u1E00-\u1EFF\u0400-\u04FF\u4E00-\u9FFF\u3040-\u309F\u30A0-\u30FF\u0590-\u05FF\u0600-\u06FF\s']+$/g, '');
+        
+        // Remove non-alphanumeric characters except spaces, hyphens, underscores, dots, apostrophes, parentheses
+        // Updated to preserve international characters including:
+        // - Latin Extended (Latin-1 Supplement, Latin Extended-A/B, Latin Extended Additional)
+        // - Cyrillic, CJK (Chinese/Japanese/Korean), Hebrew, Arabic
+        normalized = normalized.replace(/[^a-zA-Z0-9\u00C0-\u017F\u0100-\u024F\u1E00-\u1EFF\u0400-\u04FF\u4E00-\u9FFF\u3040-\u309F\u30A0-\u30FF\u0590-\u05FF\u0600-\u06FF\s\-_.'()]/g, ' ');
+        
+        // Clean up internal spaces
+        normalized = normalized.replace(/\s+/g, ' ');
+        
+        // Apply length limits
+        if (normalized.length > USERNAME_CONFIG.MAX_LENGTH) {
+            normalized = normalized.substring(0, USERNAME_CONFIG.MAX_LENGTH).trim();
+        }
+        
+        return normalized;
+    } catch (error) {
+        Logger.warn('username-utils', 'normalizeUsername error:', error);
+        return username;
+    }
+}
+
+/**
+ * Validate username against quality rules
+ */
+export function isValidUsername(username: string): boolean {
+    try {
+        if (!username || typeof username !== 'string') {
+            return false;
+        }
+        
+        const normalized = username.toLowerCase().trim();
+        
+        // Check length
+        if (normalized.length < USERNAME_CONFIG.MIN_LENGTH || normalized.length > USERNAME_CONFIG.MAX_LENGTH) {
+            return false;
+        }
+        
+        // Check for invalid names
+        if (USERNAME_CONFIG.INVALID_NAMES.has(normalized)) {
+            return false;
+        }
+        
+        // Check word count
+        const words = normalized.split(/\s+/).filter(word => word.length > 0);
+        if (words.length > USERNAME_CONFIG.MAX_WORDS) {
+            return false;
+        }
+        
+        // Check for obvious non-names
+        if (/^\d+$/.test(normalized)) { // All numbers
+            return false;
+        }
+        
+        // Check if has no letters (including international characters)
+        // Updated to recognize international letters
+        if (/^[^a-zA-Z\u00C0-\u017F\u0100-\u024F\u1E00-\u1EFF\u0400-\u04FF\u4E00-\u9FFF\u3040-\u309F\u30A0-\u30FF\u0590-\u05FF\u0600-\u06FF]+$/.test(normalized)) {
+            return false;
+        }
+        
+        // Check for time patterns
+        if (/^\d{1,2}:\d{2}/.test(normalized)) {
+            return false;
+        }
+        
+        return true;
+    } catch (error) {
+        Logger.warn('username-utils', 'isValidUsername error:', error);
+        return false;
     }
 }
