@@ -6,6 +6,7 @@ import { EmojiProcessor } from './emoji-processor';
 import { ThreadLinkProcessor } from './thread-link-processor';
 import { AttachmentProcessor } from './attachment-processor';
 import { Logger } from '../../utils/logger';
+import { contentSanitizationPipeline, type PipelineOptions } from '../../utils/content-sanitization-pipeline';
 import type { SlackFormatSettings } from '../../types/settings.types';
 import type { ParsedMaps, ProcessorResult } from '../../types/formatters.types';
 
@@ -27,6 +28,7 @@ interface ProcessingStep {
  * proper error handling and fallback strategies for each step.
  * 
  * Processing order:
+ * 0. Text Sanitization - Clean up encoding issues and normalize text
  * 1. Code blocks - Preserve code formatting
  * 2. Attachments - Handle file and link preview metadata
  * 3. URLs - Convert Slack URL format to Markdown
@@ -54,9 +56,16 @@ export class UnifiedProcessor extends BaseProcessor<string> {
         const attachmentProcessor = new AttachmentProcessor();
 
         // Define processing pipeline
-        // Order matters! Process attachments early to clean up metadata
+        // Order matters! Sanitize text first, then process attachments early to clean up metadata
         // Process URLs before usernames to avoid converting "slack" in URLs to wikilinks
         this.steps = [
+            {
+                name: 'Text Sanitization',
+                enabled: (s) => s.enableTextSanitization !== false, // Default to enabled
+                processor: this, // Use self as processor for sanitization
+                process: (text) => this.sanitizeText(text),
+                fallback: (text) => text, // Keep original if sanitization fails
+            },
             {
                 name: 'Code Blocks',
                 enabled: (s) => s.detectCodeBlocks,
@@ -234,6 +243,44 @@ export class UnifiedProcessor extends BaseProcessor<string> {
         text = text.replace(/@(\w+)/g, '[[$1]]');
         
         return text;
+    }
+
+    /**
+     * Sanitize text using the content sanitization pipeline.
+     * @private
+     * @param {string} text - The text to sanitize
+     * @returns {string} Sanitized text
+     */
+    private sanitizeText(text: string): string {
+        try {
+            // Configure sanitization based on settings
+            const pipelineOptions: PipelineOptions = {
+                validatePreservation: this.settings?.debug || false,
+                validationStrictness: 'normal',
+                stopOnError: false,
+                collectTiming: this.settings?.debug || false
+            };
+
+            // Use quick sanitize for performance in production
+            if (this.settings?.debug) {
+                const result = contentSanitizationPipeline.process(text, pipelineOptions);
+                
+                if (result.validation && !result.validation.isValid) {
+                    Logger.warn('UnifiedProcessor', 'Text sanitization validation issues:', result.validation.issues);
+                }
+                
+                if (result.errors.length > 0) {
+                    Logger.warn('UnifiedProcessor', 'Text sanitization errors:', result.errors);
+                }
+                
+                return result.text;
+            } else {
+                return contentSanitizationPipeline.quickSanitize(text);
+            }
+        } catch (error) {
+            Logger.warn('UnifiedProcessor', 'Error in text sanitization:', error);
+            return text; // Return original text if sanitization fails
+        }
     }
 
     /**

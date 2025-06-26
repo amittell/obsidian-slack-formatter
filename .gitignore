@@ -34,6 +34,32 @@ Thumbs.db
 # Archives
 archived/
 
+# Debug and test files
+debug-*
+test-*
+clay-formatting-*
+*-debug.*
+*-test.*
+
+# Generated JS files from TS sources (but keep scripts/)
+src/**/*.js
+!scripts/**/*.js
+
+# Report files
+*REPORT.md
+*report.md
+*-report.md
+*REPORT.MD
+*report.MD
+*-report.MD
+pipeline-validation-summary.md
+
+# Test output files
+test-*.txt
+test-*.md
+test-*.json
+*.test.out
+
 # Lock files (optional - uncomment if you don't want to track)
 # package-lock.json
 # yarn.lock

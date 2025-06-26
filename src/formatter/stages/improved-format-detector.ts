@@ -1,5 +1,5 @@
 import type { FormatStrategyType } from '../../types/formatters.types';
-import { Logger } from '../../utils/logger';
+import { Logger, DiagnosticContext } from '../../utils/logger';
 
 /**
  * Pattern weights for format detection scoring.
@@ -116,7 +116,30 @@ export class ImprovedFormatDetector {
      * @returns {FormatStrategyType} The detected format type ('standard', 'bracket', or 'mixed')
      */
     detectFormat(content: string): FormatStrategyType {
+        const operationId = `format-detect-${Date.now()}`;
+        
+        // Start diagnostic logging for format detection
+        const diagnosticContext: DiagnosticContext = {
+            operationId,
+            text: content?.substring(0, 200) || '', // Limit text for logging
+            matchedPatterns: [],
+            rejectedPatterns: [],
+            formatDecision: ''
+        };
+        
+        Logger.diagnostic(
+            'ImprovedFormatDetector',
+            'Starting format detection analysis',
+            diagnosticContext,
+            { 
+                contentLength: content?.length || 0,
+                contentPreview: content?.substring(0, 100) || ''
+            }
+        );
+        
         if (!content || typeof content !== 'string') {
+            diagnosticContext.formatDecision = 'DEFAULT: Invalid content';
+            Logger.diagnostic('ImprovedFormatDetector', 'Invalid content for format detection', diagnosticContext);
             Logger.warn('ImprovedFormatDetector', 'Invalid content for format detection');
             return 'standard';
         }
@@ -125,62 +148,100 @@ export class ImprovedFormatDetector {
         const contentHash = this.generateContentHash(content);
         const cachedResult = this.resultCache.get(contentHash);
         if (cachedResult) {
+            diagnosticContext.formatDecision = `CACHED: ${cachedResult}`;
+            Logger.diagnostic('ImprovedFormatDetector', `Using cached format result: ${cachedResult}`, diagnosticContext);
             return cachedResult;
         }
 
         const score = this.scoreContent(content);
         
+        // Log format scores with diagnostic context
+        const scoreData = {
+            standard: Number(score.standard.toFixed(2)),
+            bracket: Number(score.bracket.toFixed(2)),
+            mixed: Number(score.mixed.toFixed(2)),
+            dm: Number(score.dm.toFixed(2)),
+            thread: Number(score.thread.toFixed(2)),
+            channel: Number(score.channel.toFixed(2)),
+            confidence: Number(score.confidence.toFixed(2))
+        };
+        
+        diagnosticContext.confidence = scoreData.confidence;
+        Logger.diagnostic('ImprovedFormatDetector', 'Format scoring completed', diagnosticContext, scoreData);
+        
         // Only log in debug mode to improve performance
         if (Logger.isDebugEnabled()) {
-            Logger.info('ImprovedFormatDetector', 'Format scores', {
-                standard: score.standard.toFixed(2),
-                bracket: score.bracket.toFixed(2),
-                mixed: score.mixed.toFixed(2),
-                dm: score.dm.toFixed(2),
-                thread: score.thread.toFixed(2),
-                channel: score.channel.toFixed(2),
-                confidence: score.confidence.toFixed(2)
-            });
+            Logger.info('ImprovedFormatDetector', 'Format scores', scoreData);
         }
 
         let result: FormatStrategyType;
         
         // Optimized format detection with improved precedence logic
         if (score.confidence > 0.3) {
+            diagnosticContext.matchedPatterns?.push('confidence-threshold-met');
+            
             // Check for specific indicators in order of specificity (most specific first)
             
             // Thread indicators are very specific and should trump other patterns
             if (score.thread > 0.3) {
+                diagnosticContext.matchedPatterns?.push('thread-score-threshold');
+                
                 // Check for explicit thread indicators in content to avoid false positives
                 const hasThreadIndicators = content.includes('thread_ts=') || 
                                           /\d+\s+replies?/.test(content) ||
                                           /^---$/m.test(content);
                 if (hasThreadIndicators) {
                     result = 'thread';
+                    diagnosticContext.matchedPatterns?.push('explicit-thread-indicators');
+                    diagnosticContext.formatDecision = 'THREAD: Explicit thread indicators found';
                 } else if (score.dm > 0.4 && score.dm > score.channel) {
                     result = 'dm';
+                    diagnosticContext.matchedPatterns?.push('dm-fallback-from-thread');
+                    diagnosticContext.formatDecision = 'DM: Fallback from thread with strong DM indicators';
                 } else if (score.channel > 0.3) {
                     result = 'channel';
+                    diagnosticContext.matchedPatterns?.push('channel-fallback-from-thread');
+                    diagnosticContext.formatDecision = 'CHANNEL: Fallback from thread';
                 } else {
                     result = 'standard';
+                    diagnosticContext.formatDecision = 'STANDARD: Thread score high but no explicit indicators';
                 }
             } else if (score.dm > 0.4 && score.dm > score.channel) {
                 // DM wins if it has stronger indicators than channel
                 result = 'dm';
+                diagnosticContext.matchedPatterns?.push('dm-strong-indicators');
+                diagnosticContext.formatDecision = 'DM: Strong DM indicators beat channel';
             } else if (score.dm > 0.3 && score.channel > 0.3) {
                 // Close call - use contextual tiebreaker
                 // If DM score is significantly boosted, prefer DM
-                result = score.dm > score.channel * 1.2 ? 'dm' : 'channel';
+                const dmWins = score.dm > score.channel * 1.2;
+                result = dmWins ? 'dm' : 'channel';
+                diagnosticContext.matchedPatterns?.push(dmWins ? 'dm-tiebreaker-win' : 'channel-tiebreaker-win');
+                diagnosticContext.formatDecision = `${dmWins ? 'DM' : 'CHANNEL'}: Close call tiebreaker (DM: ${score.dm.toFixed(2)}, Channel: ${score.channel.toFixed(2)})`;
             } else if (score.channel > 0.3 && score.channel > score.dm) {
                 result = 'channel';
+                diagnosticContext.matchedPatterns?.push('channel-clear-winner');
+                diagnosticContext.formatDecision = 'CHANNEL: Clear channel indicators';
             } else if (score.bracket > score.standard && score.confidence > 0.5) {
                 result = 'bracket';
+                diagnosticContext.matchedPatterns?.push('bracket-format-detected');
+                diagnosticContext.formatDecision = 'BRACKET: Bracket format with high confidence';
             } else {
                 result = 'standard';
+                diagnosticContext.formatDecision = 'STANDARD: Default with sufficient confidence';
             }
         } else {
             result = 'standard';
+            diagnosticContext.rejectedPatterns?.push('low-confidence');
+            diagnosticContext.formatDecision = `STANDARD: Low confidence (${score.confidence.toFixed(2)})`;
         }
+        
+        // Log final decision
+        Logger.diagnostic('ImprovedFormatDetector', `Format detection completed: ${result}`, diagnosticContext, {
+            finalResult: result,
+            scores: scoreData,
+            cacheKey: contentHash
+        });
         
         // Cache the result for future calls
         this.cacheResult(contentHash, result);

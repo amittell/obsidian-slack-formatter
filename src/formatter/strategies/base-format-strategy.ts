@@ -70,8 +70,7 @@ export abstract class BaseFormatStrategy implements FormatStrategy {
     }
 
    formatToMarkdown(messages: SlackMessage[]): string {
-       let finalOutput = '';
-       let previousAuthor: string | null = null;
+       const messageBlocks: string[] = [];
 
        for (const message of messages) {
            // Skip processing if the message object has no actual text content (likely metadata handled by parser)
@@ -79,10 +78,19 @@ export abstract class BaseFormatStrategy implements FormatStrategy {
                this.log('debug', `Skipping message object with no text content`, { username: message.username });
                continue;
            }
+           
            try {
-               const currentAuthor = message.username;
-               let processedTextContent = ''; // To store processed text and reactions for the current message
-               // --- Process Message Text (Common Logic) ---
+               // Start each message as a separate block
+               const messageLines: string[] = [];
+               
+               // --- Format Header ---
+               const headerLines = this.formatHeader(message);
+               messageLines.push(...headerLines);
+               
+               // Add empty line after header
+               messageLines.push('>');
+               
+               // --- Process Message Text ---
                const originalText = message.text || '';
                const textLines = originalText.split('\n');
                const processedLines: string[] = [];
@@ -118,73 +126,53 @@ export abstract class BaseFormatStrategy implements FormatStrategy {
 
                    // Add the processed line, prepended with callout marker '>' only if it has non-whitespace content
                    if (/^\s*$/.test(currentLine)) { // Check if line consists only of whitespace
-                       processedLines.push(''); // Preserve blank lines without prefix
+                       processedLines.push('>'); // Preserve blank lines with callout marker
                    } else {
-                       processedLines.push('> ' + currentLine); // Add prefix only to lines with content
+                       processedLines.push('> ' + currentLine); // Add prefix to lines with content
                    }
                }
-               // Join lines for the message body
-               const processedText = processedLines.join('\n');
-               if (processedText.trim()) { // Only add if there's non-whitespace content
-                   processedTextContent += processedText + '\n';
-               }
+               
+               // Add processed text lines
+               messageLines.push(...processedLines);
 
                // --- Process Thread Info ---
                if (message.threadInfo) {
+                   // Add separator before thread info
+                   messageLines.push('>');
                    // Format thread info with proper styling
                    const threadLines = this.formatThreadInfo(message.threadInfo);
                    for (const line of threadLines) {
-                       processedTextContent += '> ' + line + '\n';
+                       messageLines.push('> ' + line);
                    }
                }
 
-               // --- Process Reactions (Delegated to subclass) ---
-               const reactionLine = this.formatReactions(message); // Expects a single line string or null
+               // --- Process Reactions ---
+               const reactionLine = this.formatReactions(message);
                if (reactionLine) {
-                   // Prepend callout marker '>'
-                   processedTextContent += '> ' + reactionLine + '\n';
+                   // Add separator before reactions
+                   messageLines.push('>');
+                   messageLines.push('> ' + reactionLine);
                }
-
-               // --- Assemble Output ---
-               // Check if author changed, it's the first message, or messages have different timestamps (DM format)
-               const hasDifferentTimestamp = finalOutput !== '' && message.timestamp && 
-                   messages.indexOf(message) > 0 && 
-                   messages[messages.indexOf(message) - 1].timestamp !== message.timestamp;
                
-               if (previousAuthor === null || currentAuthor !== previousAuthor || hasDifferentTimestamp) {
-                   // Add separation from previous block if this isn't the very first message
-                   if (finalOutput !== '') {
-                       finalOutput += '\n'; // Add a blank line between author blocks
-                   }
-                   // Start new block with header
-                   const headerLines = this.formatHeader(message); // Assumes header lines already start with '>'
-                   finalOutput += headerLines.join('\n') + '\n';
-                   finalOutput += processedTextContent; // Add the content for this first message
-                   previousAuthor = currentAuthor;
-               } else {
-                   // Same author, add separator and content
-                   // Always add separator, even if content is just whitespace (e.g., a blank line)
-                   finalOutput += '>\n'; // Minimal separator within the same author block
-                   finalOutput += processedTextContent;
-               }
-               // Removed extra closing brace here
+               // Join this message's lines into a complete block
+               messageBlocks.push(messageLines.join('\n'));
 
            } catch (messageError) {
                this.log('error', `Error formatting message: ${messageError}`, { message });
-               // Format error message within a callout structure, trying to append to current block if possible
-               const errorBlock = `> [!ERROR] Error processing message\n> User: ${message.username}\n> Timestamp: ${message.timestamp}\n`;
-               if (previousAuthor === message.username) {
-                   finalOutput += '>\n' + errorBlock; // Append error to existing block
-               } else {
-                   // Start a new block for the error if author changed or first message
-                    if (finalOutput !== '') finalOutput += '\n';
-                    finalOutput += errorBlock;
-                    previousAuthor = message.username; // Treat error block as belonging to this user
-               }
+               // Format error message as a complete block
+               const errorBlock = [
+                   `> [!error]+ Error processing message`,
+                   `> **User:** ${message.username || 'Unknown'}`,
+                   `> **Timestamp:** ${message.timestamp || 'Unknown'}`,
+                   `>`,
+                   `> Error: ${messageError instanceof Error ? messageError.message : String(messageError)}`
+               ].join('\n');
+               messageBlocks.push(errorBlock);
            }
        }
-       // Trim final output
-       return finalOutput.trim();
+       
+       // Join all message blocks with double newlines for separation
+       return messageBlocks.join('\n\n');
    }
 
     /**
