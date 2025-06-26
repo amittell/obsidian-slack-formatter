@@ -7,10 +7,10 @@ An Obsidian plugin that transforms copied Slack conversations into beautifully f
 - **Smart Format Detection**: Automatically detects Slack conversation format (DMs, channels, threads)
 - **User Mention Conversion**: Transforms `@username` mentions into Obsidian `[[username]]` links
 - **Custom Emoji Support**: Replaces Slack custom emojis with Unicode equivalents or configured mappings
-- **Code Block Preservation**: Maintains Slack code formatting with proper markdown syntax
+- **Code Block Preservation**: Maintains Slack code formatting with proper Markdown syntax
 - **Timestamp Parsing**: Converts Slack timestamps to readable format with timezone support
 - **Thread Management**: Collapsible thread support with configurable thresholds
-- **Link Processing**: Converts Slack links to proper markdown format
+- **Link Processing**: Converts Slack links to proper Markdown format
 - **Preview Mode**: Optional preview pane before inserting formatted content
 - **Multiple Input Methods**: Hotkey, command palette, and context menu integration
 

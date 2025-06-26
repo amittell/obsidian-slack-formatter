@@ -261,7 +261,7 @@ export class ContentDeduplicationProcessor {
      * Calculate Levenshtein distance between two strings
      */
     private levenshteinDistance(str1: string, str2: string): number {
-        const matrix = Array(str2.length + 1).fill(null).map(() => Array(str1.length + 1).fill(null));
+        const matrix: number[][] = Array(str2.length + 1).fill(null).map(() => Array(str1.length + 1).fill(0));
         
         for (let i = 0; i <= str1.length; i++) matrix[0][i] = i;
         for (let j = 0; j <= str2.length; j++) matrix[j][0] = j;

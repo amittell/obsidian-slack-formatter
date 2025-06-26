@@ -12,7 +12,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### Testing Commands
 - `npm test` - Run all tests
 - `npm test -- --testPathPattern=unit` - Run only unit tests
-- `npm test -- --testPathPattern=integration` - Run only integration tests
+- `npm test -- --testPathPattern=integration` - Run integration tests
 - `npm test -- --watch` - Run tests in watch mode
 - Run single test: `npm test -- tests/unit/specific-test.test.ts`
 
@@ -61,7 +61,7 @@ The formatter includes built-in performance protections:
 
 - `src/main.ts` - Obsidian plugin entry point and command registration
 - `src/formatter/` - Core formatting logic
-  - `stages/` - Pipeline stages (parser, detector, pre/post processor)
+  - `stages/` - Pipeline stages (parser, detector, pre-/post-processor)
   - `processors/` - Specialized content processors
   - `strategies/` - Output formatting strategies
   - `validators/` - Message structure validation

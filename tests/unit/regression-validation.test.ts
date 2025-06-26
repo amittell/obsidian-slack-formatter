@@ -46,19 +46,23 @@ I want to chat with support`;
         const parser = new IntelligentMessageParser();
         const messages = parser.parse(clayConversationInput);
         
-        console.log('\n=== REGRESSION VALIDATION RESULTS ===');
-        console.log(`Messages detected: ${messages.length} (should be 5+)`);
+        if (process.env.DEBUG_TESTS) {
+            console.log('\n=== REGRESSION VALIDATION RESULTS ===');
+            console.log(`Messages detected: ${messages.length} (should be 5+)`);
+        }
         
-        messages.forEach((msg, i) => {
-            console.log(`\nMessage ${i}:`);
-            console.log(`  Username: "${msg.username || 'null'}"`);
-            console.log(`  Timestamp: "${msg.timestamp || 'null'}"`);
-            console.log(`  Text length: ${msg.text?.length || 0}`);
-            if (msg.text) {
-                const preview = msg.text.length > 100 ? `${msg.text.substring(0, 100)}...` : msg.text;
-                console.log(`  Text preview: "${preview}"`);
-            }
-        });
+        if (process.env.DEBUG_TESTS) {
+            messages.forEach((msg, i) => {
+                console.log(`\nMessage ${i}:`);
+                console.log(`  Username: "${msg.username || 'null'}"`);
+                console.log(`  Timestamp: "${msg.timestamp || 'null'}"`);
+                console.log(`  Text length: ${msg.text?.length || 0}`);
+                if (msg.text) {
+                    const preview = msg.text.length > 100 ? `${msg.text.substring(0, 100)}...` : msg.text;
+                    console.log(`  Text preview: "${preview}"`);
+                }
+            });
+        }
         
         // PRIMARY REGRESSION FIX VALIDATION
         // The core issue was that only 1 message was detected instead of multiple
@@ -69,26 +73,34 @@ I want to chat with support`;
         // 4. Clay APP message ✅
         // 5. Continuation timestamps (currently missing)
         
-        console.log(`\\n=== ANALYSIS OF DETECTED MESSAGES ===`);
-        if (messages.length >= 3) {
-            console.log('✅ SIGNIFICANT IMPROVEMENT: 2 → ' + messages.length + ' messages (50%+ improvement)');
+        if (process.env.DEBUG_TESTS) {
+            console.log(`\\n=== ANALYSIS OF DETECTED MESSAGES ===`);
+            if (messages.length >= 3) {
+                console.log('✅ SIGNIFICANT IMPROVEMENT: 2 → ' + messages.length + ' messages (50%+ improvement)');
+            }
+            
+            // Check for expected usernames
+            const usernames = messages.map(m => m.username).filter(u => u);
+            console.log('Detected usernames:', usernames);
         }
         
-        // Check for expected usernames
-        const usernames = messages.map(m => m.username).filter(u => u);
-        console.log('Detected usernames:', usernames);
-        
         expect(messages.length).toBeGreaterThanOrEqual(3);
-        console.log('\\n✅ REGRESSION PARTIALLY FIXED: Detecting ' + messages.length + ' messages instead of 2');
         
-        // SECONDARY VALIDATION - Username detection quality
-        const unknownUserCount = messages.filter(m => m.username === 'Unknown User').length;
-        console.log(`\nUnknown User messages: ${unknownUserCount} (ideally should be 0-1)`);
+        if (process.env.DEBUG_TESTS) {
+            console.log('\\n✅ REGRESSION PARTIALLY FIXED: Detecting ' + messages.length + ' messages instead of 2');
+            
+            // SECONDARY VALIDATION - Username detection quality
+            const unknownUserCount = messages.filter(m => m.username === 'Unknown User').length;
+            console.log(`\nUnknown User messages: ${unknownUserCount} (ideally should be 0-1)`);
+        }
         
         // The regression fix has been successful if we detect multiple messages
         // Username detection quality is a separate concern
         expect(messages.length).toBeGreaterThan(1);
-        console.log('✅ Message boundary detection working correctly');
+        
+        if (process.env.DEBUG_TESTS) {
+            console.log('✅ Message boundary detection working correctly');
+        }
     });
     
     it('should not parse timestamps as usernames (specific fix validation)', () => {
@@ -99,14 +111,19 @@ Some content here`;
         const parser = new IntelligentMessageParser();
         const messages = parser.parse(problematicInput);
         
-        console.log('\n=== TIMESTAMP PARSING FIX VALIDATION ===');
-        messages.forEach((msg, i) => {
-            console.log(`Message ${i}: username="${msg.username}", timestamp="${msg.timestamp}"`);
-        });
+        if (process.env.DEBUG_TESTS) {
+            console.log('\n=== TIMESTAMP PARSING FIX VALIDATION ===');
+            messages.forEach((msg, i) => {
+                console.log(`Message ${i}: username="${msg.username}", timestamp="${msg.timestamp}"`);
+            });
+        }
         
         // Should not have "Jun 8th at" as a username
         const hasDateAsUsername = messages.some(m => m.username?.includes('Jun 8th at'));
         expect(hasDateAsUsername).toBe(false);
-        console.log('✅ Date constructs no longer parsed as usernames');
+        
+        if (process.env.DEBUG_TESTS) {
+            console.log('✅ Date constructs no longer parsed as usernames');
+        }
     });
 });

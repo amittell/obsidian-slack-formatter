@@ -27,21 +27,25 @@ Have you tried testing it on a known transcript where you manually verified the 
         
         const messages = parser.parse(input);
         
-        console.log('\n=== SEE MORE CONTINUATION FIX DEBUG ===');
-        console.log('Number of messages:', messages.length);
-        messages.forEach((msg, i) => {
-            console.log(`\nMessage ${i + 1}:`);
-            console.log(`  Username: "${msg.username}"`);
-            console.log(`  Timestamp: "${msg.timestamp}"`);
-            console.log(`  Text: "${msg.text}"`);
-        });
+        if (process.env.DEBUG_TESTS) {
+            console.log('\n=== SEE MORE CONTINUATION FIX DEBUG ===');
+            console.log('Number of messages:', messages.length);
+            messages.forEach((msg, i) => {
+                console.log(`\nMessage ${i + 1}:`);
+                console.log(`  Username: "${msg.username}"`);
+                console.log(`  Timestamp: "${msg.timestamp}"`);
+                console.log(`  Text: "${msg.text}"`);
+            });
+            
+            // Identify specific issues
+            const unknownUserMessages = messages.filter(msg => msg.username === 'Unknown User');
+            console.log(`\nUnknown User messages found: ${unknownUserMessages.length}`);
+            unknownUserMessages.forEach((msg, i) => {
+                console.log(`Unknown User ${i}: "${msg.text}"`);
+            });
+        }
         
-        // Identify specific issues
         const unknownUserMessages = messages.filter(msg => msg.username === 'Unknown User');
-        console.log(`\nUnknown User messages found: ${unknownUserMessages.length}`);
-        unknownUserMessages.forEach((msg, i) => {
-            console.log(`Unknown User ${i}: "${msg.text}"`);
-        });
         
         // Check that we have the expected 3 messages
         expect(messages.length).toBe(3);
@@ -83,13 +87,15 @@ Final content after Read more.`;
         const parser = new IntelligentMessageParser();
         const messages = parser.parse(input);
         
-        console.log('\n=== VARIOUS CONTINUATION PATTERNS DEBUG ===');
-        console.log('Number of messages:', messages.length);
-        messages.forEach((msg, i) => {
-            console.log(`\nMessage ${i + 1}:`);
-            console.log(`  Username: "${msg.username}"`);
-            console.log(`  Text: "${msg.text}"`);
-        });
+        if (process.env.DEBUG_TESTS) {
+            console.log('\n=== VARIOUS CONTINUATION PATTERNS DEBUG ===');
+            console.log('Number of messages:', messages.length);
+            messages.forEach((msg, i) => {
+                console.log(`\nMessage ${i + 1}:`);
+                console.log(`  Username: "${msg.username}"`);
+                console.log(`  Text: "${msg.text}"`);
+            });
+        }
         
         // Should have exactly 3 messages, no Unknown User
         expect(messages.length).toBe(3);

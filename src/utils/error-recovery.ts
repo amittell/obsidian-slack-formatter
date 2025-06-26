@@ -1,5 +1,9 @@
 import { Logger } from './logger.js';
 
+declare global {
+    var gc: (() => void) | undefined;
+}
+
 /**
  * Error recovery strategy configuration
  */

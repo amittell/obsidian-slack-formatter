@@ -28,13 +28,13 @@ interface ProcessingStep {
  * proper error handling and fallback strategies for each step.
  * 
  * Processing order:
- * 0. Text Sanitization - Clean up encoding issues and normalize text
- * 1. Code blocks - Preserve code formatting
- * 2. Attachments - Handle file and link preview metadata
- * 3. URLs - Convert Slack URL format to Markdown
- * 4. User mentions - Convert @mentions to wikilinks
- * 5. Emoji - Replace emoji codes with Unicode
- * 6. Thread links - Highlight thread references
+ * 1. Text Sanitization - Clean up encoding issues and normalize text
+ * 2. Code blocks - Preserve code formatting
+ * 3. Attachments - Handle file and link preview metadata
+ * 4. URLs - Convert Slack URL format to Markdown
+ * 5. User mentions - Convert @mentions to wikilinks
+ * 6. Emoji - Replace emoji codes with Unicode
+ * 7. Thread links - Highlight thread references
  */
 export class UnifiedProcessor extends BaseProcessor<string> {
     private readonly steps: ProcessingStep[];
@@ -246,6 +246,20 @@ export class UnifiedProcessor extends BaseProcessor<string> {
     }
 
     /**
+     * Create pipeline configuration options based on current settings.
+     * @private
+     * @returns {PipelineOptions} Configured pipeline options
+     */
+    private createPipelineOptions(): PipelineOptions {
+        return {
+            validatePreservation: this.settings?.debug || false,
+            validationStrictness: 'normal',
+            stopOnError: false,
+            collectTiming: this.settings?.debug || false
+        };
+    }
+
+    /**
      * Sanitize text using the content sanitization pipeline.
      * @private
      * @param {string} text - The text to sanitize
@@ -254,12 +268,7 @@ export class UnifiedProcessor extends BaseProcessor<string> {
     private sanitizeText(text: string): string {
         try {
             // Configure sanitization based on settings
-            const pipelineOptions: PipelineOptions = {
-                validatePreservation: this.settings?.debug || false,
-                validationStrictness: 'normal',
-                stopOnError: false,
-                collectTiming: this.settings?.debug || false
-            };
+            const pipelineOptions = this.createPipelineOptions();
 
             // Use quick sanitize for performance in production
             if (this.settings?.debug) {

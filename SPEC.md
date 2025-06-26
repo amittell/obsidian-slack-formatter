@@ -8,13 +8,13 @@ This document provides detailed technical specifications for the Obsidian Slack 
 
 The plugin follows a multi-stage processing pipeline architecture:
 
-```
+```text
 Raw Slack Text → PreProcessor → Parser → Detector → Processor → Strategy → PostProcessor → Formatted Output
 ```
 
 ### Component Hierarchy
 
-```
+```text
 SlackFormatPlugin (main.ts)
 ├── SlackFormatter (formatter/slack-formatter.ts)
 │   ├── PreProcessor (stages/preprocessor.ts)
@@ -138,7 +138,7 @@ interface SlackFormatSettings {
 
 **Detection Capabilities**:
 - **Channel Format**: Multiple users, topic/purpose, channel operations
-- **DM Format**: 2-3 participants, direct conversation style
+- **DM Format**: 2–3 participants, direct conversation style
 - **Thread Format**: Parent message with nested replies
 - **Mixed Format**: Combination of formats
 

@@ -413,7 +413,8 @@ Great video!`;
             const endTime = Date.now();
             
             expect(messages.length).toBe(messageCount);
-            expect(endTime - startTime).toBeLessThan(5000); // Should complete within 5 seconds
+            const performanceThreshold = process.env.CI ? 10000 : 5000; // 10s in CI, 5s locally
+            expect(endTime - startTime).toBeLessThan(performanceThreshold);
             
             // Verify all messages are distinct
             const usernames = messages.map(m => m.username);
@@ -459,11 +460,14 @@ Message 3`;
 
             const messages = intelligentParser.parse(testContent, false);
             
-            console.log(`Boundary Detection Results:`);
-            console.log(`Total lines processed: ${testContent.split('\n').length}`);
-            console.log(`Messages detected: ${messages.length}`);
-            console.log(`Expected messages: 3`);
-            console.log(`Boundary accuracy: ${messages.length === 3 ? 'PASS' : 'FAIL'}`);
+            const showStats = process.env.SHOW_BOUNDARY_STATS === 'true';
+            if (showStats) {
+                console.log(`Boundary Detection Results:`);
+                console.log(`Total lines processed: ${testContent.split('\n').length}`);
+                console.log(`Messages detected: ${messages.length}`);
+                console.log(`Expected messages: 3`);
+                console.log(`Boundary accuracy: ${messages.length === 3 ? 'PASS' : 'FAIL'}`);
+            }
             
             expect(messages.length).toBe(3);
             

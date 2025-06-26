@@ -158,7 +158,7 @@ export class PerformanceMonitor {
             return '';
         }
 
-        const operationId = `${operation}-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
+        const operationId = `${operation}-${crypto.randomUUID()}`;
         
         const profile: PerformanceProfile = {
             operationId,
@@ -192,6 +192,10 @@ export class PerformanceMonitor {
      */
     public endOperation(operationId: string, success: boolean = true, additionalDetails?: Record<string, any>): PerformanceProfile | null {
         if (!operationId || !this.activeProfiles.has(operationId)) {
+            Logger.warn('PerformanceMonitor', 'Invalid operation ID provided to endOperation', {
+                operationId,
+                activeOperationIds: Array.from(this.activeProfiles.keys())
+            });
             return null;
         }
 

@@ -224,7 +224,9 @@ Valid message for comparison`;
             
             // Unknown User messages should be minimized through smart parsing
             const unknownUserMessages = messages.filter(m => m.username === 'Unknown User');
-            console.log(`Unknown User messages: ${unknownUserMessages.length}`);
+            if (process.env.DEBUG_TESTS) {
+                console.log(`Unknown User messages: ${unknownUserMessages.length}`);
+            }
         });
     });
 
@@ -356,10 +358,12 @@ System notification here`;
             const unknownUserMessages = messages.filter(m => m.username === 'Unknown User');
             const namedMessages = messages.filter(m => m.username !== 'Unknown User');
             
-            console.log(`Total messages parsed: ${totalMessages}`);
-            console.log(`Unknown User messages: ${unknownUserMessages.length}`);
-            console.log(`Named messages: ${namedMessages.length}`);
-            console.log(`Unknown User percentage: ${((unknownUserMessages.length / totalMessages) * 100).toFixed(1)}%`);
+            if (process.env.DEBUG_TESTS) {
+                console.log(`Total messages parsed: ${totalMessages}`);
+                console.log(`Unknown User messages: ${unknownUserMessages.length}`);
+                console.log(`Named messages: ${namedMessages.length}`);
+                console.log(`Unknown User percentage: ${((unknownUserMessages.length / totalMessages) * 100).toFixed(1)}%`);
+            }
             
             // Regression test: Unknown User percentage should be low
             const unknownUserPercentage = (unknownUserMessages.length / totalMessages) * 100;

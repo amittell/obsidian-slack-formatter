@@ -3,7 +3,7 @@ import { IntelligentMessageParser } from '../../src/formatter/stages/intelligent
 
 describe('Owen Chandler Message Splitting', () => {
     it('should split Owen Chandler into 2 separate messages at #CONTEXT# boundary', () => {
-        // Simpler test case to isolate the issue
+        // Test that #CONTEXT# creates a message boundary, splitting Owen's content into two distinct messages
         const input = `Owen Chandler
 Jun 8th at 6:28 PM
 Initial message content here.
@@ -14,21 +14,26 @@ You're finding the rep's longest monologue in a transcript.`;
         const parser = new IntelligentMessageParser();
         const messages = parser.parse(input);
         
-        console.log('\n=== OWEN CHANDLER SPLITTING TEST ===');
-        console.log(`Total messages detected: ${messages.length}`);
-        
-        messages.forEach((msg, i) => {
-            console.log(`\nMessage ${i + 1}:`);
-            console.log(`  Username: "${msg.username}"`);
-            console.log(`  Timestamp: "${msg.timestamp || 'none'}"`);
-            console.log(`  Text length: ${msg.text?.length || 0}`);
-            console.log(`  Starts with #CONTEXT#: ${msg.text?.trim().startsWith('#CONTEXT#')}`);
-            console.log(`  Text preview: "${msg.text?.substring(0, 100) || ''}..."`);
-        });
+        if (process.env.DEBUG_TESTS) {
+            console.log('\n=== OWEN CHANDLER SPLITTING TEST ===');
+            console.log(`Total messages detected: ${messages.length}`);
+            
+            messages.forEach((msg, i) => {
+                console.log(`\nMessage ${i + 1}:`);
+                console.log(`  Username: "${msg.username}"`);
+                console.log(`  Timestamp: "${msg.timestamp || 'none'}"`);
+                console.log(`  Text length: ${msg.text?.length || 0}`);
+                console.log(`  Starts with #CONTEXT#: ${msg.text?.trim().startsWith('#CONTEXT#')}`);
+                console.log(`  Text preview: "${msg.text?.substring(0, 100) || ''}..."`);
+            });
+        }
         
         // Filter Owen messages
         const owenMessages = messages.filter(msg => msg.username === 'Owen Chandler');
-        console.log(`\nOwen Chandler messages: ${owenMessages.length}`);
+        
+        if (process.env.DEBUG_TESTS) {
+            console.log(`\nOwen Chandler messages: ${owenMessages.length}`);
+        }
         
         // Based on task description, Owen should have 2 separate messages
         // 1. Initial message (may be empty in this test data)
@@ -39,14 +44,16 @@ You're finding the rep's longest monologue in a transcript.`;
             const contextMessage = owenMessages.find(msg => msg.text?.includes('#CONTEXT#'));
             const nonContextMessage = owenMessages.find(msg => !msg.text?.includes('#CONTEXT#'));
             
-            console.log(`Message with #CONTEXT#: ${contextMessage ? 'Found' : 'Not found'}`);
-            console.log(`Message without #CONTEXT#: ${nonContextMessage ? 'Found' : 'Not found'}`);
-            
-            if (owenMessages.length === 1) {
-                console.log('❌ CURRENT: Only 1 Owen message (merging issue)');
-                console.log('Expected: #CONTEXT# should create separate message');
-            } else {
-                console.log('✅ SUCCESS: Multiple Owen messages detected');
+            if (process.env.DEBUG_TESTS) {
+                console.log(`Message with #CONTEXT#: ${contextMessage ? 'Found' : 'Not found'}`);
+                console.log(`Message without #CONTEXT#: ${nonContextMessage ? 'Found' : 'Not found'}`);
+                
+                if (owenMessages.length === 1) {
+                    console.log('❌ CURRENT: Only 1 Owen message (merging issue)');
+                    console.log('Expected: #CONTEXT# should create separate message');
+                } else {
+                    console.log('✅ SUCCESS: Multiple Owen messages detected');
+                }
             }
         }
         
@@ -56,15 +63,33 @@ You're finding the rep's longest monologue in a transcript.`;
             msg.text?.includes('#CONTEXT#') && msg.username === 'Owen Chandler'
         );
         
-        expect(hasContextMessage).toBe(true);
+        // Specific expectations for the desired end state:
+        // 1. Owen Chandler should have exactly 2 separate messages
+        expect(owenMessages.length).toBe(2);
         
-        // Eventually we want 2 Owen messages, but for now let's see what we get
-        expect(owenMessages.length).toBeGreaterThanOrEqual(1);
+        // 2. One message should contain the initial content (before #CONTEXT#)
+        const initialMessage = owenMessages.find(msg => 
+            !msg.text?.includes('#CONTEXT#') && 
+            msg.text?.includes('Initial message content here.')
+        );
+        expect(initialMessage).toBeDefined();
+        expect(initialMessage?.username).toBe('Owen Chandler');
+        expect(initialMessage?.timestamp).toBe('Jun 8th at 6:28 PM');
         
-        // Log what we're actually getting for debugging
-        console.log(`\n=== SUMMARY ===`);
-        console.log(`Owen messages: ${owenMessages.length}`);
-        console.log(`Total messages: ${messages.length}`);
-        console.log(`Has #CONTEXT# message: ${hasContextMessage}`);
+        // 3. One message should contain the #CONTEXT# content
+        const contextMessage = owenMessages.find(msg => 
+            msg.text?.includes('#CONTEXT#') &&
+            msg.text?.includes("You're finding the rep's longest monologue in a transcript.")
+        );
+        expect(contextMessage).toBeDefined();
+        expect(contextMessage?.username).toBe('Owen Chandler');
+        expect(contextMessage?.text?.trim().startsWith('#CONTEXT#')).toBe(true);
+        
+        if (process.env.DEBUG_TESTS) {
+            console.log(`\n=== SUMMARY ===`);
+            console.log(`Owen messages: ${owenMessages.length}`);
+            console.log(`Total messages: ${messages.length}`);
+            console.log(`Has #CONTEXT# message: ${hasContextMessage}`);
+        }
     });
 });

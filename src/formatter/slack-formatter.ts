@@ -386,10 +386,10 @@ export class SlackFormatter implements ISlackFormatter {
             }
             
             // Validate message structure integrity
-            const validationResult = this.structureValidator.validate(messages);
+            const validationResult = this.structureValidator.validateMessages(messages);
             if (!validationResult.isValid) {
-                const errorCount = validationResult.issues.filter(i => i.severity === 'error').length;
-                debugInfo.push(`Structure validation: ${errorCount} errors, score: ${validationResult.score}/100`);
+                const errorCount = validationResult.errors.length;
+                debugInfo.push(`Structure validation: ${errorCount} errors, ${validationResult.warnings.length} warnings`);
             }
             
             debugInfo.push(`Processed ${messages.length} messages (${parsingMethod})`);

@@ -89,7 +89,7 @@ Some more valid text here`;
                 const normalized = normalizeWhitespace(text);
                 expect(normalized).not.toMatch(/\t/);
                 expect(normalized).not.toMatch(/\u00A0/);
-                expect(normalized).not.toMatch(/  +/); // No multiple spaces
+                expect(normalized).not.toMatch(/ {2,}/); // No multiple spaces
                 expect(normalized.trim()).toBe(normalized); // No leading/trailing spaces
             });
         });
@@ -292,7 +292,7 @@ Mixed\t\u00A0 \nwhitespace   `;
             
             expect(cleaned).not.toMatch(/\t/);
             expect(cleaned).not.toMatch(/\u00A0/);
-            expect(cleaned).not.toMatch(/  +/); // No multiple spaces
+            expect(cleaned).not.toMatch(/ {2,}/); // No multiple spaces
             expect(cleaned.trim()).toBe(cleaned); // No leading/trailing spaces
             expect(cleaned).toContain('Text with multiple spaces');
             expect(cleaned).toContain('Tabs and newlines');
@@ -483,7 +483,9 @@ Final valid: Test complete`;
                 }
             ];
 
-            console.log('\nText Processing Performance Results:');
+            if (process.env.DEBUG_PERFORMANCE === 'true') {
+                console.log('\nText Processing Performance Results:');
+            }
             
             testCases.forEach(({ name, content }) => {
                 const fullContent = `User1  [12:00 PM](https://example.com)\n${content}`;
@@ -493,7 +495,9 @@ Final valid: Test complete`;
                 const endTime = Date.now();
                 
                 const processingTime = endTime - startTime;
-                console.log(`${name}: ${processingTime}ms`);
+                if (process.env.DEBUG_PERFORMANCE === 'true') {
+                    console.log(`${name}: ${processingTime}ms`);
+                }
                 
                 expect(messages.length).toBe(1);
                 expect(messages[0].username).toBe('User1');
@@ -524,14 +528,16 @@ Mixed content with:
             const message = messages[0];
             const text = message.text || '';
             
-            console.log('\nText Processing Statistics:');
-            console.log(`Total text length: ${text.length}`);
-            console.log(`Contains ASCII: ${/[A-Za-z0-9]/.test(text)}`);
-            console.log(`Contains Unicode: ${/[^\x00-\x7F]/.test(text)}`);
-            console.log(`Contains CJK: ${/[\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff\uac00-\ud7af]/.test(text)}`);
-            console.log(`Contains Arabic: ${/[\u0600-\u06ff]/.test(text)}`);
-            console.log(`Contains Emoji: ${/[\u{1f600}-\u{1f64f}]|[\u{1f300}-\u{1f5ff}]|[\u{1f680}-\u{1f6ff}]|[\u{1f1e0}-\u{1f1ff}]/u.test(text)}`);
-            console.log(`Has reactions: ${message.reactions && message.reactions.length > 0}`);
+            if (process.env.DEBUG_STATS === 'true') {
+                console.log('\nText Processing Statistics:');
+                console.log(`Total text length: ${text.length}`);
+                console.log(`Contains ASCII: ${/[A-Za-z0-9]/.test(text)}`);
+                console.log(`Contains Unicode: ${/[^\x00-\x7F]/.test(text)}`);
+                console.log(`Contains CJK: ${/[\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff\uac00-\ud7af]/.test(text)}`);
+                console.log(`Contains Arabic: ${/[\u0600-\u06ff]/.test(text)}`);
+                console.log(`Contains Emoji: ${/[\u{1f600}-\u{1f64f}]|[\u{1f300}-\u{1f5ff}]|[\u{1f680}-\u{1f6ff}]|[\u{1f1e0}-\u{1f1ff}]/u.test(text)}`);
+                console.log(`Has reactions: ${message.reactions && message.reactions.length > 0}`);
+            }
             
             // Basic validation
             expect(text.length).toBeGreaterThan(0);

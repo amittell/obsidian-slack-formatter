@@ -121,7 +121,7 @@ export class ImprovedFormatDetector {
         // Start diagnostic logging for format detection
         const diagnosticContext: DiagnosticContext = {
             operationId,
-            text: content?.substring(0, 200) || '', // Limit text for logging
+            text: content?.substring(0, 100) || '', // Limit text for logging
             matchedPatterns: [],
             rejectedPatterns: [],
             formatDecision: ''
@@ -155,23 +155,24 @@ export class ImprovedFormatDetector {
 
         const score = this.scoreContent(content);
         
-        // Log format scores with diagnostic context
-        const scoreData = {
-            standard: Number(score.standard.toFixed(2)),
-            bracket: Number(score.bracket.toFixed(2)),
-            mixed: Number(score.mixed.toFixed(2)),
-            dm: Number(score.dm.toFixed(2)),
-            thread: Number(score.thread.toFixed(2)),
-            channel: Number(score.channel.toFixed(2)),
-            confidence: Number(score.confidence.toFixed(2))
-        };
-        
-        diagnosticContext.confidence = scoreData.confidence;
-        Logger.diagnostic('ImprovedFormatDetector', 'Format scoring completed', diagnosticContext, scoreData);
-        
-        // Only log in debug mode to improve performance
+        // Only create scoreData object in debug mode to improve performance
+        let scoreData: any;
         if (Logger.isDebugEnabled()) {
+            scoreData = {
+                standard: Number(score.standard.toFixed(2)),
+                bracket: Number(score.bracket.toFixed(2)),
+                mixed: Number(score.mixed.toFixed(2)),
+                dm: Number(score.dm.toFixed(2)),
+                thread: Number(score.thread.toFixed(2)),
+                channel: Number(score.channel.toFixed(2)),
+                confidence: Number(score.confidence.toFixed(2))
+            };
+            
+            diagnosticContext.confidence = scoreData.confidence;
+            Logger.diagnostic('ImprovedFormatDetector', 'Format scoring completed', diagnosticContext, scoreData);
             Logger.info('ImprovedFormatDetector', 'Format scores', scoreData);
+        } else {
+            diagnosticContext.confidence = Number(score.confidence.toFixed(2));
         }
 
         let result: FormatStrategyType;
@@ -236,12 +237,14 @@ export class ImprovedFormatDetector {
             diagnosticContext.formatDecision = `STANDARD: Low confidence (${score.confidence.toFixed(2)})`;
         }
         
-        // Log final decision
-        Logger.diagnostic('ImprovedFormatDetector', `Format detection completed: ${result}`, diagnosticContext, {
-            finalResult: result,
-            scores: scoreData,
-            cacheKey: contentHash
-        });
+        // Log final decision only in debug mode to improve performance
+        if (Logger.isDebugEnabled()) {
+            Logger.diagnostic('ImprovedFormatDetector', `Format detection completed: ${result}`, diagnosticContext, {
+                finalResult: result,
+                scores: scoreData,
+                cacheKey: contentHash
+            });
+        }
         
         // Cache the result for future calls
         this.cacheResult(contentHash, result);

@@ -82,7 +82,7 @@ const ZERO_WIDTH_CHARS = [
 const CODE_BLOCK_PATTERNS = [
     /```[\s\S]*?```/g,     // Triple backtick code blocks
     /`[^`\n]+`/g,          // Inline code
-    /^    .+$/gm,          // Indented code blocks (4 spaces)
+    /^ {4}.+$/gm,          // Indented code blocks (4 spaces)
     /^\t.+$/gm,            // Indented code blocks (tab)
 ];
 

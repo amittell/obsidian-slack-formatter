@@ -262,7 +262,7 @@ describe('Enhanced Username Processing', () => {
             const result = extractUsername(largeInput);
             const end = Date.now();
             
-            expect(end - start).toBeLessThan(100); // Should complete in under 100ms
+            expect(end - start).toBeLessThan(process.env.CI ? 500 : 100); // Should complete in under 100ms (500ms in CI)
             // Large input gets truncated to max length, so we just verify it's processed
             expect(result.length).toBeLessThanOrEqual(USERNAME_CONFIG.MAX_LENGTH);
         });

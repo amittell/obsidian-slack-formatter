@@ -35,50 +35,78 @@ Bo (Clay)
 Bo (Clay)  Jun 9th at 10:16 AM
 Great point! Let me know if you need any other analysis on this.`;
 
+    // Common test configuration
+    const testConfig = {
+        debug: false,
+        userMap: {},
+        emojiMap: {}
+    };
+
+    // Shared setup function for parser initialization
+    const createParsers = () => ({
+        intelligentParser: new IntelligentMessageParser(
+            { debug: testConfig.debug },
+            { userMap: testConfig.userMap, emojiMap: testConfig.emojiMap }
+        ),
+        flexibleParser: new FlexibleMessageParser(),
+        slackFormatter: new SlackFormatter(
+            { debug: testConfig.debug },
+            testConfig.userMap,
+            testConfig.emojiMap
+        )
+    });
+
+    // Shared function for logging test section headers
+    const logTestSection = (sectionName: string) => {
+        console.log(`\n=== ${sectionName} ===`);
+    };
+
+    // Shared function for validating Unknown User regression
+    const validateNoUnknownUsers = (messages: any[], testName: string) => {
+        const unknownUserMessages = messages.filter(m => m.username === 'Unknown User');
+        const unknownUserCount = unknownUserMessages.length;
+        
+        console.log(`Unknown User messages: ${unknownUserCount}`);
+        
+        if (unknownUserCount > 0) {
+            console.log('❌ CRITICAL REGRESSION: Unknown User messages detected:');
+            unknownUserMessages.forEach((msg, i) => {
+                console.log(`Unknown User ${i}: "${msg.text?.substring(0, 100)}..."`);
+            });
+        }
+        
+        expect(unknownUserCount).toBe(0);
+    };
+
+    // Shared function for logging message details
+    const logMessageDetails = (messages: any[], prefix: string = 'Message') => {
+        console.log(`Total messages detected: ${messages.length}`);
+        messages.forEach((message, index) => {
+            console.log(`${prefix} ${index}: "${message.username}" - "${message.text?.substring(0, 50)}..."`);
+        });
+    };
+
     beforeEach(() => {
-        intelligentParser = new IntelligentMessageParser(
-            { debug: false },
-            { userMap: {}, emojiMap: {} }
-        );
-        flexibleParser = new FlexibleMessageParser();
-        slackFormatter = new SlackFormatter(
-            { debug: false },
-            {},
-            {}
-        );
+        const parsers = createParsers();
+        intelligentParser = parsers.intelligentParser;
+        flexibleParser = parsers.flexibleParser;
+        slackFormatter = parsers.slackFormatter;
     });
 
     describe('Critical Unknown User Regression Validation', () => {
         it('should detect 4-5 messages without Unknown User regression', () => {
-            console.log('\n=== CLAY CONVERSATION INTEGRATION TEST ===');
+            logTestSection('CLAY CONVERSATION INTEGRATION TEST');
             
             const messages = intelligentParser.parse(clayConversation, false);
-            
-            console.log(`Total messages detected: ${messages.length}`);
             
             // Group E report indicated expectation of 4-5 messages
             expect(messages.length).toBeGreaterThanOrEqual(4);
             
             // Validate individual message attribution  
-            messages.forEach((message, index) => {
-                console.log(`Message ${index}: "${message.username}" - "${message.text?.substring(0, 50)}..."`);
-            });
+            logMessageDetails(messages);
             
             // Critical: Check for Unknown User regression
-            const unknownUserMessages = messages.filter(m => m.username === 'Unknown User');
-            const unknownUserCount = unknownUserMessages.length;
-            
-            console.log(`Unknown User messages: ${unknownUserCount}`);
-            
-            if (unknownUserCount > 0) {
-                console.log('❌ CRITICAL REGRESSION: Unknown User messages detected:');
-                unknownUserMessages.forEach((msg, i) => {
-                    console.log(`Unknown User ${i}: "${msg.text?.substring(0, 100)}..."`);
-                });
-            }
-            
-            // Critical assertion: NO Unknown User messages should exist
-            expect(unknownUserCount).toBe(0);
+            validateNoUnknownUsers(messages, 'Clay Conversation Integration');
             
             // Validate specific user detection
             const usernames = messages.map(m => m.username);
@@ -100,7 +128,7 @@ Great point! Let me know if you need any other analysis on this.`;
         });
 
         it('should validate regression fix for Clay APP format parsing', () => {
-            console.log('\n=== CLAY APP FORMAT PARSING VALIDATION ===');
+            logTestSection('CLAY APP FORMAT PARSING VALIDATION');
             
             // Focus on the problematic Clay APP format line
             const clayAppSection = ` (https://app.slack.com/services/B071TQU3SAH)Clay
@@ -110,10 +138,7 @@ Hi there, thanks so much for sharing this!`;
 
             const messages = intelligentParser.parse(clayAppSection, false);
             
-            console.log(`Clay APP section messages: ${messages.length}`);
-            messages.forEach((msg, i) => {
-                console.log(`Message ${i}: "${msg.username}" - "${msg.text?.substring(0, 50)}..."`);
-            });
+            logMessageDetails(messages, 'Clay APP Message');
             
             // Should parse as Clay APP without creating Unknown User
             expect(messages.length).toBe(1);
@@ -123,7 +148,7 @@ Hi there, thanks so much for sharing this!`;
         });
 
         it('should handle individual users correctly when isolated', () => {
-            console.log('\n=== INDIVIDUAL USER VALIDATION ===');
+            logTestSection('INDIVIDUAL USER VALIDATION');
             
             const testCases = [
                 {
@@ -156,7 +181,7 @@ Great point! Let me know if you need any other analysis on this.`
         });
 
         it('should process full conversation through SlackFormatter without regressions', () => {
-            console.log('\n=== FULL SLACK FORMATTER INTEGRATION ===');
+            logTestSection('FULL SLACK FORMATTER INTEGRATION');
             
             const formattedOutput = slackFormatter.format(clayConversation);
             
@@ -186,7 +211,7 @@ Great point! Let me know if you need any other analysis on this.`
 
     describe('Performance and Integration Validation', () => {
         it('should maintain performance with integrated fixes', () => {
-            console.log('\n=== PERFORMANCE VALIDATION ===');
+            logTestSection('PERFORMANCE VALIDATION');
             
             const startTime = Date.now();
             const messages = intelligentParser.parse(clayConversation, false);
@@ -206,7 +231,7 @@ Great point! Let me know if you need any other analysis on this.`
         });
 
         it('should validate context caching optimization is working', () => {
-            console.log('\n=== CONTEXT CACHING VALIDATION ===');
+            logTestSection('CONTEXT CACHING VALIDATION');
             
             // Run the same conversation multiple times to test caching
             const iterations = 5;
@@ -221,7 +246,7 @@ Great point! Let me know if you need any other analysis on this.`
                 
                 // Validate results are consistent
                 expect(messages.length).toBeGreaterThanOrEqual(4);
-                expect(messages.filter(m => m.username === 'Unknown User').length).toBe(0);
+                validateNoUnknownUsers(messages, `Caching iteration ${i + 1}`);
             }
             
             const avgTime = times.reduce((sum, time) => sum + time, 0) / times.length;

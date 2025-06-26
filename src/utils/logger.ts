@@ -89,7 +89,7 @@ export class Logger {
         performance?: PerformanceMetrics
     ): void {
         // Basic level filtering - could be extended with configuration
-        if (level === 'debug' && !this.debugEnabled) return;
+        if (level === 'debug' && !Logger.debugEnabled) return;
 
         // Build log message with minimal overhead
         const timestamp = new Date().toISOString();
@@ -107,36 +107,36 @@ export class Logger {
         };
 
         // Store in memory for analysis (with size limit)
-        this.addLogEntry(logEntry);
+        Logger.addLogEntry(logEntry);
         
         // Build console output
-        let consoleMessage = `${this.prefix} ${timestamp} [${levelStr}] [${className}] ${message}`;
+        let consoleMessage = `${Logger.prefix} ${timestamp} [${levelStr}] [${className}] ${message}`;
         
         if (data !== undefined) {
             const logData = JSON.stringify(data);
             consoleMessage += ` | Data: ${logData}`;
         }
 
-        if (diagnostic && this.diagnosticEnabled) {
+        if (diagnostic && Logger.diagnosticEnabled) {
             consoleMessage += ` | Diagnostic: ${JSON.stringify(diagnostic)}`;
         }
 
-        if (performance && this.performanceEnabled) {
+        if (performance && Logger.performanceEnabled) {
             consoleMessage += ` | Performance: ${JSON.stringify(performance)}`;
         }
 
-        this.logger[level](consoleMessage);
+        Logger.logger[level](consoleMessage);
     }
 
     /**
      * Add log entry to in-memory storage with size management
      */
     private static addLogEntry(entry: StructuredLogEntry): void {
-        this.logEntries.push(entry);
+        Logger.logEntries.push(entry);
         
         // Prevent memory leaks by limiting stored entries
-        if (this.logEntries.length > this.maxLogEntries) {
-            this.logEntries = this.logEntries.slice(-this.maxLogEntries);
+        if (Logger.logEntries.length > Logger.maxLogEntries) {
+            Logger.logEntries = Logger.logEntries.slice(-Logger.maxLogEntries);
         }
     }
 
@@ -150,35 +150,35 @@ export class Logger {
      * @param performance Optional performance metrics.
      */
     public static debug(className: string, message: string, data?: LoggableData, diagnostic?: DiagnosticContext, performance?: PerformanceMetrics): void {
-        this.log('debug', className, message, data, diagnostic, performance);
+        Logger.log('debug', className, message, data, diagnostic, performance);
     }
     
     public static info(className: string, message: string, data?: LoggableData, diagnostic?: DiagnosticContext, performance?: PerformanceMetrics): void {
-        this.log('info', className, message, data, diagnostic, performance);
+        Logger.log('info', className, message, data, diagnostic, performance);
     }
     
     public static warn(className: string, message: string, data?: LoggableData, diagnostic?: DiagnosticContext, performance?: PerformanceMetrics): void {
-        this.log('warn', className, message, data, diagnostic, performance);
+        Logger.log('warn', className, message, data, diagnostic, performance);
     }
     
     public static error(className: string, message: string, data?: LoggableData, diagnostic?: DiagnosticContext, performance?: PerformanceMetrics): void {
-        this.log('error', className, message, data, diagnostic, performance);
+        Logger.log('error', className, message, data, diagnostic, performance);
     }
 
     /**
      * Specialized diagnostic logging for parsing decisions
      */
     public static diagnostic(className: string, message: string, diagnostic: DiagnosticContext, data?: LoggableData): void {
-        if (!this.diagnosticEnabled) return;
-        this.log('debug', className, `[DIAGNOSTIC] ${message}`, data, diagnostic);
+        if (!Logger.diagnosticEnabled) return;
+        Logger.log('debug', className, `[DIAGNOSTIC] ${message}`, data, diagnostic);
     }
 
     /**
      * Specialized performance logging for monitoring
      */
     public static performance(className: string, operation: string, metrics: PerformanceMetrics, data?: LoggableData): void {
-        if (!this.performanceEnabled) return;
-        this.log('info', className, `[PERFORMANCE] ${operation}`, data, undefined, metrics);
+        if (!Logger.performanceEnabled) return;
+        Logger.log('info', className, `[PERFORMANCE] ${operation}`, data, undefined, metrics);
     }
     
     /**
@@ -186,7 +186,7 @@ export class Logger {
      * @returns {boolean} True if debug logging is enabled
      */
     public static isDebugEnabled(): boolean {
-        return this.debugEnabled;
+        return Logger.debugEnabled;
     }
     
     /**
@@ -194,7 +194,7 @@ export class Logger {
      * @param {boolean} enabled - Whether debug logging should be enabled
      */
     public static setDebugEnabled(enabled: boolean): void {
-        this.debugEnabled = enabled;
+        Logger.debugEnabled = enabled;
     }
 
     /**
@@ -202,7 +202,7 @@ export class Logger {
      * @returns {boolean} True if diagnostic logging is enabled
      */
     public static isDiagnosticEnabled(): boolean {
-        return this.diagnosticEnabled;
+        return Logger.diagnosticEnabled;
     }
     
     /**
@@ -210,7 +210,7 @@ export class Logger {
      * @param {boolean} enabled - Whether diagnostic logging should be enabled
      */
     public static setDiagnosticEnabled(enabled: boolean): void {
-        this.diagnosticEnabled = enabled;
+        Logger.diagnosticEnabled = enabled;
     }
 
     /**
@@ -218,7 +218,7 @@ export class Logger {
      * @returns {boolean} True if performance monitoring is enabled
      */
     public static isPerformanceEnabled(): boolean {
-        return this.performanceEnabled;
+        return Logger.performanceEnabled;
     }
     
     /**
@@ -226,7 +226,7 @@ export class Logger {
      * @param {boolean} enabled - Whether performance monitoring should be enabled
      */
     public static setPerformanceEnabled(enabled: boolean): void {
-        this.performanceEnabled = enabled;
+        Logger.performanceEnabled = enabled;
     }
 
     /**
@@ -234,14 +234,14 @@ export class Logger {
      * @returns {StructuredLogEntry[]} Array of log entries
      */
     public static getLogEntries(): StructuredLogEntry[] {
-        return [...this.logEntries]; // Return copy to prevent external mutation
+        return [...Logger.logEntries]; // Return copy to prevent external mutation
     }
 
     /**
      * Clear stored log entries
      */
     public static clearLogEntries(): void {
-        this.logEntries = [];
+        Logger.logEntries = [];
     }
 
     /**
@@ -256,7 +256,7 @@ export class Logger {
         averagePerformance?: number;
     } {
         const summary = {
-            totalEntries: this.logEntries.length,
+            totalEntries: Logger.logEntries.length,
             byLevel: {} as Record<string, number>,
             diagnosticEntries: 0,
             performanceEntries: 0,
@@ -267,7 +267,7 @@ export class Logger {
         let totalDuration = 0;
         let performanceCount = 0;
 
-        for (const entry of this.logEntries) {
+        for (const entry of Logger.logEntries) {
             // Count by level
             summary.byLevel[entry.level] = (summary.byLevel[entry.level] || 0) + 1;
             
@@ -305,7 +305,7 @@ export class Logger {
         return {
             operation,
             startTime: Date.now(),
-            memoryBefore: this.getMemoryUsage()
+            memoryBefore: Logger.getMemoryUsage()
         };
     }
 
@@ -314,7 +314,7 @@ export class Logger {
      */
     public static endPerformance(metrics: PerformanceMetrics): PerformanceMetrics {
         const endTime = Date.now();
-        const memoryAfter = this.getMemoryUsage();
+        const memoryAfter = Logger.getMemoryUsage();
         
         return {
             ...metrics,
