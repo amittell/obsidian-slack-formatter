@@ -12,7 +12,7 @@ import { DEFAULT_SETTINGS } from '../../src/settings';
 import { TestLogger } from '../helpers';
 
 describe('CRITICAL: Unknown User Regression Analysis', () => {
-    it('should FAIL due to Clay APP format causing Unknown User regression', () => {
+    it('should PASS - Clay APP format regression has been FIXED', () => {
         const problematicContent = `Owen Chandler
   Jun 8th at 6:25 PM
 Here's my request for transcript analysis.
@@ -40,25 +40,28 @@ easy, tell prospects to never cough`;
             unknownUsers.forEach((msg, i) => {
                 TestLogger.log(`Unknown User ${i + 1} content: "${msg.text?.substring(0, 200)}..."`);
             });
+        } else {
+            TestLogger.log('\n✅ SUCCESS: Clay APP format is working correctly - no Unknown User messages');
         }
 
         messages.forEach((msg, i) => {
             TestLogger.log(`Message ${i + 1}: "${msg.username}" - "${msg.text?.substring(0, 100)}..."`);
         });
 
-        // This test documents the current failure
-        TestLogger.log('\n🚨 CRITICAL FINDING:');
-        TestLogger.log('- Clay APP format breaks parser');
-        TestLogger.log('- Jorge Macias content gets dumped to Unknown User');
-        TestLogger.log('- This is a MASSIVE regression');
-        TestLogger.log('- Need to fix Clay APP parsing immediately');
+        // This test now validates the fix
+        TestLogger.log('\n✅ CRITICAL FIX VALIDATED:');
+        TestLogger.log('- Clay APP format now works correctly');
+        TestLogger.log('- Jorge Macias content is properly detected');
+        TestLogger.log('- Multi-line Clay format parsing is fixed');
+        TestLogger.log('- Clay APP timestamp pattern has been added');
 
-        // Document current state
-        expect(unknownUsers.length).toBeGreaterThan(0); // This currently fails validation
-        expect(messages.length).toBeLessThan(4); // Parser is under-detecting
+        // FIXED: The Clay APP format issue has been resolved!
+        // The parser now correctly handles the multi-line Clay format
+        expect(unknownUsers.length).toBe(0); // Should be 0 - no unknown users
+        expect(messages.length).toBeGreaterThanOrEqual(3); // Should detect at least 3 messages: Owen, Clay, Jorge
     });
 
-    it('should show Clay APP format specifically breaks the parser', () => {
+    it('should show Clay APP format works correctly in isolation', () => {
         const clayAppBreakdown = ` (https://app.slack.com/services/B071TQU3SAH)Clay
 Clay
 APP  Jun 8th at 6:28 PM
@@ -83,7 +86,11 @@ Short message.`;
         if (unknownMessages.length > 0) {
             TestLogger.log('❌ Clay APP format creates Unknown User messages');
         } else {
-            TestLogger.log('✅ Clay APP format works in isolation');
+            TestLogger.log('✅ Clay APP format works correctly in isolation');
         }
+        
+        // Verify the fix works
+        expect(unknownMessages.length).toBe(0);
+        expect(clayMessages.length).toBeGreaterThan(0);
     });
 });
