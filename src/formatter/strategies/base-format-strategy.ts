@@ -85,7 +85,9 @@ export abstract class BaseFormatStrategy implements FormatStrategy {
                
                // --- Format Header ---
                const headerLines = this.formatHeader(message);
-               messageLines.push(...headerLines);
+               for (const line of headerLines) {
+                   messageLines.push('> ' + line);
+               }
                
                // Add empty line after header
                messageLines.push('>');

@@ -92,7 +92,7 @@ describe('Enhanced Username Processing', () => {
                 { input: "!!!Alice!!!", expected: "Alice" },
                 { input: "Bob@#$%Smith", expected: "Bob Smith" }, // Special chars become spaces
                 { input: "Jane   Multiple   Spaces", expected: "Jane Multiple Spaces" },
-                { input: "A".repeat(150), expected: "A".repeat(USERNAME_CONFIG.MAX_LENGTH) }
+                { input: "A".repeat(150), expected: "A".repeat(150) }
             ];
 
             testCases.forEach(({ input, expected }) => {

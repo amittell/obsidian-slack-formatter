@@ -163,10 +163,10 @@ export const USERNAME_CONFIG = {
  * App message pattern configurations
  */
 export const APP_MESSAGE_PATTERNS = {
-    /** Pattern for app messages with URL prefix - fixed to not capture spaces in app name */
-    URL_PREFIX: /^\s*\(https?:\/\/[^)]+\)([A-Za-z][A-Za-z0-9\-_.]*)/,
-    /** Pattern for app messages without parentheses - fixed to not capture spaces in app name */
-    NO_PARENS: /^\s*https?:\/\/[^\s]+\s+([A-Za-z][A-Za-z0-9\-_.]*)/,
+    /** Pattern for app messages with URL prefix - allows spaces in app name */
+    URL_PREFIX: /^\s*\(https?:\/\/[^)]+\)(.+?)$/,
+    /** Pattern for app messages without parentheses - allows spaces in app name */
+    NO_PARENS: /^\s*https?:\/\/[^\s]+\s+([A-Za-z][A-Za-z0-9\s\-_.]*)/,
     /** Pattern for app services URLs */
     SERVICES_URL: /https?:\/\/[^\s\/]*slack[^\s\/]*\/services\/[A-Z0-9]+/,
     /** Pattern for doubled app names */
