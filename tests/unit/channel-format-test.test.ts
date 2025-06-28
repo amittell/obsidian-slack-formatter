@@ -1,10 +1,24 @@
 import { describe, it, expect } from '@jest/globals';
 import { SlackFormatter } from '../../src/formatter/slack-formatter';
-import { readFileSync } from 'fs';
+import { TestLogger } from '../helpers';
 
 describe('Channel Format Testing', () => {
     it('should correctly format the provided channel conversation', () => {
-        const channelInput = readFileSync('./test-channel-sample.txt', 'utf8');
+        // Use inline channel format test content with expected usernames
+        const channelInput = `Caitlin Checkett  [12:00 PM](https://example.slack.com/archives/C123/p1234567890123456)
+Payteros has decided not to participate in this initiative.
+
+Amy Brito  [12:01 PM](https://example.slack.com/archives/C123/p1234567890123457)
+Thanks for the update @alexm and @shannoncullins.
+
+Shannon Cullins  [12:02 PM](https://example.slack.com/archives/C123/p1234567890123458)
+We should coordinate with the team on next steps.
+
+Alex Mittell  [12:03 PM](https://example.slack.com/archives/C123/p1234567890123459)
+Agreed, let's schedule a follow-up meeting.
+
+Alex Mittell  [12:05 PM](https://example.slack.com/archives/C123/p1234567890123460)
+I'll send out calendar invites for next week.`;
         
         TestLogger.log('\n=== CHANNEL FORMAT TEST ===');
         TestLogger.log('Input length:', channelInput.length);

@@ -10,6 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `npm run analyze` - Build optimization analysis using meta.json
 
 ### Testing Commands
+
 - `npm test` - Run all tests
 - `npm test -- --testPathPattern=unit` - Run only unit tests
 - `npm test -- --testPathPattern=integration` - Run integration tests
@@ -21,6 +22,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is an Obsidian plugin that formats Slack conversations into Obsidian callouts using a multi-stage processing pipeline.
 
 ### Core Processing Pipeline
+
 The formatter follows a staged processing approach:
 
 1. **PreProcessor** (`src/formatter/stages/preprocessor.ts`) - Initial text normalization and preparation
@@ -31,18 +33,22 @@ The formatter follows a staged processing approach:
 5. **PostProcessor** (`src/formatter/stages/postprocessor.ts`) - Final formatting and output generation
 
 ### Formatting Strategies
+
 The system uses different strategies for different conversation types:
+
 - **StandardFormatStrategy** - Default Obsidian callout format
 - **BracketFormatStrategy** - Alternative bracket-based format
 - **MixedFormatStrategy** - Combines multiple approaches
 
 ### Key Components
+
 - **SlackFormatter** (`src/formatter/slack-formatter.ts`) - Main orchestrator with performance limits and caching
 - **SlackMessage** (`src/models.ts`) - Core message data structure
 - **Settings** (`src/settings.ts`) - Plugin configuration with user/emoji mapping support
 - **UI Components** (`src/ui/`) - Settings tab and preview/confirmation modals
 
 ### Message Processing Flow
+
 1. Raw Slack text → PreProcessor → normalized text
 2. Normalized text → IntelligentMessageParser → SlackMessage[]
 3. Messages → FormatDetector → conversation metadata
@@ -51,7 +57,9 @@ The system uses different strategies for different conversation types:
 6. Formatted output → PostProcessor → final Obsidian content
 
 ### Performance Considerations
+
 The formatter includes built-in performance protections:
+
 - 5MB maximum input size
 - 50,000 line processing limit
 - Chunked processing for large inputs
@@ -82,12 +90,15 @@ The formatter includes built-in performance protections:
 ## Development Patterns
 
 ### Error Handling
+
 All major components use the centralized Logger utility and display user-friendly notices through Obsidian's Notice API.
 
 ### Settings Management
+
 Plugin settings include JSON-based user and emoji mappings. Settings changes trigger formatter reinitialization.
 
 ### Testing Strategy
+
 - Unit tests for individual processors and utilities
 - Integration tests for complete pipeline workflows
 - Snapshot testing for output format validation

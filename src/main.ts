@@ -25,7 +25,7 @@ export default class SlackFormatPlugin extends Plugin {
    * @type {SlackFormatSettings}
    */
   settings!: SlackFormatSettings; // Corrected type name
-  
+
   /**
    * Slack formatter instance that performs the actual formatting
    * @type {SlackFormatter}
@@ -68,7 +68,7 @@ export default class SlackFormatPlugin extends Plugin {
     try {
       Logger.info('SlackFormatPlugin', 'Initializing formatter...');
       let errorOccurred = false;
-      
+
       // Parse the JSON maps using the utility function, handling potential nulls
       const userMapResult = parseJsonMap(this.settings.userMapJson || '{}', 'User Map');
       const emojiMapResult = parseJsonMap(this.settings.emojiMapJson || '{}', 'Emoji Map');
@@ -77,36 +77,40 @@ export default class SlackFormatPlugin extends Plugin {
 
       // Show specific notices if parsing failed for any map
       if (userMapResult === null) {
-          new Notice("Error parsing User Map JSON from settings. Mentions may not work correctly.");
-          errorOccurred = true;
+        new Notice('Error parsing User Map JSON from settings. Mentions may not work correctly.');
+        errorOccurred = true;
       }
       if (emojiMapResult === null) {
-          new Notice("Error parsing Emoji Map JSON from settings. Custom emojis may not work correctly.");
-          errorOccurred = true;
+        new Notice(
+          'Error parsing Emoji Map JSON from settings. Custom emojis may not work correctly.'
+        );
+        errorOccurred = true;
       }
-      
+
       // Create formatter, passing settings and potentially empty maps if parsing failed
       this.formatter = new SlackFormatter(this.settings, userMap, emojiMap);
-      
+
       if (!errorOccurred) {
-          Logger.info('SlackFormatPlugin', 'Slack formatter initialized successfully');
+        Logger.info('SlackFormatPlugin', 'Slack formatter initialized successfully');
       } else {
-          Logger.warn('SlackFormatPlugin', 'Slack formatter initialized with potential map parsing errors.');
+        Logger.warn(
+          'SlackFormatPlugin',
+          'Slack formatter initialized with potential map parsing errors.'
+        );
       }
-      
-    } catch (error) { // Catch any unexpected errors during initialization itself
+    } catch (error) {
+      // Catch any unexpected errors during initialization itself
       Logger.error('SlackFormatPlugin', 'Unexpected error during formatter initialization:', error);
       // Fallback to ensure formatter is always assigned, even if constructor fails unexpectedly
-      this.formatter = new SlackFormatter(
-        { ...this.settings },
-        {}, {}
+      this.formatter = new SlackFormatter({ ...this.settings }, {}, {});
+      new Notice(
+        'Critical Error: Formatter initialization failed unexpectedly. Using default settings.'
       );
-      new Notice("Critical Error: Formatter initialization failed unexpectedly. Using default settings.");
     }
   }
 
   // Removed local parseJsonMap method (now using utility)
- 
+
   // Removed handlePasteEvent method
 
   /**
@@ -120,39 +124,38 @@ export default class SlackFormatPlugin extends Plugin {
   private formatAndInsert(editor: Editor, text: string): void {
     try {
       if (!text) {
-        new Notice("No text to format");
+        new Notice('No text to format');
         return;
       }
-      
+
       Logger.info('SlackFormatPlugin', 'Attempting to format text', text.substring(0, 100) + '...');
 
       // Handle auto-detect mode with confirmation dialog
       if (this.settings.hotkeyMode === 'interceptCmdV' && this.formatter.isLikelySlack(text)) {
-          if (this.settings.enableConfirmationDialog) {
-              new ConfirmSlackModal(
-                  this.app,
-                  (confirmed) => {
-                      if (confirmed) {
-                          this.performFormatting(editor, text);
-                      }
-                      // If not confirmed, do nothing
-                  }
-              ).open();
-              return; // Wait for modal confirmation
-          }
-          // If confirmation is disabled, proceed directly
-      } else if (this.settings.hotkeyMode === 'interceptCmdV' && !this.formatter.isLikelySlack(text)) {
-          // If intercept mode is on but text isn't likely Slack, do nothing (allow normal paste)
-          editor.replaceSelection(text); // Perform normal paste
-          return;
+        if (this.settings.enableConfirmationDialog) {
+          new ConfirmSlackModal(this.app, confirmed => {
+            if (confirmed) {
+              this.performFormatting(editor, text);
+            }
+            // If not confirmed, do nothing
+          }).open();
+          return; // Wait for modal confirmation
+        }
+        // If confirmation is disabled, proceed directly
+      } else if (
+        this.settings.hotkeyMode === 'interceptCmdV' &&
+        !this.formatter.isLikelySlack(text)
+      ) {
+        // If intercept mode is on but text isn't likely Slack, do nothing (allow normal paste)
+        editor.replaceSelection(text); // Perform normal paste
+        return;
       }
-      
+
       // Proceed with formatting for cmdShiftV mode or if intercept checks passed
       this.performFormatting(editor, text);
-
     } catch (error) {
       Logger.error('SlackFormatPlugin', 'Error in formatAndInsert:', error);
-      new Notice("Error formatting Slack text");
+      new Notice('Error formatting Slack text');
     }
   }
 
@@ -164,36 +167,36 @@ export default class SlackFormatPlugin extends Plugin {
    * @param {string} text - The text to format
    * @returns {void}
    */
-   private performFormatting(editor: Editor, text: string): void {
+  private performFormatting(editor: Editor, text: string): void {
     try {
-        // If preview pane is enabled, show the preview first
-        if (this.settings.enablePreviewPane) {
-            new SlackPreviewModal(
-                this.app,
-                text,
-                (formattedText) => {
-                    if (formattedText) {
-                        editor.replaceSelection(formattedText);
-                        if (this.settings.showSuccessMessage) {
-                            new Notice("Slack message formatted!");
-                        }
-                    }
-                },
-                this.formatter // Pass the formatter instance
-            ).open();
-        } else {
-            // Otherwise format directly
-            const formattedText = this.formatter.formatSlackContent(text);
-            editor.replaceSelection(formattedText);
-            if (this.settings.showSuccessMessage) {
-                new Notice("Slack message formatted!");
+      // If preview pane is enabled, show the preview first
+      if (this.settings.enablePreviewPane) {
+        new SlackPreviewModal(
+          this.app,
+          text,
+          formattedText => {
+            if (formattedText) {
+              editor.replaceSelection(formattedText);
+              if (this.settings.showSuccessMessage) {
+                new Notice('Slack message formatted!');
+              }
             }
+          },
+          this.formatter // Pass the formatter instance
+        ).open();
+      } else {
+        // Otherwise format directly
+        const formattedText = this.formatter.formatSlackContent(text);
+        editor.replaceSelection(formattedText);
+        if (this.settings.showSuccessMessage) {
+          new Notice('Slack message formatted!');
         }
+      }
     } catch (error) {
-        Logger.error('SlackFormatPlugin', 'Error during performFormatting:', error);
-        new Notice("Error applying Slack formatting.");
+      Logger.error('SlackFormatPlugin', 'Error during performFormatting:', error);
+      new Notice('Error applying Slack formatting.');
     }
-}
+  }
 
   /**
    * Reads text content from the system clipboard.
@@ -205,11 +208,10 @@ export default class SlackFormatPlugin extends Plugin {
       return await navigator.clipboard.readText();
     } catch (error) {
       Logger.error('SlackFormatPlugin', 'Error reading clipboard:', error);
-      new Notice("Error reading clipboard content. Check permissions?");
+      new Notice('Error reading clipboard content. Check permissions?');
       return null;
     }
   }
-
 
   /**
    * Format Slack content with YAML frontmatter including thread statistics.
@@ -252,7 +254,7 @@ export default class SlackFormatPlugin extends Plugin {
   async saveSettings(): Promise<void> {
     await this.saveData(this.settings);
     // Re-initialize the formatter with new settings and re-parsed maps
-    this.initFormatter(); 
+    this.initFormatter();
   }
 
   // --- Command Registration Methods ---
@@ -268,17 +270,18 @@ export default class SlackFormatPlugin extends Plugin {
       name: 'Format Slack paste with hotkey',
       hotkeys: [
         {
-          modifiers: ["Mod", "Shift"],
-          key: "v",
+          modifiers: ['Mod', 'Shift'],
+          key: 'v',
         },
       ],
       editorCallback: async (editor: Editor) => {
         const clipboardContent = await this.getClipboardContent();
-        if (clipboardContent !== null) { // Check if reading was successful
+        if (clipboardContent !== null) {
+          // Check if reading was successful
           this.formatAndInsert(editor, clipboardContent);
         }
         // Error handling is now inside getClipboardContent
-      }
+      },
     });
   }
 
@@ -294,11 +297,12 @@ export default class SlackFormatPlugin extends Plugin {
       icon: 'clipboard-list',
       editorCallback: async (editor: Editor) => {
         const clipboardContent = await this.getClipboardContent();
-        if (clipboardContent !== null) { // Check if reading was successful
+        if (clipboardContent !== null) {
+          // Check if reading was successful
           this.formatAndInsert(editor, clipboardContent);
         }
         // Error handling is now inside getClipboardContent
-      }
+      },
     });
   }
 
@@ -310,29 +314,27 @@ export default class SlackFormatPlugin extends Plugin {
    */
   private registerContextMenu(): void {
     this.registerEvent(
-      this.app.workspace.on(
-        'editor-menu',
-        (menu: Menu, editor: Editor) => {
-          menu.addItem((item: MenuItem) => {
-            item
-              .setTitle('Format as Slack conversation')
-              .setIcon('clipboard-list')
-              .onClick(async () => {
-                const selection = editor.getSelection();
-                if (selection) {
-                  this.formatAndInsert(editor, selection);
-                } else {
-                  // Use the helper method to read clipboard
-                  const clipboardContent = await this.getClipboardContent();
-                  if (clipboardContent !== null) { // Check if reading was successful
-                    this.formatAndInsert(editor, clipboardContent);
-                  }
-                  // Error handling is now inside getClipboardContent
+      this.app.workspace.on('editor-menu', (menu: Menu, editor: Editor) => {
+        menu.addItem((item: MenuItem) => {
+          item
+            .setTitle('Format as Slack conversation')
+            .setIcon('clipboard-list')
+            .onClick(async () => {
+              const selection = editor.getSelection();
+              if (selection) {
+                this.formatAndInsert(editor, selection);
+              } else {
+                // Use the helper method to read clipboard
+                const clipboardContent = await this.getClipboardContent();
+                if (clipboardContent !== null) {
+                  // Check if reading was successful
+                  this.formatAndInsert(editor, clipboardContent);
                 }
-              });
-          });
-        }
-      )
+                // Error handling is now inside getClipboardContent
+              }
+            });
+        });
+      })
     );
   }
 }

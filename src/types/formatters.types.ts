@@ -11,8 +11,8 @@ export type FormatStrategyType = 'standard' | 'bracket' | 'mixed' | 'dm' | 'thre
  * Result from processing stages
  */
 export interface ProcessorResult<T = string> {
-    content: T;
-    modified: boolean;
+  content: T;
+  modified: boolean;
 }
 
 /**

@@ -1,5 +1,9 @@
 import { BaseProcessor } from './base-processor';
-import { formatUserMentions, cleanupDoubledUsernames, formatUsername } from '../../utils/username-utils';
+import {
+  formatUserMentions,
+  cleanupDoubledUsernames,
+  formatUsername,
+} from '../../utils/username-utils';
 import type { ProcessorResult } from '../../types/formatters.types';
 import { Logger } from '../../utils/logger'; // Import Logger
 
@@ -7,20 +11,20 @@ import { Logger } from '../../utils/logger'; // Import Logger
  * Specialized processor for handling Slack user mentions and username formatting operations.
  * Manages the conversion of Slack user IDs to human-readable display names and formats
  * user mentions as Obsidian-compatible wikilinks with comprehensive error handling.
- * 
+ *
  * ## Core Functionality
  * - **User ID Resolution**: Converts `<@U12345>` patterns to display names using provided user mappings
  * - **Mention Formatting**: Transforms user mentions to `[[Username]]` wikilink format for Obsidian
  * - **Username Cleanup**: Removes doubled usernames and formatting artifacts
  * - **Graceful Fallbacks**: Handles unknown users and missing mappings appropriately
- * 
+ *
  * ## Processing Features
  * - Configurable mention formatting (can be disabled)
  * - Comprehensive user mapping with fallback for unknown users
  * - Debug logging for user resolution and formatting operations
  * - Preserves original content structure while enhancing readability
  * - International character support for usernames
- * 
+ *
  * @extends {BaseProcessor<string>}
  * @since 1.0.0
  * @example
@@ -29,22 +33,22 @@ import { Logger } from '../../utils/logger'; // Import Logger
  *   'U12345': 'John Doe',
  *   'U67890': 'Jane Smith'
  * };
- * 
+ *
  * const processor = new UsernameProcessor({
  *   userMap,
  *   enableMentions: true,
  *   isDebugEnabled: true
  * });
- * 
+ *
  * // Convert user IDs to names and format as wikilinks
  * const text = "Message from <@U12345> to <@U67890>";
  * const result = processor.process(text);
  * console.log(result.content); // "Message from [[John Doe]] to [[Jane Smith]]"
- * 
+ *
  * // Handle unknown users gracefully
  * const unknownUser = processor.process("Hello <@U99999>");
  * console.log(unknownUser.content); // "Hello [[Unknown User]]" or similar fallback
- * 
+ *
  * // Cleanup doubled usernames
  * const doubled = processor.process("JohnJohn said hello");
  * console.log(doubled.content); // "John said hello"
@@ -57,10 +61,10 @@ import { Logger } from '../../utils/logger'; // Import Logger
 export class UsernameProcessor extends BaseProcessor<string> {
   /** Map of user IDs to display names */
   private userMap: Record<string, string>;
-  
+
   /** Whether to convert @mentions to [[wikilinks]] */
   private enableMentions: boolean;
-  
+
   /** Debug mode flag */
   private isDebugEnabled: boolean; // Added property
 
@@ -71,7 +75,14 @@ export class UsernameProcessor extends BaseProcessor<string> {
    * @param {boolean} [options.enableMentions=true] - Enable mention formatting
    * @param {boolean} [options.isDebugEnabled=false] - Enable debug logging
    */
-  constructor(options: { userMap?: Record<string, string>; enableMentions?: boolean; isDebugEnabled?: boolean } = {}) { // Updated constructor signature
+  constructor(
+    options: {
+      userMap?: Record<string, string>;
+      enableMentions?: boolean;
+      isDebugEnabled?: boolean;
+    } = {}
+  ) {
+    // Updated constructor signature
     super();
     this.userMap = options.userMap ?? {};
     this.enableMentions = options.enableMentions ?? true;
@@ -103,7 +114,12 @@ export class UsernameProcessor extends BaseProcessor<string> {
         content = cleanedContent;
         modified = true;
         // Keep this log as debug
-        Logger.debug(this.constructor.name, `Cleaned doubled username: ${line} -> ${content}`, undefined, this.isDebugEnabled);
+        Logger.debug(
+          this.constructor.name,
+          `Cleaned doubled username: ${line} -> ${content}`,
+          undefined,
+          this.isDebugEnabled
+        );
       }
 
       // Format mentions if enabled
@@ -113,7 +129,12 @@ export class UsernameProcessor extends BaseProcessor<string> {
           content = processedContent;
           modified = true;
           // Keep this log as debug
-          Logger.debug(this.constructor.name, `Formatted user mention: ${line} -> ${content}`, undefined, this.isDebugEnabled);
+          Logger.debug(
+            this.constructor.name,
+            `Formatted user mention: ${line} -> ${content}`,
+            undefined,
+            this.isDebugEnabled
+          );
         }
       }
 
@@ -158,6 +179,6 @@ export class UsernameProcessor extends BaseProcessor<string> {
    * @returns {void}
    */
   updateDebugFlag(isDebugEnabled: boolean): void {
-      this.isDebugEnabled = isDebugEnabled;
+    this.isDebugEnabled = isDebugEnabled;
   }
 }

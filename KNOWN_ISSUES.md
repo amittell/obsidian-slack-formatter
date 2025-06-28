@@ -7,9 +7,11 @@ This document outlines a known limitation in the FlexibleMessageParser's message
 ## Issue Description
 
 ### Problem Summary
+
 The FlexibleMessageParser's continuation logic fails to properly merge message continuations (timestamp-only blocks) with their parent messages in certain patterns. Instead of treating standalone timestamps as continuations of the previous message from the same user, the parser creates separate message blocks, leading to message fragmentation.
 
 ### Technical Details
+
 - **Component**: `FlexibleMessageParser` (`src/formatter/stages/flexible-message-parser.ts`)
 - **Specific Issue**: Lines 515-576 in the `refineBlocks()` method
 - **Root Cause**: The continuation detection logic in the second parsing pass has incomplete pattern matching for timestamp-only lines
@@ -20,12 +22,14 @@ The FlexibleMessageParser's continuation logic fails to properly merge message c
   - Mixed format scenarios with continuation patterns
 
 ### Expected vs Actual Behavior
+
 - **Expected**: Standalone timestamps should be merged with the previous message from the same user
 - **Actual**: Standalone timestamps create separate message blocks, often with "Unknown User" as the username
 
 ## Impact Assessment
 
 ### Severity: LOW
+
 The impact of this issue is minimal for the following reasons:
 
 1. **Fallback Architecture**: The plugin uses a cascading parser system where FlexibleMessageParser serves as a fallback to the primary IntelligentMessageParser
@@ -34,6 +38,7 @@ The impact of this issue is minimal for the following reasons:
 4. **Content Preservation**: Even when the issue occurs, message content is preserved - only the message boundary detection is affected
 
 ### Real-World Impact
+
 - **Production Usage**: Minimal - most users will never encounter this issue
 - **Content Loss**: None - all message content is preserved
 - **Functionality**: Message formatting still works, just with additional message breaks
@@ -44,29 +49,34 @@ The impact of this issue is minimal for the following reasons:
 The following 5 test cases currently fail due to this limitation:
 
 ### 1. `flexible-message-parser.test.ts - should handle simple timestamp continuations`
+
 - **Expected**: 2 messages
-- **Actual**: 3 messages  
+- **Actual**: 3 messages
 - **Pattern**: `User One 10:30 AM\n\nFirst message\n\n10:31 AM\n\nContinuation`
 - **Issue**: `10:31 AM` timestamp creates separate message instead of merging with User One's message
 
 ### 2. `flexible-message-parser.test.ts - should handle bracketed timestamp continuations`
+
 - **Expected**: 2 messages
 - **Actual**: 3 messages
 - **Pattern**: `Alice Smith [3:45 PM]\n\nStarting\n\n[3:46 PM]\n\nAdding more`
 - **Issue**: `[3:46 PM]` timestamp creates separate message instead of merging
 
 ### 3. `flexible-message-parser.test.ts - should not merge messages from different authors`
+
 - **Expected**: 2 messages
 - **Actual**: 5 messages
 - **Issue**: Parser over-fragments messages and creates additional boundaries
 
 ### 4. `flexible-message-parser.test.ts - should handle multiple continuations in one message`
+
 - **Expected**: 1 message
 - **Actual**: 4 messages
 - **Pattern**: Multiple timestamp continuations within a single user's message thread
 - **Issue**: Each continuation timestamp creates a separate message block
 
 ### 5. `flexible-message-parser.test.ts - should not create Unknown User entries for continuations`
+
 - **Expected**: 1 message
 - **Actual**: 2 messages
 - **Issue**: Continuation timestamps are assigned "Unknown User" instead of being merged with the previous user's message
@@ -75,7 +85,7 @@ The following 5 test cases currently fail due to this limitation:
 
 ### Why This Issue is Acceptable
 
-1. **Cost-Benefit Analysis**: 
+1. **Cost-Benefit Analysis**:
    - **Fix Complexity**: High - would require significant refactoring of the continuation detection logic
    - **Testing Impact**: Medium - would need extensive regression testing across all Slack export formats
    - **Real-World Benefit**: Low - affects only fallback scenarios
@@ -124,16 +134,19 @@ The following 5 test cases currently fail due to this limitation:
 **Resolution**: All 5 failing FlexibleMessageParser tests have been fixed through enhanced content detection patterns.
 
 ### Changes Made:
+
 1. **Enhanced Content Detection**: Added comprehensive patterns to distinguish message content from usernames
 2. **Improved Pattern Matching**: Added missing pattern for `Username [time]` format without URLs
 3. **Better Content Recognition**: Enhanced detection of sentences, possessives, and common phrases
 4. **Null Safety**: Confirmed robust null safety handling throughout parser
 
 ### Test Results:
+
 - **Before**: 5/6 tests failing
 - **After**: 6/6 tests passing ✅
 
 ### Impact:
+
 - FlexibleMessageParser now properly handles all continuation patterns
 - No "Unknown User" messages created from content lines
 - Proper message boundary detection across all formats
@@ -147,6 +160,6 @@ The following 5 test cases currently fail due to this limitation:
 
 ---
 
-*Last Updated: June 21, 2025*  
-*Status: RESOLVED ✅*  
-*Priority: Completed*
+_Last Updated: June 21, 2025_  
+_Status: RESOLVED ✅_  
+_Priority: Completed_

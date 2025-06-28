@@ -4,205 +4,209 @@
  */
 
 // Debug utilities
-export {
-    TestDebugLogger,
-    debugLog,
-    debugLogTest,
-    type DebugLoggerConfig
-} from './debug-utils';
+export { TestDebugLogger, debugLog, debugLogTest, type DebugLoggerConfig } from './debug-utils';
 
 // Test logging utilities
 export { TestLogger } from './test-logger';
 
 // Parser setup utilities
 export {
-    createParserTestSuite,
-    createIntelligentParser,
-    createDebugParser,
-    createProductionParser,
-    createRegressionTestParser,
-    createComparisonParsers,
-    createFormattingPipeline,
-    createBoundaryTestSetup,
-    createComprehensiveTestSetup,
-    createBeforeEachSetup,
-    createParserWithUsers,
-    createPerformanceTestSetup,
-    type TestParserConfig,
-    type ParsedMaps,
-    type ParserTestSuite
+  createParserTestSuite,
+  createIntelligentParser,
+  createDebugParser,
+  createProductionParser,
+  createRegressionTestParser,
+  createComparisonParsers,
+  createFormattingPipeline,
+  createBoundaryTestSetup,
+  createComprehensiveTestSetup,
+  createBeforeEachSetup,
+  createParserWithUsers,
+  createPerformanceTestSetup,
+  type TestParserConfig,
+  type ParsedMaps,
+  type ParserTestSuite,
 } from './parser-setup';
 
 // Assertion utilities
 export {
-    assertUserValidation,
-    assertMessageCount,
-    assertContentPreservation,
-    assertUsernameAttribution,
-    assertMessageBoundaries,
-    assertUserDifferentiation,
-    assertPerformanceMetrics,
-    assertFormattedStructure,
-    assertNoContentMerging,
-    assertRegressionFix,
-    createValidationSuite,
-    type ParsedMessage,
-    type UserValidationResult,
-    type ContentValidationResult
+  assertUserValidation,
+  assertMessageCount,
+  assertContentPreservation,
+  assertUsernameAttribution,
+  assertMessageBoundaries,
+  assertUserDifferentiation,
+  assertPerformanceMetrics,
+  assertFormattedStructure,
+  assertNoContentMerging,
+  assertRegressionFix,
+  createValidationSuite,
+  type ParsedMessage,
+  type UserValidationResult,
+  type ContentValidationResult,
 } from './assertion-utils';
 
 // Test fixtures
 export {
-    CLAY_CONVERSATION,
-    CLAY_APP_ONLY,
-    BO_CLAY_ONLY,
-    JORGE_MESSAGE,
-    THREAD_FORMAT_CONVERSATION,
-    DM_FORMAT_CONVERSATION,
-    MIXED_FORMAT_CONVERSATION,
-    BILL_MEI_CONVERSATION,
-    BOUNDARY_DETECTION_CONVERSATION,
-    PERFORMANCE_TEST_CONVERSATION,
-    REGRESSION_TEST_CONVERSATION,
-    ALL_TEST_CONVERSATIONS,
-    EDGE_CASE_CONVERSATIONS,
-    getTestConversation,
-    createTestConversation,
-    getConversationForFeature,
-    type TestConversation
+  CLAY_CONVERSATION,
+  CLAY_APP_ONLY,
+  BO_CLAY_ONLY,
+  JORGE_MESSAGE,
+  THREAD_FORMAT_CONVERSATION,
+  DM_FORMAT_CONVERSATION,
+  MIXED_FORMAT_CONVERSATION,
+  BILL_MEI_CONVERSATION,
+  BOUNDARY_DETECTION_CONVERSATION,
+  PERFORMANCE_TEST_CONVERSATION,
+  REGRESSION_TEST_CONVERSATION,
+  ALL_TEST_CONVERSATIONS,
+  EDGE_CASE_CONVERSATIONS,
+  getTestConversation,
+  createTestConversation,
+  getConversationForFeature,
+  type TestConversation,
 } from './test-fixtures';
 
 // Performance utilities
 export {
-    measurePerformance,
-    benchmarkFunction,
-    validatePerformance,
-    logPerformanceBenchmark,
-    PerformanceTestSuite,
-    quickBenchmark,
-    PERFORMANCE_THRESHOLDS,
-    getPerformanceThresholds,
-    type PerformanceMetrics,
-    type PerformanceBenchmark,
-    type PerformanceSummary,
-    type PerformanceThresholds
+  measurePerformance,
+  benchmarkFunction,
+  validatePerformance,
+  logPerformanceBenchmark,
+  PerformanceTestSuite,
+  quickBenchmark,
+  PERFORMANCE_THRESHOLDS,
+  getPerformanceThresholds,
+  type PerformanceMetrics,
+  type PerformanceBenchmark,
+  type PerformanceSummary,
+  type PerformanceThresholds,
 } from './performance-utils';
 
 /**
  * Quick setup function for common test patterns
  * Combines the most frequently used utilities
  */
-export function setupTestSuite(testName: string, config: {
+export function setupTestSuite(
+  testName: string,
+  config: {
     debug?: boolean;
     userMap?: Record<string, string>;
     emojiMap?: Record<string, string>;
     conversation?: string;
     expectedUsers?: string[];
-} = {}) {
-    const logger = TestDebugLogger.create(testName, config.debug);
-    const { parser, formatter, parseMessages, parseAndFormat } = createFormattingPipeline({
-        debug: config.debug ?? false,
-        userMap: config.userMap ?? {},
-        emojiMap: config.emojiMap ?? {}
-    });
-    
-    const testUtils = {
-        logger,
-        parser,
-        formatter,
-        parseMessages,
-        parseAndFormat,
-        
-        // Common test patterns
-        parseAndValidate: (input: string, expectedUsers: string[] = config.expectedUsers ?? []) => {
-            const messages = parseMessages(input);
-            logger.logParsingResults(messages, input.length);
-            
-            if (expectedUsers.length > 0) {
-                const validation = assertUserValidation(messages, expectedUsers, { allowUnknownUser: false });
-                logger.logUserValidation(messages, expectedUsers);
-                return { messages, validation };
-            }
-            
-            return { messages };
-        },
-        
-        fullPipelineTest: (input: string, expectedUsers: string[], criticalContent: string[]) => {
-            const messages = parseMessages(input);
-            const formatted = parseAndFormat(input);
-            
-            logger.logParsingResults(messages, input.length);
-            
-            const validation = createValidationSuite(messages, expectedUsers, criticalContent, formatted);
-            const userValidation = validation.validateUsers();
-            const contentValidation = validation.validateContent();
-            
-            logger.logUserValidation(messages, expectedUsers);
-            if (contentValidation) {
-                logger.logContentIntegrity(formatted, criticalContent);
-            }
-            
-            return {
-                messages,
-                formatted,
-                userValidation,
-                contentValidation,
-                validation
-            };
-        }
-    };
-    
-    return testUtils;
+  } = {}
+) {
+  const logger = TestDebugLogger.create(testName, config.debug);
+  const { parser, formatter, parseMessages, parseAndFormat } = createFormattingPipeline({
+    debug: config.debug ?? false,
+    userMap: config.userMap ?? {},
+    emojiMap: config.emojiMap ?? {},
+  });
+
+  const testUtils = {
+    logger,
+    parser,
+    formatter,
+    parseMessages,
+    parseAndFormat,
+
+    // Common test patterns
+    parseAndValidate: (input: string, expectedUsers: string[] = config.expectedUsers ?? []) => {
+      const messages = parseMessages(input);
+      logger.logParsingResults(messages, input.length);
+
+      if (expectedUsers.length > 0) {
+        const validation = assertUserValidation(messages, expectedUsers, {
+          allowUnknownUser: false,
+        });
+        logger.logUserValidation(messages, expectedUsers);
+        return { messages, validation };
+      }
+
+      return { messages };
+    },
+
+    fullPipelineTest: (input: string, expectedUsers: string[], criticalContent: string[]) => {
+      const messages = parseMessages(input);
+      const formatted = parseAndFormat(input);
+
+      logger.logParsingResults(messages, input.length);
+
+      const validation = createValidationSuite(messages, expectedUsers, criticalContent, formatted);
+      const userValidation = validation.validateUsers();
+      const contentValidation = validation.validateContent();
+
+      logger.logUserValidation(messages, expectedUsers);
+      if (contentValidation) {
+        logger.logContentIntegrity(formatted, criticalContent);
+      }
+
+      return {
+        messages,
+        formatted,
+        userValidation,
+        contentValidation,
+        validation,
+      };
+    },
+  };
+
+  return testUtils;
 }
 
 /**
  * Quick test for regression validation
  */
-export function createRegressionTest(testName: string, conversation: string, expectedUsers: string[]) {
-    const logger = TestDebugLogger.create(testName);
-    const parser = createRegressionTestParser();
-    
-    return {
-        runTest: () => {
-            const messages = parser.parse(conversation, false);
-            logger.logParsingResults(messages, conversation.length);
-            
-            const validation = assertUserValidation(messages, expectedUsers, { allowUnknownUser: false });
-            logger.logUserValidation(messages, expectedUsers);
-            
-            assertRegressionFix(messages, {
-                minMessageCount: Math.max(2, expectedUsers.length - 1),
-                noUnknownUser: true,
-                noTimestampAsUsername: true
-            });
-            
-            logger.logSuccess('Regression test passed');
-            return { messages, validation };
-        }
-    };
+export function createRegressionTest(
+  testName: string,
+  conversation: string,
+  expectedUsers: string[]
+) {
+  const logger = TestDebugLogger.create(testName);
+  const parser = createRegressionTestParser();
+
+  return {
+    runTest: () => {
+      const messages = parser.parse(conversation, false);
+      logger.logParsingResults(messages, conversation.length);
+
+      const validation = assertUserValidation(messages, expectedUsers, { allowUnknownUser: false });
+      logger.logUserValidation(messages, expectedUsers);
+
+      assertRegressionFix(messages, {
+        minMessageCount: Math.max(2, expectedUsers.length - 1),
+        noUnknownUser: true,
+        noTimestampAsUsername: true,
+      });
+
+      logger.logSuccess('Regression test passed');
+      return { messages, validation };
+    },
+  };
 }
 
 /**
  * Quick performance test setup
  */
 export function createQuickPerformanceTest(testName: string, testInput: string) {
-    const suite = new PerformanceTestSuite(getPerformanceThresholds());
-    const parser = createProductionParser();
-    
-    return {
-        runBenchmark: (iterations: number = 5) => {
-            const benchmark = suite.benchmarkParser(
-                testName,
-                (input) => parser.parse(input, false),
-                testInput,
-                iterations,
-                (messages) => messages.length
-            );
-            
-            logPerformanceBenchmark(benchmark);
-            const validation = validatePerformance(benchmark, getPerformanceThresholds());
-            
-            return { benchmark, validation };
-        }
-    };
+  const suite = new PerformanceTestSuite(getPerformanceThresholds());
+  const parser = createProductionParser();
+
+  return {
+    runBenchmark: (iterations: number = 5) => {
+      const benchmark = suite.benchmarkParser(
+        testName,
+        input => parser.parse(input, false),
+        testInput,
+        iterations,
+        messages => messages.length
+      );
+
+      logPerformanceBenchmark(benchmark);
+      const validation = validatePerformance(benchmark, getPerformanceThresholds());
+
+      return { benchmark, validation };
+    },
+  };
 }

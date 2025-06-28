@@ -5,21 +5,21 @@ import { Logger } from '../../utils/logger'; // Import the new Logger
  * Abstract base class for all content processors in the Slack formatting pipeline.
  * Provides common functionality including input validation, error handling, and logging
  * while establishing a consistent interface for all transformation operations.
- * 
+ *
  * ## Design Pattern
  * This class implements the Template Method pattern, where subclasses implement the
  * specific `process` method while inheriting common validation and utility methods.
- * 
+ *
  * ## Generic Type Parameters
  * - `T`: Input type for the processor (string, array, object, etc.)
  * - `U`: Output content type (defaults to string for most text processors)
- * 
+ *
  * ## Common Functionality
  * - **Input Validation** - Consistent validation for string and array inputs
  * - **Error Handling** - Standardized error logging and recovery
  * - **Logging Interface** - Unified logging using class name as context
  * - **Type Safety** - Generic type support for different processor types
- * 
+ *
  * @template T The input type that this processor accepts
  * @template U The output content type (defaults to string)
  * @abstract Must be extended by concrete processor implementations
@@ -31,12 +31,12 @@ import { Logger } from '../../utils/logger'; // Import the new Logger
  *   process(input: string): ProcessorResult<string> {
  *     const validation = this.validateStringInput(input);
  *     if (validation) return validation;
- *     
+ *
  *     const processed = input.toUpperCase();
  *     return { content: processed, modified: processed !== input };
  *   }
  * }
- * 
+ *
  * // Array-to-string processor
  * class ArrayJoinProcessor extends BaseProcessor<string[], string> {
  *   process(input: string[]): ProcessorResult<string> {
@@ -44,12 +44,12 @@ import { Logger } from '../../utils/logger'; // Import the new Logger
  *     if (validInput.length === 0) {
  *       return { content: '', modified: false };
  *     }
- *     
+ *
  *     const joined = validInput.join(' ');
  *     return { content: joined, modified: true };
  *   }
  * }
- * 
+ *
  * // Usage
  * const textProcessor = new MyTextProcessor();
  * const result = textProcessor.process("hello world");
@@ -65,13 +65,13 @@ export abstract class BaseProcessor<T, U = string> {
   /**
    * Abstract method that must be implemented by all concrete processor classes.
    * Defines the core transformation logic for converting input to processed output.
-   * 
+   *
    * ## Implementation Requirements
    * - Must handle all expected input types gracefully
    * - Should use validation methods for input checking
    * - Must return ProcessorResult with content and modification status
    * - Should use logging methods for error reporting and debugging
-   * 
+   *
    * @param {T} input - The input data to be processed by this processor
    * @returns {ProcessorResult<U>} Result containing processed content and modification flag
    * @abstract Must be implemented by concrete processor classes
@@ -83,20 +83,20 @@ export abstract class BaseProcessor<T, U = string> {
    * Validates string input for processor operations with comprehensive error handling.
    * Provides consistent input validation across all string-based processors with
    * automatic type coercion and detailed logging for invalid inputs.
-   * 
+   *
    * ## Validation Rules
    * - Rejects null/undefined inputs (returns empty string result)
    * - Converts non-string inputs to strings automatically
    * - Optionally rejects empty strings based on allowEmpty parameter
    * - Logs warnings for type mismatches and validation failures
-   * 
+   *
    * ## Type Safety Note
    * This method uses type casting (as U) which is safe because:
    * 1. It's a protected method only used by subclasses
    * 2. Subclasses that use non-string types for U should not call this method
    * 3. The method name clearly indicates it's for string validation
    * 4. Runtime validation ensures string output regardless of generic type
-   * 
+   *
    * @param {any} input - Input value to validate (expected to be string)
    * @param {boolean} [allowEmpty=true] - Whether to allow empty strings as valid input
    * @returns {ProcessorResult<U> | null} ProcessorResult with fallback content if invalid, null if input is valid
@@ -111,7 +111,7 @@ export abstract class BaseProcessor<T, U = string> {
    *     if (validation) {
    *       return validation; // Return early with validation result
    *     }
-   *     
+   *
    *     // Process valid input
    *     const processed = input.toUpperCase();
    *     return { content: processed, modified: processed !== input };
@@ -128,8 +128,8 @@ export abstract class BaseProcessor<T, U = string> {
 
     // Check if input is a string
     if (typeof input !== 'string') {
-      this.log('warn', 'Input is not a string', { 
-        actualType: typeof input 
+      this.log('warn', 'Input is not a string', {
+        actualType: typeof input,
       });
       return { content: String(input) as U, modified: false };
     }
@@ -148,13 +148,13 @@ export abstract class BaseProcessor<T, U = string> {
    * Validates array input for processor operations with comprehensive error handling.
    * Provides consistent input validation for array-based processors with automatic
    * fallback to empty arrays and detailed logging for invalid inputs.
-   * 
+   *
    * ## Validation Rules
    * - Rejects null/undefined inputs (returns empty array)
    * - Rejects non-array inputs (returns empty array)
    * - Optionally validates against empty arrays based on allowEmpty parameter
    * - Logs warnings for type mismatches and validation failures
-   * 
+   *
    * @template T The expected element type of the array
    * @param {any} input - Input value to validate (expected to be array)
    * @param {boolean} [allowEmpty=true] - Whether to allow empty arrays as valid input
@@ -170,7 +170,7 @@ export abstract class BaseProcessor<T, U = string> {
    *     if (validArray.length === 0) {
    *       return { content: '', modified: false };
    *     }
-   *     
+   *
    *     // Process valid array
    *     const joined = validArray.join(', ');
    *     return { content: joined, modified: true };
@@ -187,8 +187,8 @@ export abstract class BaseProcessor<T, U = string> {
 
     // Check if input is an array
     if (!Array.isArray(input)) {
-      this.log('warn', 'Input is not an array', { 
-        actualType: typeof input 
+      this.log('warn', 'Input is not an array', {
+        actualType: typeof input,
       });
       return [];
     }
@@ -207,13 +207,13 @@ export abstract class BaseProcessor<T, U = string> {
    * Logs a message using the shared Logger utility with automatic context identification.
    * Provides a consistent logging interface for all processors with the processor class
    * name automatically included as context for easier debugging and monitoring.
-   * 
+   *
    * ## Logging Features
    * - Automatic context identification using class constructor name
    * - Support for all standard log levels (debug, info, warn, error)
    * - Optional structured data for detailed debugging
    * - Consistent formatting across all processors
-   * 
+   *
    * @param {('debug'|'info'|'warn'|'error')} level - Log level indicating severity and importance
    * @param {string} message - Primary log message describing the event or condition
    * @param {any} [data] - Optional structured data for additional context (objects, arrays, etc.)
@@ -224,7 +224,7 @@ export abstract class BaseProcessor<T, U = string> {
    * class MyProcessor extends BaseProcessor<string> {
    *   process(input: string): ProcessorResult<string> {
    *     this.log('debug', 'Starting processing', { inputLength: input.length });
-   *     
+   *
    *     try {
    *       const result = this.doComplexOperation(input);
    *       this.log('info', 'Processing completed successfully');

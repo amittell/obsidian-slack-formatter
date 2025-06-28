@@ -25,11 +25,21 @@ describe('Manual Test - Real Conversation', () => {
     });
 
     it('should format the test conversation correctly', () => {
-        // Read the test conversation
-        const testText = fs.readFileSync(
-            path.join(__dirname, '../../test-slack-conversation.txt'), 
-            'utf8'
-        );
+        // Use inline test conversation since external file doesn't exist
+        const testText = `John Doe  [12:00 PM](https://example.slack.com/archives/C123/p123)
+Hello everyone, this is a test message.
+
+Jane Smith  [12:01 PM](https://example.slack.com/archives/C123/p124)
+Reply to the test message with some content.
+
+Bob Wilson  [12:02 PM](https://example.slack.com/archives/C123/p125)
+Another message in the conversation.
+
+Alice Johnson  [12:03 PM](https://example.slack.com/archives/C123/p126)
+Final message with additional content for testing.
+
+Mike Brown  [12:04 PM](https://example.slack.com/archives/C123/p127)
+One more message to ensure we have enough test data.`;
 
         TestLogger.log('=== Input Text ===');
         TestLogger.log('Length:', testText.length, 'characters');
@@ -43,17 +53,16 @@ describe('Manual Test - Real Conversation', () => {
         TestLogger.log(result);
         TestLogger.log('\n');
 
-        // Save the result
-        fs.writeFileSync(
-            path.join(__dirname, '../../test-result.md'), 
-            result
-        );
-        
-        // Save a debug version with just the first 2000 chars
-        fs.writeFileSync(
-            path.join(__dirname, '../../test-result-debug.md'), 
-            result.substring(0, 2000)
-        );
+        // Skip file writing in tests to avoid file system dependencies
+        // fs.writeFileSync(
+        //     path.join(__dirname, '../../test-result.md'), 
+        //     result
+        // );
+        // 
+        // fs.writeFileSync(
+        //     path.join(__dirname, '../../test-result-debug.md'), 
+        //     result.substring(0, 2000)
+        // );
 
         // Basic assertions
         expect(result).toBeTruthy();

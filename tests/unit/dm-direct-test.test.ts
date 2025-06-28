@@ -1,13 +1,22 @@
 import { describe, it, expect } from '@jest/globals';
 import { SlackFormatter } from '../../src/formatter/slack-formatter';
 import { DEFAULT_SETTINGS } from '../../src/settings';
-import { readFileSync } from 'fs';
-import { join } from 'path';
+import { TestLogger } from '../helpers';
 
 describe('DM Direct Test - Real Problematic Input', () => {
     it('should handle the actual DM input without Unknown User issues', () => {
-        // Read the actual DM input
-        const dmInput = readFileSync(join(__dirname, '../../test-slack-content.txt'), 'utf8');
+        // Use inline test content instead of external file
+        const dmInput = `Amy BritoAmy Brito
+  12:36 PM
+Hi Alex, Shannon, what package of materials are we ready to take to Infosys
+
+Alex MittellAlex Mittell
+  1:14 PM
+Hi @amybrito, we are in product development currently
+
+Josh LeveyJosh Levey
+  1:15 PM  
+We have some feedback from Guidewire team about improvements needed`;
         
         TestLogger.log('=== DM Input Length ===');
         TestLogger.log('Length:', dmInput.length);
@@ -19,9 +28,9 @@ describe('DM Direct Test - Real Problematic Input', () => {
             ...DEFAULT_SETTINGS,
             debug: true,
             userMapJson: JSON.stringify({
-                "user1": "User1",
-                "user2": "User2", 
-                "user3": "User3"
+                "U123": "Amy Brito",
+                "U456": "Alex Mittell", 
+                "U789": "Josh Levey"
             })
         };
 
@@ -62,12 +71,13 @@ describe('DM Direct Test - Real Problematic Input', () => {
         expect(unknownUserCount).toBe(0);
         
         // Should contain the actual usernames from test data
-        expect(formattedResult).toContain('User1');
-        expect(formattedResult).toContain('User2');
-        expect(formattedResult).toContain('User3');
+        expect(formattedResult).toContain('Amy Brito');
+        expect(formattedResult).toContain('Alex Mittell');
+        expect(formattedResult).toContain('Josh Levey');
         
         // Should contain some of the actual content
-        expect(formattedResult).toContain('feedback');
+        expect(formattedResult).toContain('Infosys');
+        expect(formattedResult).toContain('product development');
         expect(formattedResult).toContain('Guidewire');
     });
 });

@@ -3,16 +3,14 @@
   "exclude": [
     "node_modules",
     "debug-*.ts",
-    "demo-*.ts", 
+    "demo-*.ts",
     "tests/unit/test-*.test.ts",
     "tests/unit/*-debug*.test.ts",
     "coverage",
     "src/**/*.js",
     "src/utils/infrastructure-index.ts"
   ],
-  "include": [
-    "src/**/*.ts"
-  ],
+  "include": ["src/**/*.ts"],
   "compilerOptions": {
     "noEmit": true,
     "skipLibCheck": true,

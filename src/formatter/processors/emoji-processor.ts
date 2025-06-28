@@ -12,7 +12,7 @@ import { Logger } from '../../utils/logger';
 export class EmojiProcessor extends BaseProcessor<string> {
   /** Map of emoji codes to Unicode characters */
   private emojiMap: Record<string, string>;
-  
+
   /** Debug mode flag */
   private isDebugEnabled: boolean; // Added property
 
@@ -22,7 +22,8 @@ export class EmojiProcessor extends BaseProcessor<string> {
    * @param {Record<string, string>} [options.emojiMap={}] - Custom emoji mappings
    * @param {boolean} [options.isDebugEnabled=false] - Enable debug logging
    */
-  constructor(options: { emojiMap?: Record<string, string>; isDebugEnabled?: boolean } = {}) { // Updated constructor signature
+  constructor(options: { emojiMap?: Record<string, string>; isDebugEnabled?: boolean } = {}) {
+    // Updated constructor signature
     super();
     this.emojiMap = options.emojiMap ?? {};
     this.isDebugEnabled = options.isDebugEnabled ?? false; // Added initialization
@@ -44,7 +45,12 @@ export class EmojiProcessor extends BaseProcessor<string> {
       const processed = replaceEmoji(line, this.emojiMap);
       const modified = processed !== line;
       if (modified && this.isDebugEnabled) {
-        Logger.debug(this.constructor.name, `Emoji processing: ${line} -> ${processed}`, { modified }, this.isDebugEnabled);
+        Logger.debug(
+          this.constructor.name,
+          `Emoji processing: ${line} -> ${processed}`,
+          { modified },
+          this.isDebugEnabled
+        );
       }
       return { content: processed, modified };
     } catch (error) {
@@ -87,6 +93,6 @@ export class EmojiProcessor extends BaseProcessor<string> {
    * @returns {void}
    */
   updateDebugFlag(isDebugEnabled: boolean): void {
-      this.isDebugEnabled = isDebugEnabled;
+    this.isDebugEnabled = isDebugEnabled;
   }
 }
