@@ -261,10 +261,11 @@ export class MessageContinuationProcessor extends BaseProcessor<SlackMessage[], 
     // Also check if the message has a timestamp but no real content
     // (just the timestamp line itself)
     // Add null/undefined check for message.timestamp before string operations
-    const isJustTimestamp =
+    const isJustTimestamp = Boolean(
       message.timestamp &&
-      typeof message.timestamp === 'string' &&
-      (!text || text === message.timestamp);
+        typeof message.timestamp === 'string' &&
+        (!text || text === message.timestamp)
+    );
 
     return startsWithTimestamp || isTimestampWithContent || isJustTimestamp;
   }

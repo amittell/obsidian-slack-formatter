@@ -1,6 +1,6 @@
 import { describe, it, expect } from '@jest/globals';
 import { IntelligentMessageParser } from '../../src/formatter/stages/intelligent-message-parser';
-import { TestLogger } from '../helpers';
+import { TestLogger, createTestSettings } from '../helpers';
 
 describe('Owen Chandler Message Splitting', () => {
   it('should split Owen Chandler into 2 separate messages at #CONTEXT# boundary', () => {
@@ -12,7 +12,10 @@ Initial message content here.
 #CONTEXT#
 You're finding the rep's longest monologue in a transcript.`;
 
-    const parser = new IntelligentMessageParser({ debug: false }, { userMap: {}, emojiMap: {} });
+    const parser = new IntelligentMessageParser(createTestSettings({ debug: false }), {
+      userMap: {},
+      emojiMap: {},
+    });
     const messages = parser.parse(input);
 
     if (process.env.DEBUG_TESTS) {

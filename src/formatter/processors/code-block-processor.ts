@@ -158,12 +158,9 @@ export class CodeBlockProcessor extends BaseProcessor<string> {
       const modified = withCode !== line;
       if (modified) {
         // Changed log level to debug and pass isDebugEnabled flag
-        Logger.debug(
-          this.constructor.name,
-          `Formatted code block: ${line} -> ${withCode}`,
-          undefined,
-          this.isDebugEnabled
-        );
+        if (this.isDebugEnabled) {
+          Logger.debug(this.constructor.name, `Formatted code block: ${line} -> ${withCode}`);
+        }
       }
       return { content: withCode, modified };
     } catch (error) {

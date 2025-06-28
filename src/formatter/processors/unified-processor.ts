@@ -158,7 +158,7 @@ export class UnifiedProcessor extends BaseProcessor<string> {
     this.steps = [
       {
         name: 'Text Sanitization',
-        enabled: s => s.enableTextSanitization !== false, // Default to enabled
+        enabled: s => true, // Always enabled for text sanitization
         processor: this, // Use self as processor for sanitization
         process: text => this.sanitizeText(text),
         fallback: text => text, // Keep original if sanitization fails
@@ -236,7 +236,7 @@ export class UnifiedProcessor extends BaseProcessor<string> {
    */
   private createEmojiProcessor(emojiMap: Record<string, string>): EmojiProcessor {
     return new EmojiProcessor({
-      customEmojis: emojiMap || {},
+      emojiMap: emojiMap || {},
       isDebugEnabled: this.settings?.debug || false,
     });
   }
@@ -367,7 +367,7 @@ export class UnifiedProcessor extends BaseProcessor<string> {
     }
 
     if (debug && debugInfo.length > 0) {
-      Logger.debug('UnifiedProcessor', 'Processing steps', debugInfo, debug);
+      Logger.debug('UnifiedProcessor', 'Processing steps', debugInfo);
     }
 
     return processed;

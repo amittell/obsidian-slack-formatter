@@ -121,14 +121,8 @@ export class UrlProcessor extends BaseProcessor<string> {
       // Call the utility function
       const withUrls = formatSlackUrlSyntax(line);
       const modified = withUrls !== line;
-      if (modified) {
-        // Changed log level to debug and pass isDebugEnabled flag
-        Logger.debug(
-          this.constructor.name,
-          `Formatted URL: ${line} -> ${withUrls}`,
-          undefined,
-          this.isDebugEnabled
-        );
+      if (modified && this.isDebugEnabled) {
+        Logger.debug(this.constructor.name, `Formatted URL: ${line} -> ${withUrls}`);
       }
       return { content: withUrls, modified };
     } catch (error) {

@@ -160,14 +160,8 @@ export class ThreadLinkProcessor extends BaseProcessor<string> {
     try {
       const withThreads = formatThreadLinks(line);
       const modified = withThreads !== line;
-      if (modified) {
-        // Changed log level to debug and pass isDebugEnabled flag
-        Logger.debug(
-          this.constructor.name,
-          `Formatted thread link: ${line} -> ${withThreads}`,
-          undefined,
-          this.isDebugEnabled
-        );
+      if (modified && this.isDebugEnabled) {
+        Logger.debug(this.constructor.name, `Formatted thread link: ${line} -> ${withThreads}`);
       }
       return { content: withThreads, modified };
     } catch (error) {

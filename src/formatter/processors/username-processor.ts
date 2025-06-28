@@ -114,12 +114,9 @@ export class UsernameProcessor extends BaseProcessor<string> {
         content = cleanedContent;
         modified = true;
         // Keep this log as debug
-        Logger.debug(
-          this.constructor.name,
-          `Cleaned doubled username: ${line} -> ${content}`,
-          undefined,
-          this.isDebugEnabled
-        );
+        if (this.isDebugEnabled) {
+          Logger.debug(this.constructor.name, `Cleaned doubled username: ${line} -> ${content}`);
+        }
       }
 
       // Format mentions if enabled
@@ -129,12 +126,9 @@ export class UsernameProcessor extends BaseProcessor<string> {
           content = processedContent;
           modified = true;
           // Keep this log as debug
-          Logger.debug(
-            this.constructor.name,
-            `Formatted user mention: ${line} -> ${content}`,
-            undefined,
-            this.isDebugEnabled
-          );
+          if (this.isDebugEnabled) {
+            Logger.debug(this.constructor.name, `Formatted user mention: ${line} -> ${content}`);
+          }
         }
       }
 

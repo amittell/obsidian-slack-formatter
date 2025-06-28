@@ -1,6 +1,6 @@
 import { describe, it, expect } from '@jest/globals';
 import { IntelligentMessageParser } from '../../src/formatter/stages/intelligent-message-parser';
-import { TestLogger } from '../helpers';
+import { TestLogger, createTestSettings } from '../helpers';
 
 describe('Test message line extraction', () => {
     it('should slice correct lines from boundaries', () => {
@@ -32,7 +32,7 @@ describe('Test message line extraction', () => {
         
         // Now test what extractSingleMessage does with these lines
         const parser = new IntelligentMessageParser(
-            { debug: true },
+            createTestSettings({ debug: true }),
             { userMap: {}, emojiMap: {} }
         );
         

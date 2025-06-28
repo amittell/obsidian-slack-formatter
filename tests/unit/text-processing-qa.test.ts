@@ -2,7 +2,8 @@ import { describe, it, expect, beforeEach } from '@jest/globals';
 import { FlexibleMessageParser } from '../../src/formatter/stages/flexible-message-parser';
 import { IntelligentMessageParser } from '../../src/formatter/stages/intelligent-message-parser';
 import { normalizeWhitespace, cleanText, isValidText } from '../../src/utils/text-utils';
-import { processEmoji, extractEmojiReactions } from '../../src/utils/emoji-utils';
+import { extractEmojiCodes } from '../../src/utils/emoji-utils';
+import { createTestSettings } from '../helpers';
 
 describe('Text Processing Quality Assurance Suite', () => {
   let flexibleParser: FlexibleMessageParser;
@@ -10,10 +11,10 @@ describe('Text Processing Quality Assurance Suite', () => {
 
   beforeEach(() => {
     flexibleParser = new FlexibleMessageParser();
-    intelligentParser = new IntelligentMessageParser(
-      { debug: false },
-      { userMap: {}, emojiMap: {} }
-    );
+    intelligentParser = new IntelligentMessageParser(createTestSettings({ debug: false }), {
+      userMap: {},
+      emojiMap: {},
+    });
   });
 
   describe('Character Encoding Tests', () => {

@@ -111,6 +111,34 @@ export interface TestParserConfig {
   settings?: any;
 }
 
+/**
+ * Create minimal SlackFormatSettings for testing
+ */
+export function createTestSettings(overrides: Partial<any> = {}): any {
+  return {
+    detectCodeBlocks: true,
+    convertUserMentions: true,
+    replaceEmoji: true,
+    parseSlackTimes: true,
+    highlightThreads: true,
+    convertSlackLinks: true,
+    userMapJson: '{}',
+    emojiMapJson: '{}',
+    hotkeyMode: 'cmdShiftV' as const,
+    maxLines: 5000,
+    enablePreviewPane: true,
+    enableConfirmationDialog: true,
+    showSuccessMessage: true,
+    collapseThreads: true,
+    threadCollapseThreshold: 10,
+    frontmatterCssClass: 'slack-conversation',
+    frontmatterTitle: '# Slack Conversation',
+    timeZone: '',
+    debug: false,
+    ...overrides,
+  };
+}
+
 export interface ParsedMaps {
   userMap: Record<string, string>;
   emojiMap: Record<string, string>;
