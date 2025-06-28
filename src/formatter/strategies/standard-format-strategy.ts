@@ -135,8 +135,7 @@ export class StandardFormatStrategy extends BaseFormatStrategy {
 
     // Construct the new header lines with callout prefix
     const isThreadReply =
-      message.isThreadReply ||
-      (message.threadInfo && message.threadInfo.includes('replied to a thread:'));
+      message.isThreadReply || message.threadInfo?.includes('replied to a thread:');
     const titleLine = isThreadReply
       ? `[!slack]+ Thread Reply from ${displayName}`
       : `[!slack]+ Message from ${displayName}`;

@@ -162,19 +162,19 @@ Transform Slack knowledge sharing into permanent notes:
 
 - Check if the text is recognized as Slack format
 - Verify hotkey mode settings
-- Try using Command Palette instead
+- Try using the Command Palette instead
 
-**User mentions not converting**
+#### User mentions not converting
 
 - Configure User Mapping in settings
 - Ensure @ symbol is preserved in copied text
 
-**Custom emojis not replacing**
+#### Custom emojis not replacing
 
 - Add emoji mappings in Emoji Mapping settings
 - Check that emoji names match exactly
 
-**Timestamps not parsing**
+#### Timestamps not parsing
 
 - Set correct timezone in settings
 - Verify timestamp format in original Slack text

@@ -237,9 +237,7 @@ export abstract class BaseFormatStrategy implements FormatStrategy {
 
     // Format thread reply indicator with context if available
     if (threadReplyMatch && threadReplyMatch.length > 0) {
-      const context =
-        (threadReplyMatch[1] && threadReplyMatch[1].trim()) ||
-        (threadReplyMatch[2] && threadReplyMatch[2].trim());
+      const context = threadReplyMatch[1]?.trim() || threadReplyMatch[2]?.trim();
       if (context) {
         lines.push('🧵 **Thread Reply**');
         lines.push(`   _Replying to: "${context}"_`);
@@ -252,12 +250,12 @@ export abstract class BaseFormatStrategy implements FormatStrategy {
     if (replyMatch || lastReplyMatch || viewThreadMatch) {
       const parts: string[] = [];
 
-      if (replyMatch && replyMatch[1]) {
+      if (replyMatch?.[1]) {
         const count = replyMatch[1];
         parts.push(`**${count} ${parseInt(count) === 1 ? 'reply' : 'replies'}**`);
       }
 
-      if (lastReplyMatch && lastReplyMatch[1]) {
+      if (lastReplyMatch?.[1]) {
         parts.push(`Last reply ${lastReplyMatch[1].trim()}`);
       }
 
@@ -269,7 +267,7 @@ export abstract class BaseFormatStrategy implements FormatStrategy {
       if (viewThreadMatch) {
         // Check if threadInfo contains a URL for the thread
         const urlMatch = threadInfo.match(/View thread.*?(https?:\/\/[^\s]+)/);
-        if (urlMatch && urlMatch[1]) {
+        if (urlMatch?.[1]) {
           lines.push(`🔗 [View thread](${urlMatch[1]})`);
         } else {
           // If no URL, just show as text

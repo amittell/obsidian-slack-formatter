@@ -94,10 +94,6 @@ export class BracketFormatStrategy extends BaseFormatStrategy {
    * });
    * ```
    */
-  constructor(settings: SlackFormatSettings, parsedMaps: ParsedMaps) {
-    super(settings, parsedMaps); // Call base constructor with maps
-    // Processors are initialized in the base class using parsedMaps
-  }
 
   /**
    * Formats the message header using bracket notation for metadata.
@@ -142,8 +138,7 @@ export class BracketFormatStrategy extends BaseFormatStrategy {
 
     // Construct the header lines with bracket notation
     const isThreadReply =
-      message.isThreadReply ||
-      (message.threadInfo && message.threadInfo.includes('replied to a thread:'));
+      message.isThreadReply || message.threadInfo?.includes('replied to a thread:');
     const titleLine = isThreadReply
       ? `[!slack]+ [Thread Reply from ${displayName}]`
       : `[!slack]+ [Message from ${displayName}]`;
