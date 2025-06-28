@@ -69,8 +69,37 @@ export function debugLogTest(testName: string, message: string, enabled = false)
   if (enabled) console.log(`[DEBUG:${testName}] ${message}`);
 }
 
-// Test logging utilities
-export { TestLogger } from './test-logger';
+// Test logging utilities - inline to avoid CI module resolution issues
+export class TestLogger {
+  private static isEnabled =
+    process.env.TEST_DEBUG === 'true' || process.env.NODE_ENV === 'development';
+
+  static log(...args: any[]): void {
+    if (TestLogger.isEnabled) {
+      console.log('[TEST]', ...args);
+    }
+  }
+
+  static error(...args: any[]): void {
+    console.error('[TEST ERROR]', ...args);
+  }
+
+  static warn(...args: any[]): void {
+    console.warn('[TEST WARN]', ...args);
+  }
+
+  static enable(): void {
+    TestLogger.isEnabled = true;
+  }
+
+  static disable(): void {
+    TestLogger.isEnabled = false;
+  }
+
+  static isLoggingEnabled(): boolean {
+    return TestLogger.isEnabled;
+  }
+}
 
 // Parser setup utilities
 export {
