@@ -21,7 +21,7 @@ describe('End-to-End Conversation Processing Suite', () => {
 
   describe('Real Sample File Processing', () => {
     it('should process multi-person DM sample correctly', () => {
-      const sampleContent = readFileSync('archived/samples/multi-person-dm-sample.txt', 'utf8');
+      const sampleContent = readFileSync('samples/multi-person-dm-sample.txt', 'utf8');
 
       TestLogger.log('\n=== PROCESSING MULTI-PERSON DM SAMPLE ===');
       TestLogger.log(`Input length: ${sampleContent.length} characters`);
@@ -67,7 +67,7 @@ describe('End-to-End Conversation Processing Suite', () => {
     });
 
     it('should process emoji channel sample correctly', () => {
-      const sampleContent = readFileSync('archived/samples/emoji-channel-sample.txt', 'utf8');
+      const sampleContent = readFileSync('samples/emoji-channel-sample.txt', 'utf8');
 
       TestLogger.log('\n=== PROCESSING EMOJI CHANNEL SAMPLE ===');
       TestLogger.log(`Input length: ${sampleContent.length} characters`);
@@ -123,9 +123,9 @@ describe('End-to-End Conversation Processing Suite', () => {
 
     it('should process other sample files', () => {
       const sampleFiles = [
-        'archived/samples/duckcreek-sample.txt',
-        'archived/samples/fireside-sample.txt',
-        'archived/samples/guidewire-sample.txt',
+        'samples/duckcreek-sample.txt',
+        'samples/fireside-sample.txt',
+        'samples/guidewire-sample.txt',
       ];
 
       sampleFiles.forEach(filename => {
