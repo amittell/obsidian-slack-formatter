@@ -4,6 +4,7 @@
  */
 
 import { expect } from '@jest/globals';
+import type { SlackFormatSettings } from '../../src/types/settings.types';
 
 // Debug utilities - inline to avoid CI module resolution issues
 export interface DebugLoggerConfig {
@@ -114,7 +115,9 @@ export interface TestParserConfig {
 /**
  * Create minimal SlackFormatSettings for testing
  */
-export function createTestSettings(overrides: Partial<any> = {}): any {
+export function createTestSettings(
+  overrides: Partial<SlackFormatSettings> = {}
+): SlackFormatSettings {
   return {
     detectCodeBlocks: true,
     convertUserMentions: true,

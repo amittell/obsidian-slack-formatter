@@ -44,7 +44,7 @@ export class EmojiProcessor extends BaseProcessor<string> {
     try {
       const processed = replaceEmoji(line, this.emojiMap);
       const modified = processed !== line;
-      if (modified && this.isDebugEnabled) {
+      if (modified) {
         Logger.debug(this.constructor.name, `Emoji processing: ${line} -> ${processed}`, {
           modified,
         });
