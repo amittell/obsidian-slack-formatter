@@ -22,7 +22,7 @@ export class TestDebugLogger {
       prefix: config.prefix || '===',
       includeTimestamp: config.includeTimestamp ?? false,
       includeFileInfo: config.includeFileInfo ?? false,
-      ...config
+      ...config,
     };
   }
 
