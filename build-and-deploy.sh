@@ -9,20 +9,17 @@
 
 # --- Configuration Citadel ---
 # ** IMPORTANT! Set your Obsidian vault plugin path here! **
-PLUGIN_DIR="$HOME/Documents/Alex's Messy Mind/.obsidian/plugins/obsidian-slack-formatter"
-PROJECT_DIR="$(pwd)"
+# Can be overridden with OBSIDIAN_PLUGIN_DIR environment variable
+PLUGIN_DIR="${OBSIDIAN_PLUGIN_DIR:-$HOME/Documents/Alex"'"s Messy Mind/.obsidian/plugins/obsidian-slack-formatter}"
 MANIFEST="manifest.json"
 MAIN_JS="main.js"
 STYLES_CSS="styles.css"
-LOG_FILE="slack_formatter_build_log_$(date +%Y%m%d_%H%M%S).log"
 
 # --- The Palette of Power & Glyphs of Glory ---
 # Colors (ANSI Escape Codes)
 RESET='\033[0m'
 BOLD='\033[1m'
-DIM='\033[2m'
 UNDERLINE='\033[4m'
-FG_BLACK='\033[0;30m'
 FG_RED='\033[0;31m'
 FG_GREEN='\033[0;32m'
 FG_YELLOW='\033[0;33m'
@@ -30,7 +27,6 @@ FG_BLUE='\033[0;34m'
 FG_MAGENTA='\033[0;35m'
 FG_CYAN='\033[0;36m'
 FG_WHITE='\033[0;37m'
-FG_BRIGHT_BLACK='\033[1;30m'
 FG_BRIGHT_RED='\033[1;31m'
 FG_BRIGHT_GREEN='\033[1;32m'
 FG_BRIGHT_YELLOW='\033[1;33m'
@@ -38,9 +34,6 @@ FG_BRIGHT_BLUE='\033[1;34m'
 FG_BRIGHT_MAGENTA='\033[1;35m'
 FG_BRIGHT_CYAN='\033[1;36m'
 FG_BRIGHT_WHITE='\033[1;37m'
-BG_RED='\033[0;41m'
-BG_GREEN='\033[0;42m'
-BG_YELLOW='\033[0;43m'
 
 # Box drawing characters
 H_LINE="━"
@@ -53,7 +46,6 @@ T_DOWN="┳"
 T_UP="┻"
 
 # Icons for different operations
-ICON_BUILD="🔨"
 ICON_SUCCESS="✅"
 ICON_ERROR="❌"
 ICON_WARNING="⚠️"
@@ -61,7 +53,6 @@ ICON_INFO="ℹ️"
 ICON_COPY="📋"
 ICON_DEPLOY="🚀"
 ICON_PACKAGE="📦"
-ICON_CLEAN="🧹"
 ICON_TEST="🧪"
 ICON_DOCS="📚"
 
@@ -109,7 +100,7 @@ print_section() {
     padding=$(( padding > 0 ? padding : 0 ))
     local pad_str=$(printf "%${padding}s")
     local end_pad_str=$(printf "%$((padding + extra_space))s")
-    local h_line_fill=$(printf '%*s' "$inner_width" '' | tr ' ' "${H_LINE}")
+    local h_line_fill=$(printf '%*s' "$inner_width" "" | tr ' ' "${H_LINE}")
 
     echo ""
     echo -e "${FG_BRIGHT_BLUE}${TL_CORNER}${H_LINE}${H_LINE}${H_LINE}${H_LINE}${H_LINE}${T_DOWN}${h_line_fill}${T_DOWN}${H_LINE}${H_LINE}${H_LINE}${H_LINE}${H_LINE}${TR_CORNER}${RESET}"
@@ -255,6 +246,7 @@ deploy_to_vault() {
 
 # Show final summary
 show_summary() {
+    local build_start_time=$1
     local build_end_time=$(date +%s)
     local build_duration=$((build_end_time - build_start_time))
     
@@ -342,7 +334,7 @@ main() {
     deploy_to_vault
     
     # Show final summary
-    show_summary
+    show_summary "$build_start_time"
     
     print_success "🚀 Obsidian Slack Formatter is ready to use! 🚀"
 }
