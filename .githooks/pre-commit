@@ -53,7 +53,13 @@ fi
 
 # Check 2: TypeScript compilation
 echo -e "${BLUE}🔧 Checking TypeScript compilation...${NC}"
-if [ -f "tsconfig.json" ] && command -v npx &> /dev/null; then
+if [ -f "tsconfig.ci.json" ] && command -v npx &> /dev/null; then
+    npx tsc --project tsconfig.ci.json --noEmit || {
+        echo -e "${RED}❌ TypeScript compilation failed!${NC}"
+        exit 1
+    }
+    echo -e "${GREEN}✅ TypeScript compilation successful${NC}"
+elif [ -f "tsconfig.json" ] && command -v npx &> /dev/null; then
     npx tsc --noEmit || {
         echo -e "${RED}❌ TypeScript compilation failed!${NC}"
         exit 1
