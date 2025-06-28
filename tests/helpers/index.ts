@@ -3,8 +3,71 @@
  * Central export point for all test utility functions and classes
  */
 
-// Debug utilities
-export { TestDebugLogger, debugLog, debugLogTest, type DebugLoggerConfig } from './debug-utils';
+// Debug utilities - inline to avoid CI module resolution issues
+export interface DebugLoggerConfig {
+  enabled: boolean;
+  prefix?: string;
+  includeTimestamp?: boolean;
+  includeFileInfo?: boolean;
+}
+
+export class TestDebugLogger {
+  private config: DebugLoggerConfig;
+  private testName: string;
+
+  constructor(testName: string, config: Partial<DebugLoggerConfig> = {}) {
+    this.testName = testName;
+    this.config = {
+      enabled: process.env.DEBUG_TESTS === 'true' || config.enabled === true,
+      prefix: config.prefix || '===',
+      includeTimestamp: config.includeTimestamp ?? false,
+      includeFileInfo: config.includeFileInfo ?? false,
+      ...config
+    };
+  }
+
+  static create(testName: string, enabled?: boolean): TestDebugLogger {
+    return new TestDebugLogger(testName, { enabled });
+  }
+
+  log(message: string): void {
+    if (!this.config.enabled) return;
+    const timestamp = this.config.includeTimestamp ? `[${new Date().toISOString()}] ` : '';
+    const prefix = this.config.prefix ? `${this.config.prefix} ` : '';
+    console.log(`${timestamp}${prefix}${this.testName}: ${message}`);
+  }
+
+  logParsingResults(messages: any[], inputLength: number): void {
+    if (!this.config.enabled) return;
+    this.log(`Parsed ${messages.length} messages from ${inputLength} characters`);
+  }
+
+  logUserValidation(messages: any[], expectedUsers: string[]): void {
+    if (!this.config.enabled) return;
+    const detectedUsers = [...new Set(messages.map((m: any) => m.username))];
+    this.log(`Expected users: ${expectedUsers.join(', ')}`);
+    this.log(`Detected users: ${detectedUsers.join(', ')}`);
+  }
+
+  logContentIntegrity(formatted: string, criticalContent: string[]): void {
+    if (!this.config.enabled) return;
+    this.log(`Formatted length: ${formatted.length} characters`);
+    this.log(`Critical content preserved: ${criticalContent.length} items`);
+  }
+
+  logSuccess(message: string): void {
+    if (!this.config.enabled) return;
+    this.log(`✅ ${message}`);
+  }
+}
+
+export function debugLog(message: string, enabled = false): void {
+  if (enabled) console.log(`[DEBUG] ${message}`);
+}
+
+export function debugLogTest(testName: string, message: string, enabled = false): void {
+  if (enabled) console.log(`[DEBUG:${testName}] ${message}`);
+}
 
 // Test logging utilities
 export { TestLogger } from './test-logger';
