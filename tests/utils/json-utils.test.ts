@@ -5,7 +5,6 @@ import { Logger } from '../../src/utils/logger';
 jest.mock('../../src/utils/logger'); // Mock the entire Logger class
 
 describe('JSON Utils', () => {
-
   beforeEach(() => {
     // Reset mocks before each test
     jest.clearAllMocks();
@@ -62,7 +61,7 @@ describe('JSON Utils', () => {
       expect(parseJsonMap('   ', 'TestMap')).toEqual({});
       expect(Logger.error).not.toHaveBeenCalled();
     });
-    
+
     it('should return empty object for null input', () => {
       // Need to cast null to string type to satisfy function signature for test
       expect(parseJsonMap(null as unknown as string, 'TestMap')).toEqual({});
@@ -91,9 +90,9 @@ describe('JSON Utils', () => {
       );
       expect(Logger.error).not.toHaveBeenCalled();
     });
-    
+
     it('should return null and log warning for JSON null value', () => {
-      const jsonStr = 'null'; 
+      const jsonStr = 'null';
       expect(parseJsonMap(jsonStr, 'TestMap')).toBeNull();
       expect(Logger.warn).toHaveBeenCalledTimes(1);
       expect(Logger.warn).toHaveBeenCalledWith(

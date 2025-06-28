@@ -1,0 +1,133 @@
+# Lean CI/CD .prettierignore
+# Exclude unnecessary files from Prettier formatting to save time and reduce conflicts
+
+# Dependencies and package manager files
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
+
+# Build outputs and distribution files
+dist/
+build/
+lib/
+out/
+*.min.js
+*.min.css
+main.js
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Operating system files
+.DS_Store
+Thumbs.db
+*.tmp
+*.temp
+
+# Git and version control
+.git/
+.gitignore
+
+# Coverage and test artifacts
+coverage/
+*.lcov
+.nyc_output/
+test-results/
+test-output/
+
+# Logs and debugging
+*.log
+logs/
+.npm
+.eslintcache
+
+# Environment and configuration
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Documentation build outputs
+docs/generated/
+*.pdf
+*.docx
+
+# Sample files and test fixtures (often contain intentionally malformed content)
+samples/
+fixtures/
+*.sample.txt
+*.fixture.json
+
+# Archive and backup files
+archived/
+backups/
+*.backup
+*.bak
+*.old
+
+# Database and data files
+*.db
+*.sqlite
+*.sqlite3
+data/
+
+# Compiled files and cache
+*.d.ts.map
+*.js.map
+tsconfig.tsbuildinfo
+.cache/
+
+# Generated or auto-generated files
+CHANGELOG.md
+*.generated.*
+auto-generated/
+
+# Legacy and historical files (common in solo projects)
+legacy/
+historical/
+deprecated/
+old-versions/
+
+# Large text files and dumps
+*.dump
+*.large.txt
+*.export
+*.csv
+*.tsv
+
+# CI/CD artifacts (avoid formatting CI-generated files)
+.github/workflows/*.generated.yml
+ci-logs/
+deployment-logs/
+
+# Project-specific exclusions
+# Add any project-specific files that shouldn't be formatted
+*.md.backup
+debug-*.txt
+test-*.cjs
+pipeline-*.md
+*-debug.js
+*-test-output.txt
+
+# Report files (often auto-generated or have specific formatting)
+IMPLEMENTATION_REPORT.md
+PERFORMANCE_OPTIMIZATION_REPORT.md
+REGRESSION_FIX_REPORT.md
+TESTING_VALIDATION_REPORT.md
+*_REPORT.md
+*_VALIDATION_REPORT.md
+
+# Temporary debugging files
+debug-*.ts
+debug-*.js
+test-clay-*.js
+test-owen-*.js
+test-detailed-*.ts

@@ -1,0 +1,26 @@
+{
+  "extends": "./tsconfig.json",
+  "exclude": [
+    "node_modules",
+    "debug-*.ts",
+    "demo-*.ts",
+    "tests/unit/test-*.test.ts",
+    "tests/unit/*-debug*.test.ts",
+    "coverage",
+    "src/**/*.js",
+    "src/utils/infrastructure-index.ts"
+  ],
+  "include": ["src/**/*.ts"],
+  "compilerOptions": {
+    "noEmit": true,
+    "skipLibCheck": true,
+    "strict": false,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "allowUnreachableCode": true,
+    "allowUnusedLabels": true,
+    "target": "ES2021",
+    "lib": ["ES2021"],
+    "isolatedModules": false
+  }
+}

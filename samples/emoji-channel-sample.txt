@@ -1,0 +1,388 @@
+User1
+:no_entry:  3:04 PM
+replied to a thread:
+wtb :gptn-monster: i.e. cookie monster, but blurple.
+:gptn-monster:
+:nice5:
+1
+
+
+User2
+  12:46 PM
+Anyone else got beef with :partner: emoji? :eyes:
+Our partner merchant ids are in the format krn:partner:global:account:live:<suffix> so half of the time they get pasted as just "krn:partner:global:account:live"
+Also noticing the replacement a lot in automated messages since we've a bunch of ruby packages called partner
+:heavy_plus_sign:
+1
+
+
+4 replies
+Last reply 2 months agoView thread
+
+
+User3
+:pm-054:  2:23 PM
+test
+:+1:
+1
+
+
+User3
+:pm-054:  2:23 PM
+:fake-like-1::fake-like-2::fake-like-3:
+:nice-100:
+11
+:recursive-thumbsup-new:
+11
+:principle-emojincy-and-focus:
+2
+:add-bufo:
+3
+:fake-like-1:
+2
+:fake-like-2:
+2
+:fake-like-3:
+2
+
+
+
+
+
+
+14 replies
+Last reply 2 months agoView thread
+
+
+User4
+  3:18 PM
+wtb :bufo-needs-a-hobby: (where bufo looks despondent and/or bored)
+:raised_hands:
+1
+
+
+User5
+  3:24 PM
+wtb :bufo-goes-back-to-coding:
+:bufo-coding:
+5
+:bufo-happy-coding:
+2
+:bufo-yearns-for-the-mines:
+9
+
+
+User6
+  1:52 PM
+wtb :no-is-temporary-yes-is-forever:
+:ohno:
+8
+:cat-huhh:
+3
+
+
+1 reply
+2 months agoView thread
+This message was deleted.
+
+
+2 replies
+Last reply 2 months agoView thread
+
+
+User3
+:pm-054:  2:23 PM
+wts: :bufo-clap: is a very low quality emoji for how often it gets used (purely because of bufo/SEO). if someone creates a cleaner version, I'll gladly give up the emoji namespace to them. It is a >p99 bufo according to go/emoji-scoreboard (edited) 
+:til-dark:
+4
+:bufo-clap:
+5
+:five-nines:
+4
+
+
+User7
+  8:01 PM
+:big-bless-0-0::big-bless-0-1:
+:big-bless-1-0::big-bless-1-1:
+8:04
+big bless
+Custom response
+
+
+Slackbot
+  8:04 PM
+:big-bless-0-0::big-bless-0-1:
+:big-bless-1-0::big-bless-1-1:
+
+
+User8
+  11:38 AM
+is there any way to get a dump of all our emojis names, for better searching?
+
+
+
+4 replies
+Last reply 1 month agoView thread
+
+
+User9
+  1:58 AM
+Does anyone have the template for :everythings_fine_parrot: where I can replace the parrot?
+:subscribe:
+1
+:bufo-worried-doctor:
+1
+
+
+User10
+  2:59 PM
+I need an emoji for :bufo-closed-the-tab-with-his-hubble-results:
+:bufo-takes-hubble:
+6
+
+
+3 replies
+Last reply 1 month agoView thread
+
+
+User11
+  1:07 PM
+Has anyone studied bufo's migration? as I understand it many ex-stripes spread bufo to OpenAI, and Notion… where else?
+X (formerly Twitter)X (formerly Twitter)
+Notion (@NotionHQ) on X
+Last year we launched custom emojis in Notion :chefs-kiss:
+But how do you add 1.5M custom emojis to a workspace without breaking everything? :thinking_face: (91 kB)
+https://x.com/NotionHQ/status/1886846711198572605
+
+:future-bufos:
+4
+:copy_that:
+1
+
+
+9+
+28 replies
+Last reply 12 days agoView thread
+
+
+User12
+:ooo:  6:22 PM
+went to reference the anikan princess leia meme and I was extremely disappointed we don't have a princess leia emoji… I thought we were nerds people :laughing: :starwars2:
+:be-the-emoji-you-want-to-see:
+1
+:right-meme:
+9
+:r1-blurple:
+1
+
+
+9 replies
+Last reply 1 month agoView thread
+
+
+User13
+  6:18 AM
+replied to a thread:
+Has anyone studied bufo's migration? as I understand it many ex-stripes spread bufo to OpenAI, and Notion… where else?
+does anyone know which bufo is this? :laughing:
+image.png
+ 
+image.png
+
+
+:bufo-ages-rapidly-in-the-void:
+18
+
+View newer replies
+
+
+User14
+  12:11 PM
+What in the Slack incident is happening …
+image.png
+ 
+image.png
+
+
+:bufo-offers-eyes-but-the-provenance-is-disconcerting:
+4
+:blob-hug-broken-image:
+2
+:blob-hug-broken-image-r:
+1
+:bufo-waves-a-fish-around-because-this-smells-fishy-and-he-doesnt-want-his-message-to-be-misconstrued:
+1
+:thedonutholehasaholeinitscenteritsnotadonutholebutasmallerdonutwithitsownholeourdonutisnotwholeatall:
+1
+:somebodyoncetoldmetheworldwasgonnarollmeiaintthesharpesttoolintheshedshewaslookingkindofdumbwithherf:
+1
+:bufo寿限無寿限無五劫の擦り切れ海砂利水魚の水行末雲来末風来末食う寝る処に住む処やぶら小路の藪柑子パイポパイポパイポのシューリンガンシューリンガンのグーリンダイグーリンダイのポンポコピーのポンポコナ:
+2
+
+
+4 replies
+Last reply 30 days agoView thread
+
+
+User15
+  1:58 PM
+replied to a thread:
+Has anyone studied bufo's migration? as I understand it many ex-stripes spread bufo to OpenAI, and Notion… where else?
+the github one has bufos that we don't have! https://github.com/knobiknows/all-the-bufo/blob/main/all-the-bufo/bufo-intern.png
+bufo-intern.png
+<https://github.com/knobiknows/all-the-bufo|knobiknows/all-the-bufo>knobiknows/all-the-bufo | Added by GitHub (23 kB)
+https://github.com/knobiknows/all-the-bufo/blob/main/all-the-bufo/bufo-intern.png
+
+View newer replies
+
+
+User16
+:connect-fingerguns:  3:59 PM
+Emojiteam can we remove this? For photosensitivity :thread:
+
+
++1
+11 replies
+Last reply 24 days agoView thread
+
+
+User17
+  3:04 PM
+wtb :bufo-cheerleader: / :bufo-cheers-you-on: which is like :bufo-excite:  or :doodle-bufo-yay: but with pompoms (animation optional)
+:bufo-cheerleader:
+6
+
+
+1 reply
+22 days agoView thread
+
+
+User18
+:no-dms:  1:28 PM
+:hide-the-pain-bufo: is so cursed
+:cursed:
+9
+:blursed:
+4
+:yikes-harold:
+5
+:lolol:
+3
+
+
+3 replies
+Last reply 18 days agoView thread
+
+
+User19
+  2:20 PM
+wtb :private-channel: to use when someone has linked to a private channel you're not in (see screenshot from Slack) (edited) 
+
+
+7 replies
+Last reply 12 days agoView thread
+
+
+User20
+  3:43 PM
+Hi Team
+Is there a table in hubble where I can check who created a emoji? Any help would be appreciated :)
+
+
+5 replies
+Last reply 12 days agoView thread
+
+
+User21
+  8:28 PM
+wtb :bufo-eating-ortolan:
+:big-yikes:
+3
+:bufo-blanket:
+1
+:fancy-bufo:
+2
+:bufo-eats-his-son-like-popcorn:
+2
+:bufo-what-have-you-done:
+1
+:wait-thats-illegal:
+1
+
+
+2 replies
+Last reply 10 days agoView thread
+
+
+User14
+  6:57 PM
+From a fresh Slack instance. It's no way to live.
+Image from iOS
+ 
+Image from iOS
+
+
+:nice:
+5
+:nice2:
+8
+:nice3:
+5
+:nice5:
+7
+:nice4:
+5
+:nice7:
+5
+:nice6:
+5
+:nice-1:
+5
+:nice-brat:
+5
+:nice-icon:
+5
+:nice-100:
+5
+:nice-colors:
+6
+:nice-nice:
+5
+:n_ice:
+5
+:nice-blurple:
+5
+:nice_i_guess2:
+5
+:haha-nice:
+5
+:small-nice:
+5
+:super-nice:
+5
+:nice-in-swedish:
+5
+:party-nice:
+4
+:double-nice:
+4
+
+
+User22
+  2:24 PM
+:wave: I'm looking for help removing a reactji, specifically looking to retire jira-archreview-ask :jira-archreview-ask: since that forum is deprecated. I cleaned up the go/askbot-sheet to remove the behavior, but the emoji is owned by a former Stripe.
+
+1 reply
+3 days agoView thread
+
+
+User19
+  10:25 AM
+wtb :double-ty: (:ty::ty:)
+:double-ty:
+7
+
+
+11 replies
+Last reply 19 hours ago

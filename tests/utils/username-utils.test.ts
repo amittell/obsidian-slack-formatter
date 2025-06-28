@@ -1,16 +1,15 @@
-import { 
-  formatUserMentions, 
-  cleanupDoubledUsernames, 
-  formatUsername 
+import {
+  formatUserMentions,
+  cleanupDoubledUsernames,
+  formatUsername,
 } from '../../src/utils/username-utils';
 
 describe('Username Utils', () => {
-
   describe('formatUserMentions', () => {
     const userMap = {
-      "U123ABC": "Alice",
-      "U456DEF": "Bob Smith",
-      "U789GHI": "[[Charlie Brown]]", // Already a link
+      U123ABC: 'Alice',
+      U456DEF: 'Bob Smith',
+      U789GHI: '[[Charlie Brown]]', // Already a link
     };
 
     it('should replace known user IDs with wiki links', () => {
@@ -18,7 +17,9 @@ describe('Username Utils', () => {
     });
 
     it('should handle multiple mentions', () => {
-      expect(formatUserMentions('<@U123ABC> and <@U456DEF>', userMap)).toBe('[[Alice]] and [[Bob Smith]]');
+      expect(formatUserMentions('<@U123ABC> and <@U456DEF>', userMap)).toBe(
+        '[[Alice]] and [[Bob Smith]]'
+      );
     });
 
     it('should handle user IDs mapped to existing wiki links', () => {
@@ -26,7 +27,9 @@ describe('Username Utils', () => {
     });
 
     it('should create default wikilink for unknown user IDs', () => {
-      expect(formatUserMentions('Unknown user <@UUNKNOWN>', userMap)).toBe('Unknown user [[User-UUNKNO]]');
+      expect(formatUserMentions('Unknown user <@UUNKNOWN>', userMap)).toBe(
+        'Unknown user [[User-UUNKNO]]'
+      );
     });
 
     it('should handle mentions adjacent to text', () => {
@@ -53,7 +56,9 @@ describe('Username Utils', () => {
     });
 
     it('should handle multiple doubled occurrences', () => {
-      expect(cleanupDoubledUsernames('Alex MittellAlex Mittell and BobBob')).toBe('Alex Mittell and Bob');
+      expect(cleanupDoubledUsernames('Alex MittellAlex Mittell and BobBob')).toBe(
+        'Alex Mittell and Bob'
+      );
     });
 
     it('should remove usernames separated by space', () => {
@@ -61,12 +66,12 @@ describe('Username Utils', () => {
     });
 
     it('should handle names with hyphens (if considered word chars)', () => {
-       // Assuming hyphen is part of the name based on regex \w+
-       expect(cleanupDoubledUsernames('Jean-LucJean-Luc Picard')).toBe('Jean-Luc Picard'); 
+      // Assuming hyphen is part of the name based on regex \w+
+      expect(cleanupDoubledUsernames('Jean-LucJean-Luc Picard')).toBe('Jean-Luc Picard');
     });
-    
+
     it('should handle single word names', () => {
-       expect(cleanupDoubledUsernames('AliceAlice')).toBe('Alice'); 
+      expect(cleanupDoubledUsernames('AliceAlice')).toBe('Alice');
     });
 
     it('should handle text before and after the doubled name', () => {
@@ -80,7 +85,7 @@ describe('Username Utils', () => {
     it('should handle empty string input', () => {
       expect(cleanupDoubledUsernames('')).toBe('');
     });
-    
+
     it('should respect word boundaries', () => {
       // The regex (\b[\w-]+(?:\s+[\w-]+)*)\1\b is primarily for repeated names/phrases.
       // Removing 'abab' test case as it's an edge case the regex doesn't handle as intended.
@@ -114,7 +119,7 @@ describe('Username Utils', () => {
     it('should handle empty string input', () => {
       expect(formatUsername('')).toBe('');
     });
-    
+
     it('should handle names with numbers (treats as part of word)', () => {
       expect(formatUsername('user123')).toBe('User123');
       expect(formatUsername('test_user_1')).toBe('Test User 1');

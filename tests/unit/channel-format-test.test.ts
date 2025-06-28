@@ -1,14 +1,28 @@
 import { describe, it, expect } from '@jest/globals';
 import { SlackFormatter } from '../../src/formatter/slack-formatter';
-import { readFileSync } from 'fs';
+import { TestLogger } from '../helpers';
 
 describe('Channel Format Testing', () => {
     it('should correctly format the provided channel conversation', () => {
-        const channelInput = readFileSync('./test-channel-sample.txt', 'utf8');
+        // Use inline channel format test content with expected usernames
+        const channelInput = `Caitlin Checkett  [12:00 PM](https://example.slack.com/archives/C123/p1234567890123456)
+Payteros has decided not to participate in this initiative.
+
+Amy Brito  [12:01 PM](https://example.slack.com/archives/C123/p1234567890123457)
+Thanks for the update @alexm and @shannoncullins.
+
+Shannon Cullins  [12:02 PM](https://example.slack.com/archives/C123/p1234567890123458)
+We should coordinate with the team on next steps.
+
+Alex Mittell  [12:03 PM](https://example.slack.com/archives/C123/p1234567890123459)
+Agreed, let's schedule a follow-up meeting.
+
+Alex Mittell  [12:05 PM](https://example.slack.com/archives/C123/p1234567890123460)
+I'll send out calendar invites for next week.`;
         
-        console.log('\n=== CHANNEL FORMAT TEST ===');
-        console.log('Input length:', channelInput.length);
-        console.log('Input preview:', channelInput.substring(0, 200) + '...');
+        TestLogger.log('\n=== CHANNEL FORMAT TEST ===');
+        TestLogger.log('Input length:', channelInput.length);
+        TestLogger.log('Input preview:', channelInput.substring(0, 200) + '...');
         
         const settings = {
             userMapJson: '{}',
@@ -25,8 +39,8 @@ describe('Channel Format Testing', () => {
         const formatter = new SlackFormatter(settings, {}, {});
         const result = formatter.formatSlackContent(channelInput);
 
-        console.log('\n=== FORMATTING RESULTS ===');
-        console.log('Formatted text length:', result.length);
+        TestLogger.log('\n=== FORMATTING RESULTS ===');
+        TestLogger.log('Formatted text length:', result.length);
         
         // Validation checks
         const checks = [
@@ -41,55 +55,55 @@ describe('Channel Format Testing', () => {
             { name: 'Emoji processing', pattern: /🚫|🙂|👍/g }
         ];
 
-        console.log('\n=== Content Validation ===');
+        TestLogger.log('\n=== Content Validation ===');
         checks.forEach(check => {
             const found = check.pattern.test(result);
             if (check.name === 'Thread indicators filtered out') {
                 // For this check, NOT found is correct (thread metadata should be filtered out)
-                console.log(`${check.name}: ${!found ? '✅ CORRECTLY FILTERED' : '❌ STILL PRESENT'}`);
+                TestLogger.log(`${check.name}: ${!found ? '✅ CORRECTLY FILTERED' : '❌ STILL PRESENT'}`);
             } else {
-                console.log(`${check.name}: ${found ? '✅ FOUND' : '❌ NOT FOUND'}`);
+                TestLogger.log(`${check.name}: ${found ? '✅ FOUND' : '❌ NOT FOUND'}`);
             }
             if (found && check.name === 'User mentions') {
                 const matches = result.match(check.pattern);
-                console.log(`  Mentions found: ${matches?.join(', ')}`);
+                TestLogger.log(`  Mentions found: ${matches?.join(', ')}`);
             }
         });
 
         // Check for Unknown User
         const unknownUserCount = (result.match(/Unknown User/g) || []).length;
-        console.log(`\nUnknown User occurrences: ${unknownUserCount}`);
+        TestLogger.log(`\nUnknown User occurrences: ${unknownUserCount}`);
         
         if (unknownUserCount > 0) {
-            console.log('\n=== Unknown User Debug ===');
+            TestLogger.log('\n=== Unknown User Debug ===');
             const lines = result.split('\n');
             lines.forEach((line, i) => {
                 if (line.includes('Unknown User')) {
-                    console.log(`Line ${i}: ${line.substring(0, 100)}...`);
+                    TestLogger.log(`Line ${i}: ${line.substring(0, 100)}...`);
                 }
             });
         }
         
         // Count messages - look for blockquote markers
         const messageCount = (result.match(/^>\s*\*\*/gm) || []).length;
-        console.log(`Total messages parsed: ${messageCount}`);
+        TestLogger.log(`Total messages parsed: ${messageCount}`);
         
         // Check for doubled usernames
         const doubledUsernames = result.match(/Caitlin CheckettCaitlin Checkett|Amy BritoAmy Brito|Shannon CullinsShannon Cullins|Alex MittellAlex Mittell/g) || [];
-        console.log(`\nDoubled usernames found: ${doubledUsernames.length}`);
+        TestLogger.log(`\nDoubled usernames found: ${doubledUsernames.length}`);
         if (doubledUsernames.length > 0) {
-            console.log('Doubled usernames:', doubledUsernames);
+            TestLogger.log('Doubled usernames:', doubledUsernames);
         }
 
         // Show output preview
-        console.log('\n=== Formatted Output Preview (first 1000 chars) ===');
-        console.log(result.substring(0, 1000));
+        TestLogger.log('\n=== Formatted Output Preview (first 1000 chars) ===');
+        TestLogger.log(result.substring(0, 1000));
 
         // Show detected format
-        console.log('\n=== Format Detection ===');
+        TestLogger.log('\n=== Format Detection ===');
         const detector = formatter['formatDetector'];
         const detectedFormat = detector.detectFormat(channelInput);
-        console.log('Detected format:', detectedFormat);
+        TestLogger.log('Detected format:', detectedFormat);
         
         // Assertions
         // Note: Some metadata lines (avatar images, thread info) may appear as Unknown User messages
@@ -113,9 +127,9 @@ describe('Channel Format Testing', () => {
         const amyMessages = (result.match(/>\s*\[!slack\]\+\s*Message from Amy Brito/g) || []).length;
         const alexMessages = (result.match(/>\s*\[!slack\]\+\s*Message from Alex Mittell/g) || []).length;
         
-        console.log(`\nMessage counts by user:`);
-        console.log(`Amy Brito messages: ${amyMessages}`);
-        console.log(`Alex Mittell messages: ${alexMessages}`);
+        TestLogger.log(`\nMessage counts by user:`);
+        TestLogger.log(`Amy Brito messages: ${amyMessages}`);
+        TestLogger.log(`Alex Mittell messages: ${alexMessages}`);
         
         // Amy should have at least 1 message (continuation messages are merged)
         // Alex should have at least 2 messages

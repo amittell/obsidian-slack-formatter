@@ -1,23 +1,24 @@
 import { SlackFormatter } from '../../src/formatter/slack-formatter';
 import { DEFAULT_SETTINGS } from '../../src/settings';
+import { TestLogger } from '../helpers';
 
 describe('Bill Mei Conversation Test', () => {
-    it('should format complex thread conversation without Unknown Users', () => {
-        const userMap = {
-            "U01SNKQFY68": "Bill Mei",
-            "U06BMM460E5": "Raghav Jhavar",
-            "U077CBH034L": "Stas Khalup",
-            "UT8GE12R4": "Stathis Vafeias",
-            "U024TQNRL73": "Chris Bala",
-            "UAY01H2TW": "Cameron Bernhardt",
-            "US7TDC9MG": "Michael Mejia",
-            "U02RTE4DTSQ": "Eduardo Moreno"
-        };
-        
-        const emojiMap = JSON.parse(DEFAULT_SETTINGS.emojiMapJson || '{}');
-        const formatter = new SlackFormatter(DEFAULT_SETTINGS, userMap, emojiMap);
-        
-        const input = `Bill MeiBill Mei![:connect-fingerguns:](https://slack-imgs.com/?c=1&o1=gu&url=https%3A%2F%2Femoji.slack-edge.com%2FT0181S17H6Z%2Fconnect-fingerguns%2Ff9fe509facc6b358.png)  [Monday at 4:28 PM](https://stripe.slack.com/archives/C053MUD1RK2/p1750105691887189)  
+  it('should format complex thread conversation without Unknown Users', () => {
+    const userMap = {
+      U01SNKQFY68: 'Bill Mei',
+      U06BMM460E5: 'Raghav Jhavar',
+      U077CBH034L: 'Stas Khalup',
+      UT8GE12R4: 'Stathis Vafeias',
+      U024TQNRL73: 'Chris Bala',
+      UAY01H2TW: 'Cameron Bernhardt',
+      US7TDC9MG: 'Michael Mejia',
+      U02RTE4DTSQ: 'Eduardo Moreno',
+    };
+
+    const emojiMap = JSON.parse(DEFAULT_SETTINGS.emojiMapJson || '{}');
+    const formatter = new SlackFormatter(DEFAULT_SETTINGS, userMap, emojiMap);
+
+    const input = `Bill MeiBill Mei![:connect-fingerguns:](https://slack-imgs.com/?c=1&o1=gu&url=https%3A%2F%2Femoji.slack-edge.com%2FT0181S17H6Z%2Fconnect-fingerguns%2Ff9fe509facc6b358.png)  [Monday at 4:28 PM](https://stripe.slack.com/archives/C053MUD1RK2/p1750105691887189)  
 
 What's the current meta right now for which model to pick for the job? Here's my take:General purpose queries:  
 
@@ -161,41 +162,44 @@ Eduardo MorenoEduardo Moreno  [Tuesday at 12:13 PM](https://stripe.slack.com/arc
 
 ugh, the move away from raw reasoning traces is such a problem, particularly in highly regulated use cases like fincrimes. ![:disappointed:](https://a.slack-edge.com/production-standard-emoji-assets/14.0/apple-medium/1f61e@2x.png) Gemini 2.5's original traces were _perfect_. I wish those were an option in the API, even if it were gated behind something like user EDD to make sure you don't have the DeepSeeks of the world using them to train their own models.`;
 
-        const result = formatter.formatSlackContent(input);
-        
-        // Check for Unknown User messages
-        const unknownUserCount = (result.match(/\[\[Unknown User\]\]/g) || []).length;
-        console.log('Unknown User count:', unknownUserCount);
-        
-        // Extract message blocks
-        const messageBlocks = result.match(/> \[!slack\]\+ Message from ([^\n]+)/g) || [];
-        console.log('Total message blocks found:', messageBlocks.length);
-        console.log('Message authors:', messageBlocks.map(b => b.replace(/> \[!slack\]\+ Message from /, '')));
-        
-        // Check for specific content
-        console.log('Contains "current meta":', result.includes('current meta'));
-        console.log('Contains bullet points:', result.includes('- o3'));
-        // Note: Thread metadata like "17 replies" is not preserved in the output
-        
-        // Verify no Unknown Users
-        expect(unknownUserCount).toBe(0);
-        
-        // Verify all users are properly identified
-        expect(messageBlocks.length).toBeGreaterThanOrEqual(8); // At least 8 different people in thread
-        
-        // Verify specific users
-        expect(result).toContain('Bill Mei');
-        expect(result).toContain('Raghav Jhavar');
-        expect(result).toContain('Eduardo Moreno');
-        
-        // Verify content preservation
-        expect(result).toContain('current meta');
-        expect(result).toContain('- o3');
-        expect(result).toContain('- Sonnet 4 or Gemini 2.5 Pro');
-        
-        // Show first few lines of output for debugging
-        console.log('\n=== First few lines of output ===');
-        const lines = result.split('\n').slice(0, 20);
-        console.log(lines.join('\n'));
-    });
+    const result = formatter.formatSlackContent(input);
+
+    // Check for Unknown User messages
+    const unknownUserCount = (result.match(/\[\[Unknown User\]\]/g) || []).length;
+    TestLogger.log('Unknown User count:', unknownUserCount);
+
+    // Extract message blocks
+    const messageBlocks = result.match(/> \[!slack\]\+ Message from ([^\n]+)/g) || [];
+    TestLogger.log('Total message blocks found:', messageBlocks.length);
+    TestLogger.log(
+      'Message authors:',
+      messageBlocks.map(b => b.replace(/> \[!slack\]\+ Message from /, ''))
+    );
+
+    // Check for specific content
+    TestLogger.log('Contains "current meta":', result.includes('current meta'));
+    TestLogger.log('Contains bullet points:', result.includes('- o3'));
+    // Note: Thread metadata like "17 replies" is not preserved in the output
+
+    // Verify no Unknown Users
+    expect(unknownUserCount).toBe(0);
+
+    // Verify all users are properly identified
+    expect(messageBlocks.length).toBeGreaterThanOrEqual(8); // At least 8 different people in thread
+
+    // Verify specific users
+    expect(result).toContain('Bill Mei');
+    expect(result).toContain('Raghav Jhavar');
+    expect(result).toContain('Eduardo Moreno');
+
+    // Verify content preservation
+    expect(result).toContain('current meta');
+    expect(result).toContain('- o3');
+    expect(result).toContain('- Sonnet 4 or Gemini 2.5 Pro');
+
+    // Show first few lines of output for debugging
+    TestLogger.log('\n=== First few lines of output ===');
+    const lines = result.split('\n').slice(0, 20);
+    TestLogger.log(lines.join('\n'));
+  });
 });

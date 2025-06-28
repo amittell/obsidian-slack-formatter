@@ -106,6 +106,7 @@ Access plugin settings through Settings → Community Plugins → Slack Formatte
 ### Custom Mappings
 
 #### User Mapping
+
 Map Slack user IDs to display names:
 
 ```json
@@ -116,6 +117,7 @@ Map Slack user IDs to display names:
 ```
 
 #### Emoji Mapping
+
 Define custom emoji replacements:
 
 ```json
@@ -129,19 +131,25 @@ Define custom emoji replacements:
 ## Use Cases
 
 ### Meeting Notes
+
 Format Slack discussions for meeting documentation:
+
 - Preserve participant names and timestamps
 - Convert mentions to proper links
 - Maintain thread structure for Q&A sections
 
 ### Project Documentation
+
 Archive important Slack conversations:
+
 - Technical discussions with code blocks
 - Decision-making processes
 - Stakeholder feedback
 
 ### Knowledge Management
+
 Transform Slack knowledge sharing into permanent notes:
+
 - Expert advice and solutions
 - Process explanations
 - Reference materials
@@ -151,25 +159,30 @@ Transform Slack knowledge sharing into permanent notes:
 ### Common Issues
 
 **Plugin not working after paste**
+
 - Check if the text is recognized as Slack format
 - Verify hotkey mode settings
-- Try using Command Palette instead
+- Try using the Command Palette instead
 
-**User mentions not converting**
+#### User mentions not converting
+
 - Configure User Mapping in settings
 - Ensure @ symbol is preserved in copied text
 
-**Custom emojis not replacing**
+#### Custom emojis not replacing
+
 - Add emoji mappings in Emoji Mapping settings
 - Check that emoji names match exactly
 
-**Timestamps not parsing**
+#### Timestamps not parsing
+
 - Set correct timezone in settings
 - Verify timestamp format in original Slack text
 
 ### Performance
 
 The plugin includes built-in performance protections:
+
 - 5MB maximum input size
 - 50,000 line processing limit
 - Automatic chunking for large conversations
@@ -178,6 +191,7 @@ The plugin includes built-in performance protections:
 ### Debug Mode
 
 Enable debug mode in settings to:
+
 - See detailed processing logs
 - Identify parsing issues
 - Report problems with specific conversations
@@ -215,6 +229,7 @@ MIT License - see LICENSE file for details.
 ## Changelog
 
 ### Version 0.0.8
+
 - Comprehensive pipeline validation and regression fixes
 - Enhanced username processing and boundary detection
 - Performance optimizations for large conversations
@@ -223,4 +238,4 @@ MIT License - see LICENSE file for details.
 
 ---
 
-*Transform your Slack conversations into organized, searchable Obsidian notes with just one keypress.*
+_Transform your Slack conversations into organized, searchable Obsidian notes with just one keypress._

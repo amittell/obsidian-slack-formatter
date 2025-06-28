@@ -1,0 +1,196 @@
+Thread
+guidewire-gtm-pursuit
+
+
+
+
+User1
+  Feb 25th at 10:39 AM
+We haven't notified them yet 
+@user2
+, we were hoping to get a more detailed BBG quote from User3 this week (still waiting to hear back).
+Estimated timeline Endava gave us was min-22weeks from when we kick off the engamement to build all of the integrations we scoped.
+One thing we would like to know 
+@user2
+ is if Guidewire would be able to provide us with development licenses / instances for us to develop against? Endava are saying there is a $25k pass-through license cost from Guidewire to obtain this, which seems excessive and not very in the spirit of a strategic partnership with us.  (edited) 
+5 replies
+Also sent to the channel
+
+
+User4
+  Wednesday at 8:19 PM
+@user5
+ organized a super positive Insurance Solutioning Workshop with Infosys in the NY office today :rocket::mvp_text:.
+A more comprehensive update will be coming soon with additional AIs, but we wanted to get this one on your radar quickly 
+@user1
+ 
+@user6
+ since there's a 3/10 target date for a decision on the Guidewire Connector approach in the SteerCo doc:
+Infosys team showed high interest in our Guidewire Connector integration strategy—they're eager to hold a follow-up meeting to discuss partnering on building for the Marketplace. I know we're close with Endava, but the benefits Infosys mentioned make this worth exploring before gaveling on the build partner decision:
+They have 200+ Guidewire-certified employees.
+They already have sandbox instances we'd be able to use for the Connectors without paying to obtain them from Guidewire.
+They take on contracted liability for ongoing support/maintenance/upgrades of marketplace integrations.
+The majority of Insurance businesses they've worked with have started with pre-existing Guidewire marketplace integrations before moving on to custom builds. "Land with Guidewire then expand."
+They agreed to share a list of ~195 current/prospective Insurance users with business cases that Stripe may be able to solve for—we didn't ask about the overlap with Guidewire and can do so when the list is shared. Either way they agreed that driving customer leads our way, whether direct or through Guidewire, would be a key aspect of the partnership.
+Let me know if I've misrepresented or missed anything (and huge thanks to you and the rest of the team that contributed to the workshop :raised_hands: 
+@user7
+ 
+@user8
+ 
+@user9
+ 
+@user10
+ 
+@user11
+). (edited) 
+:+1::+1::skin-tone-4:
+3
+:raised_hands:
+2
+:white_check_mark:
+1
+
+
+User4
+  Wednesday at 8:26 PM
+cc 
+@user12
+ 
+@user2
+ 
+@user13
+ 
+@user14
+ for viz/thoughts/concerns
+
+
+User1
+  Thursday at 9:43 AM
+Good to have alternatives I think we should definitely at least give Infosys a shot at a proposal. Can you make an intro for me 
+@user4
+ so we can get the ball rolling on it asap?
+:yes:
+1
+
+
+User14
+  Thursday at 9:44 AM
+That second bullet is highly insightful. Thank you
+:pray:
+1
+
+
+User4
+  Thursday at 12:15 PM
+Looped you into an intro 
+@user1
+!
+:bufo-ty:
+1
+
+
+User6
+  Yesterday at 3:10 PM
+Hi all - I spoke to User1 about this earlier. We've already spent weeks working with Endava and Guidewire on this and I hesitate to bring in a new variable at this point. We are recommending Endava due to their deep experience with Stripe and the fact that they have already created the on-prem connector - we believe their ramp will be fast. User1 is working on our final recommendation to be shared XFN early next week. I think there is value in User1 reviewing our planned approach with Infosys to get their take and our A&C team engaging them in our GTM strategy but I don't recommend we ask them to pitch us a proposal at this point
+
+
+User14
+  Yesterday at 3:10 PM
+Agreed
+3:11
+Get the endava stuff out there
+
+
+User7
+  Yesterday at 3:40 PM
+Thanks for the clarity 
+@user6
+ but I think it may cause the wrong expectation with Infosys if we validate our approach with them if we've already decided to go with another partner. They were very eager to have a discussion around the potential of building a connector when 
+@user4
+ proposed it. Shall we rethink having the call? I'd need to think about the way to frame it given they've been asking us to get in front of work like this for them and we were already far along with Endava. Cc 
+@user5
+ 
+@user10
+
+
+User4
+  Yesterday at 4:04 PM
+That works for me, just want to double-confirm that we feel the benefits we gain with Endava outweigh some of the benefits Infosys had mentioned:
+They have 200+ Guidewire-certified employees.
+They already have sandbox instances we'd be able to use for the Connectors without paying to obtain them from Guidewire.
+They take on contracted liability for ongoing support/maintenance/upgrades of marketplace integrations.
+They bring a list of 195 users.
+As long as we're happy with what Endava offers in comparison (e.g., speed to ramp) and the benefits of going with Endava will drive the ultimate goal of expanding our customer pipeline, then I'm peaceful with the decision.
+I think there is value in User1 reviewing our planned approach with Infosys to get their take and our A&C team engaging them in our GTM strategy
+Whichever we're going with, I think we should still have the quick follow-up call with Infosys, since it will not even include their offshore Guidewire development team next week (it will be more information-trading rather than validation/proposal of any solution, which 
+@user1
+ 
+@user6
+ I think you still may find intriguing). More than anything, my hope is that we don't lose momentum on the partnership in general, as we already know it's leading us to 3 named user workshops and a list of 195 other Insurance businesses.
+@user7
+ let me know if I'm thinking about it the wrong way, but a discussion on the topic of connectors doesn't come with an obligation or an expectation—we can do the quick discovery and then come back and say "let's focus on direct to start because we have the demand". (edited) 
+:bufo-clap:
+1
+
+
+User8
+  Yesterday at 4:11 PM
+One more chime in here - is there a world in which we use both? Does the GW work need to be exclusive? (edited) 
+
+
+User4
+  Yesterday at 4:33 PM
+I'm down to sync in a bit if it's helpful for us all to connect briefly on this topic! Would just like to understand a little more about decisions and next steps and context I might have missed from separate threads, and then happy to disagree and commit if needed!
+4:34
+One more chime in here - is there a world in which we use both? Does the GW work need to be exclusive?
+For Connectors it's probably best to go with one for the suite, but then we could use other partners like Infosys for the custom Guidewire integrations with users.
+:100:
+2
+
+
+User14
+  Yesterday at 4:35 PM
+Correct
+
+
+User4
+  Yesterday at 4:37 PM
+Let me know if you're free to connect this afternoon real quick 
+@user6
+ 
+@user1
+ 
+@user7
+ 
+@user8
+, feels like we can quickly get on the same page and move forward all with shared context
+
+
+User1
+  Yesterday at 4:37 PM
+Happy to jump on a quick call. :bufo-thumbsup:
+:ty:
+1
+
+
+User4
+  Yesterday at 5:50 PM
+User1 and I just caught up, here's a recap:
+Most importantly, User1 flagged that the benefit of speed we get from Endava is partially because they're in our LDAP, they're in our JIRA, we have an SoW with them—basically, all the legal/logistical/admin details are already taken care of, they're fully integrated. 
+@user7
+ 
+@user9
+ do you know if Infosys is already set up with us in the same way from any prior engagement? If not, we'll have to go through contracting, legal redlines, provisioning, permissions, etc ... this process will push us far past the June 30th integration deadline. If this is the case, the Connector discussion is a moot point and we keep focus on Guidewire-to-user direct.
+If there are no admin roadblocks and Infosys is fully contracted and in our systems, then User1 is open to a quick discussion if they can get it scheduled ASAP next week, just in case they bring something to the table that blows Endava out of the water. We've already stressed in the email thread that we're on a major time crunch to make a decision; we'll be sure to stress this in the meeting as well in order to set clear expectations.
+We will highlight that, Connector or not, we're committed to continuing discovery with them on non-Marketplace Guidewire-to-user integrations. The direct opportunities with Travelers, MassMutual, and The Hartford are still very much something we want to pursue, and we also have no shortage of Guidewire-to-user opportunities that could use the expertise of a dedicated partner if there's a fit.
+
+
+User7
+  Yesterday at 6:49 PM
+Infosys does not have these contractual agreements in place. 
+@user4
+ let's talk strategy on this on Monday. There's some history here
+:ack-sg2:
+1
+:+1:
+1

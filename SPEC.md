@@ -44,20 +44,20 @@ SlackFormatPlugin (main.ts)
 
 ```typescript
 interface SlackMessage {
-  id: string;                    // Unique message identifier
-  username: string;              // Display username
-  originalUsername?: string;     // Original Slack username
-  timestamp: string;             // Formatted timestamp
-  rawTimestamp?: string;         // Original timestamp
-  content: string;               // Message content
-  reactions?: SlackReaction[];   // Message reactions
-  threadId?: string;             // Thread identifier
-  isThreadReply?: boolean;       // Thread reply flag
+  id: string; // Unique message identifier
+  username: string; // Display username
+  originalUsername?: string; // Original Slack username
+  timestamp: string; // Formatted timestamp
+  rawTimestamp?: string; // Original timestamp
+  content: string; // Message content
+  reactions?: SlackReaction[]; // Message reactions
+  threadId?: string; // Thread identifier
+  isThreadReply?: boolean; // Thread reply flag
   attachments?: SlackAttachment[]; // File attachments
-  codeBlocks?: CodeBlock[];      // Code block content
-  mentions?: string[];           // User mentions
-  links?: SlackLink[];           // URLs and links
-  edited?: boolean;              // Edit indicator
+  codeBlocks?: CodeBlock[]; // Code block content
+  mentions?: string[]; // User mentions
+  links?: SlackLink[]; // URLs and links
+  edited?: boolean; // Edit indicator
   type: 'message' | 'system' | 'thread_start'; // Message type
 }
 ```
@@ -67,33 +67,33 @@ interface SlackMessage {
 ```typescript
 interface SlackFormatSettings {
   // Core Features
-  detectCodeBlocks: boolean;        // Code block detection
-  convertUserMentions: boolean;     // @mention → [[link]] conversion
-  replaceEmoji: boolean;            // Custom emoji replacement
-  parseSlackTimes: boolean;         // Timestamp parsing
-  highlightThreads: boolean;        // Thread formatting
-  convertSlackLinks: boolean;       // Link processing
-  
+  detectCodeBlocks: boolean; // Code block detection
+  convertUserMentions: boolean; // @mention → [[link]] conversion
+  replaceEmoji: boolean; // Custom emoji replacement
+  parseSlackTimes: boolean; // Timestamp parsing
+  highlightThreads: boolean; // Thread formatting
+  convertSlackLinks: boolean; // Link processing
+
   // User Interface
   hotkeyMode: 'cmdShiftV' | 'interceptCmdV'; // Hotkey behavior
-  enablePreviewPane: boolean;       // Preview modal
+  enablePreviewPane: boolean; // Preview modal
   enableConfirmationDialog: boolean; // Confirmation dialog
-  showSuccessMessage: boolean;      // Success notification
-  
+  showSuccessMessage: boolean; // Success notification
+
   // Thread Management
-  collapseThreads: boolean;         // Thread collapsing
-  threadCollapseThreshold: number;  // Collapse threshold
-  
+  collapseThreads: boolean; // Thread collapsing
+  threadCollapseThreshold: number; // Collapse threshold
+
   // Customization
-  userMapJson: string;              // User ID → Name mapping
-  emojiMapJson: string;             // Emoji → Unicode mapping
-  frontmatterCssClass: string;      // CSS class for frontmatter
-  frontmatterTitle: string;         // Title format
-  timeZone: string;                 // Timezone for timestamps
-  
+  userMapJson: string; // User ID → Name mapping
+  emojiMapJson: string; // Emoji → Unicode mapping
+  frontmatterCssClass: string; // CSS class for frontmatter
+  frontmatterTitle: string; // Title format
+  timeZone: string; // Timezone for timestamps
+
   // Performance
-  maxLines: number;                 // Processing limit
-  debug: boolean;                   // Debug mode
+  maxLines: number; // Processing limit
+  debug: boolean; // Debug mode
 }
 ```
 
@@ -102,9 +102,10 @@ interface SlackFormatSettings {
 ### Stage 1: PreProcessor
 
 **Input**: Raw Slack conversation text  
-**Output**: Normalized text with consistent line endings and encoding  
+**Output**: Normalized text with consistent line endings and encoding
 
 **Operations**:
+
 - Text encoding normalization (UTF-8)
 - Line ending standardization (`\n`)
 - Whitespace cleanup and trimming
@@ -114,9 +115,10 @@ interface SlackFormatSettings {
 ### Stage 2: IntelligentMessageParser
 
 **Input**: Normalized text  
-**Output**: Array of `SlackMessage` objects  
+**Output**: Array of `SlackMessage` objects
 
 **Pattern Recognition**:
+
 - Username detection: `^[A-Za-z0-9._-]+$` at line start
 - Timestamp patterns: Various formats including `HH:MM AM/PM`, `H:MM`, relative times
 - Message boundary detection using username + timestamp combinations
@@ -124,6 +126,7 @@ interface SlackFormatSettings {
 - System message recognition (joins, leaves, topic changes)
 
 **Parsing Algorithm**:
+
 1. Split text into logical sections
 2. Identify message boundaries using username/timestamp patterns
 3. Extract message metadata (user, time, type)
@@ -134,15 +137,17 @@ interface SlackFormatSettings {
 ### Stage 3: ImprovedFormatDetector
 
 **Input**: Array of `SlackMessage` objects  
-**Output**: Conversation metadata and format classification  
+**Output**: Conversation metadata and format classification
 
 **Detection Capabilities**:
+
 - **Channel Format**: Multiple users, topic/purpose, channel operations
 - **DM Format**: 2–3 participants, direct conversation style
 - **Thread Format**: Parent message with nested replies
 - **Mixed Format**: Combination of formats
 
 **Metadata Extraction**:
+
 ```typescript
 interface ConversationMetadata {
   format: 'channel' | 'dm' | 'thread' | 'mixed';
@@ -157,45 +162,52 @@ interface ConversationMetadata {
 ### Stage 4: UnifiedProcessor
 
 **Input**: Messages + metadata  
-**Output**: Processed messages with enhanced content  
+**Output**: Processed messages with enhanced content
 
 #### Sub-Processors
 
 **AttachmentProcessor**:
+
 - File attachment recognition and formatting
 - Image, document, and media handling
 - Link preview processing
 
 **CodeBlockProcessor**:
+
 - Inline code detection: `` `code` ``
 - Multi-line code blocks: ``` blocks
 - Language detection and syntax highlighting preservation
 - Slack code formatting → Markdown conversion
 
 **EmojiProcessor**:
+
 - Unicode emoji preservation
 - Custom emoji replacement using `emojiMapJson`
 - Reaction processing and formatting
 - Emoji shortcode handling (`:emoji_name:`)
 
 **MessageContinuationProcessor**:
+
 - Multi-part message detection
 - "See more" continuation handling
 - Message thread reconstruction
 - Content deduplication
 
 **ThreadLinkProcessor**:
+
 - Thread link detection and formatting
 - Reply-to relationships
 - Thread navigation preservation
 
 **UrlProcessor**:
+
 - URL detection and validation
 - Slack link format conversion
 - Link preview handling
 - Markdown link formatting
 
 **UsernameProcessor**:
+
 - @mention detection: `@username` or `<@USER_ID>`
 - User mapping via `userMapJson`
 - Obsidian link conversion: `[[username]]`
@@ -204,11 +216,12 @@ interface ConversationMetadata {
 ### Stage 5: FormatStrategy
 
 **Input**: Processed messages + settings  
-**Output**: Formatted text blocks  
+**Output**: Formatted text blocks
 
 #### StandardFormatStrategy (Default)
 
 Output format:
+
 ```markdown
 > [!slack]+ Message from {username}
 > **Time:** {timestamp}
@@ -218,14 +231,16 @@ Output format:
 #### BracketFormatStrategy
 
 Output format:
+
 ```markdown
-**[{username}]** *{timestamp}*
+**[{username}]** _{timestamp}_
 {content}
 ```
 
 #### MixedFormatStrategy
 
 Combines multiple strategies based on context:
+
 - Channel messages: Standard format
 - DM messages: Bracket format
 - Thread replies: Indented format
@@ -233,9 +248,10 @@ Combines multiple strategies based on context:
 ### Stage 6: PostProcessor
 
 **Input**: Formatted text blocks  
-**Output**: Final Obsidian-compatible content  
+**Output**: Final Obsidian-compatible content
 
 **Operations**:
+
 - YAML frontmatter generation
 - Thread statistics compilation
 - Content validation and sanitization
@@ -248,15 +264,15 @@ Combines multiple strategies based on context:
 
 ```typescript
 const PERFORMANCE_LIMITS = {
-  MAX_INPUT_SIZE: 5 * 1024 * 1024,        // 5MB
-  MAX_LINES: 50000,                       // 50k lines
-  WARN_SIZE_THRESHOLD: 1024 * 1024,       // 1MB warning
-  WARN_LINES_THRESHOLD: 10000,            // 10k lines warning
-  CHUNK_SIZE: 100 * 1024,                 // 100KB chunks
-  MAX_CHUNK_PROCESSING_TIME: 5000,        // 5s per chunk
-  CHUNK_DELAY: 10,                        // 10ms between chunks
-  PROGRESS_REPORTING_THRESHOLD: 10,       // Progress after 10 chunks
-  MAX_CACHE_SIZE: 2 * 1024 * 1024        // 2MB cache limit
+  MAX_INPUT_SIZE: 5 * 1024 * 1024, // 5MB
+  MAX_LINES: 50000, // 50k lines
+  WARN_SIZE_THRESHOLD: 1024 * 1024, // 1MB warning
+  WARN_LINES_THRESHOLD: 10000, // 10k lines warning
+  CHUNK_SIZE: 100 * 1024, // 100KB chunks
+  MAX_CHUNK_PROCESSING_TIME: 5000, // 5s per chunk
+  CHUNK_DELAY: 10, // 10ms between chunks
+  PROGRESS_REPORTING_THRESHOLD: 10, // Progress after 10 chunks
+  MAX_CACHE_SIZE: 2 * 1024 * 1024, // 2MB cache limit
 };
 ```
 
@@ -347,17 +363,21 @@ interface MessageValidator {
 
 ```typescript
 class SlackFormatter {
-  constructor(settings: SlackFormatSettings, userMap: Record<string, string>, emojiMap: Record<string, string>);
-  
+  constructor(
+    settings: SlackFormatSettings,
+    userMap: Record<string, string>,
+    emojiMap: Record<string, string>
+  );
+
   // Main formatting method
   formatSlackContent(input: string): string;
-  
+
   // Format detection
   isLikelySlack(input: string): boolean;
-  
+
   // Advanced formatting with frontmatter
   buildNoteWithFrontmatter(input: string): string;
-  
+
   // Configuration updates
   updateSettings(settings: SlackFormatSettings): void;
   updateUserMap(userMap: Record<string, string>): void;
@@ -403,6 +423,7 @@ function sanitizeContent(content: string): string;
 ### Test Data
 
 Sample conversations located in `/samples/`:
+
 - `duckcreek-sample.txt` - Channel conversation
 - `multi-person-dm-sample.txt` - DM conversation
 - `emoji-channel-sample.txt` - Emoji-heavy content

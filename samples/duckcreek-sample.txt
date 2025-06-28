@@ -1,0 +1,53 @@
+User1
+  3:26 PM
+was added to guidewire-gtm-pursuit by User2
+.
+
+
+User3
+  3:31 PM
+Hey 
+@user4
+ - as an aside, just visited Duck Creek's payments page again. They've now fully baked in emburse as a payments orchestrator - and are calling it Duck Creek Payments.. Whats interesting is that they haven't included our logo (we were in from an acquiring pov) but have included Adyen. Given their book - i find this a touch concerning. I know we can't pursue two strategic partnerships - and that its not the best use of Stripe to be an endpoint in another orchestrator. But considering they are the #2 player, and possibly still #1 on pay-ins, I think we should engage a plats AE to see if we can at least get our payments solution into the platform - as much from a "no disqualification" pov as anything else.
+Link: https://www.duckcreek.com/wp-content/uploads/2024/11/Duck-Creek-Payments-Solutions.pdf
+Current users: https://www.duckcreek.com/customer/
+CC 
+@user5
+, 
+@user6
+ (edited) 
+
+
+
+
+21 replies
+Last reply 16 days agoView thread
+
+
+
+
+
+
+
+
+User7
+  3:43 PM
+was added to guidewire-gtm-pursuit by User5
+.
+
+
+User8
+:pto:  2:48 PM
+hi team, just noticed this press release that mentions Stripe as a Guidewire partner:
+https://www.guidewire.com/about/press-center/press-releases/20250110/guidewire-partnerconnect-ecosystem-surpasses-110-cloud-native-integrations
+GuidewireGuidewire
+Guidewire PartnerConnect Ecosystem Surpasses 110 Cloud-Native Integrations, Enables Insurers to Accelerate Business Growth and Unlock New Opportunities
+:eyes-intensifies:
+1
+:awesome:
+2
+
+
+
+2 replies
+Last reply 2 months agoView thread
