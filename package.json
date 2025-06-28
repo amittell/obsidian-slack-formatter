@@ -9,7 +9,7 @@
     "build": "node esbuild.config.mjs production",
     "build:fast": "node esbuild.config.mjs production",
     "test": "jest",
-    "test:quick": "jest --testTimeout=10000 --maxWorkers=2 tests/unit/comprehensive-message-count-validation.test.ts tests/unit/clay-differentiation.test.ts",
+    "test:quick": "jest --testTimeout=10000 --maxWorkers=2 tests/unit/link-preview-fix.test.ts",
     "test:core": "jest tests/unit/comprehensive-message-count-validation.test.ts tests/unit/clay-differentiation.test.ts",
     "test:integration": "jest tests/integration/formatter.test.ts",
     "test:coverage": "jest --coverage",

@@ -62,6 +62,14 @@ jobs:
             echo "⚠️ No build script found, skipping"
           fi
 
+      - name: 🔧 Type check
+        run: |
+          if npm run | grep -q "type-check"; then
+            npm run type-check
+          else
+            echo "⚠️ No type-check script found, skipping"
+          fi
+
       - name: 🧪 Run quick tests
         run: |
           if npm run | grep -q "test:quick"; then
