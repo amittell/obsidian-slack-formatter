@@ -20,13 +20,7 @@ STYLES_CSS="styles.css"
 RESET='\033[0m'
 BOLD='\033[1m'
 UNDERLINE='\033[4m'
-FG_RED='\033[0;31m'
-FG_GREEN='\033[0;32m'
 FG_YELLOW='\033[0;33m'
-FG_BLUE='\033[0;34m'
-FG_MAGENTA='\033[0;35m'
-FG_CYAN='\033[0;36m'
-FG_WHITE='\033[0;37m'
 FG_BRIGHT_RED='\033[1;31m'
 FG_BRIGHT_GREEN='\033[1;32m'
 FG_BRIGHT_YELLOW='\033[1;33m'
@@ -93,14 +87,20 @@ show_banner() {
 # Print a fancy section header
 print_section() {
     local title="$1"
-    local title_display_len=$(echo -n "$title" | wc -m)
+    local title_display_len
+    title_display_len=$(echo -n "$title" | wc -m)
     local inner_width=60
-    local padding=$(( (inner_width - title_display_len) / 2 ))
-    local extra_space=$(( (inner_width - title_display_len) % 2 ))
+    local padding
+    padding=$(( (inner_width - title_display_len) / 2 ))
+    local extra_space
+    extra_space=$(( (inner_width - title_display_len) % 2 ))
     padding=$(( padding > 0 ? padding : 0 ))
-    local pad_str=$(printf "%${padding}s")
-    local end_pad_str=$(printf "%$((padding + extra_space))s")
-    local h_line_fill=$(printf '%*s' "$inner_width" "" | tr ' ' "${H_LINE}")
+    local pad_str
+    pad_str=$(printf "%${padding}s")
+    local end_pad_str
+    end_pad_str=$(printf "%$((padding + extra_space))s")
+    local h_line_fill
+    h_line_fill=$(printf '%*s' "$inner_width" "" | tr ' ' "${H_LINE}")
 
     echo ""
     echo -e "${FG_BRIGHT_BLUE}${TL_CORNER}${H_LINE}${H_LINE}${H_LINE}${H_LINE}${H_LINE}${T_DOWN}${h_line_fill}${T_DOWN}${H_LINE}${H_LINE}${H_LINE}${H_LINE}${H_LINE}${TR_CORNER}${RESET}"
@@ -161,8 +161,15 @@ run_with_spinner() {
     local cmd="$1"
     local message="$2"
     
-    # Run command in background
-    eval "$cmd" > /tmp/build_output 2>&1 &
+    # Create secure temporary file
+    local temp_output
+    temp_output=$(mktemp) || {
+        print_error "Failed to create temporary file"
+        exit 1
+    }
+    
+    # Run command in background without eval (safer)
+    bash -c "$cmd" > "$temp_output" 2>&1 &
     local pid=$!
     
     # Show spinner while command runs
@@ -177,12 +184,12 @@ run_with_spinner() {
     else
         print_error "$message failed (exit code: $exit_code)"
         echo "Output:"
-        cat /tmp/build_output
-        rm -f /tmp/build_output
+        cat "$temp_output"
+        rm -f "$temp_output"
         exit $exit_code
     fi
     
-    rm -f /tmp/build_output
+    rm -f "$temp_output"
     return $exit_code
 }
 
@@ -247,8 +254,10 @@ deploy_to_vault() {
 # Show final summary
 show_summary() {
     local build_start_time=$1
-    local build_end_time=$(date +%s)
-    local build_duration=$((build_end_time - build_start_time))
+    local build_end_time
+    build_end_time=$(date +%s)
+    local build_duration
+    build_duration=$((build_end_time - build_start_time))
     
     echo ""
     echo -e "${FG_BRIGHT_BLUE}${TL_CORNER}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${TR_CORNER}${RESET}"
@@ -265,7 +274,8 @@ show_summary() {
 
 # Main execution
 main() {
-    local build_start_time=$(date +%s)
+    local build_start_time
+    build_start_time=$(date +%s)
     
     # Show the magnificent banner
     show_banner
