@@ -4,6 +4,7 @@
  */
 
 import { expect } from '@jest/globals';
+import type { SlackFormatSettings } from '../../src/types/settings.types';
 
 // Debug utilities - inline to avoid CI module resolution issues
 export interface DebugLoggerConfig {
@@ -109,6 +110,36 @@ export interface TestParserConfig {
   userMap?: Record<string, string>;
   emojiMap?: Record<string, string>;
   settings?: any;
+}
+
+/**
+ * Create minimal SlackFormatSettings for testing
+ */
+export function createTestSettings(
+  overrides: Partial<SlackFormatSettings> = {}
+): SlackFormatSettings {
+  return {
+    detectCodeBlocks: true,
+    convertUserMentions: true,
+    replaceEmoji: true,
+    parseSlackTimes: true,
+    highlightThreads: true,
+    convertSlackLinks: true,
+    userMapJson: '{}',
+    emojiMapJson: '{}',
+    hotkeyMode: 'cmdShiftV' as const,
+    maxLines: 5000,
+    enablePreviewPane: true,
+    enableConfirmationDialog: true,
+    showSuccessMessage: true,
+    collapseThreads: true,
+    threadCollapseThreshold: 10,
+    frontmatterCssClass: 'slack-conversation',
+    frontmatterTitle: '# Slack Conversation',
+    timeZone: '',
+    debug: false,
+    ...overrides,
+  };
 }
 
 export interface ParsedMaps {

@@ -1,11 +1,11 @@
 import { describe, it, expect } from '@jest/globals';
 import { IntelligentMessageParser } from '../../src/formatter/stages/intelligent-message-parser';
-import { TestLogger } from '../helpers';
+import { TestLogger, createTestSettings } from '../helpers';
 
 describe('Test hasUserTimestampCombination', () => {
     it('should correctly detect user+timestamp combinations', () => {
         const parser = new IntelligentMessageParser(
-            { debug: true },
+            createTestSettings({ debug: true }),
             { userMap: {}, emojiMap: {} }
         );
         

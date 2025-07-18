@@ -224,12 +224,7 @@ export class FlexibleMessageParser {
     // Detect format for context-aware parsing
     this.detectedFormat = this.detectFormat(text);
     if (isDebugEnabled) {
-      Logger.debug(
-        'FlexibleMessageParser',
-        `Detected format: ${this.detectedFormat}`,
-        undefined,
-        isDebugEnabled
-      );
+      Logger.debug('FlexibleMessageParser', `Detected format: ${this.detectedFormat}`);
     }
 
     // Multi-pass parsing
@@ -244,7 +239,7 @@ export class FlexibleMessageParser {
     messages = duplicateDetectionService.deduplicateMessages(messages, isDebugEnabled);
 
     if (isDebugEnabled) {
-      Logger.debug('FlexibleMessageParser', 'Debug info', context.debugInfo, isDebugEnabled);
+      Logger.debug('FlexibleMessageParser', 'Debug info', context.debugInfo);
       Logger.debug(
         'FlexibleMessageParser',
         `Parsed ${messages.length} unique messages from ${context.blocks.length} blocks`
@@ -702,7 +697,9 @@ export class FlexibleMessageParser {
             /^(Today|Yesterday)\s+at$/i,
           ];
 
-          const isSuspicious = suspiciousPatterns.some(pattern => pattern.test(block.username));
+          const isSuspicious = block.username
+            ? suspiciousPatterns.some(pattern => pattern.test(block.username!))
+            : false;
 
           if (isSuspicious) {
             // Merge this block into previous
@@ -1123,7 +1120,7 @@ export class FlexibleMessageParser {
     try {
       for (const pattern of this.patterns.timestamp) {
         if (pattern.test(line)) {
-          let score = CONFIDENCE_THRESHOLDS.fragmentation;
+          let score: number = CONFIDENCE_THRESHOLDS.fragmentation;
 
           // Boost for specific formats
           if (/^\[\d{1,2}:\d{2}\]$/i.test(line)) score = CONFIDENCE_THRESHOLDS.absolute; // Perfect score for [8:26] format

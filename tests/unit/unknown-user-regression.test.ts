@@ -1,17 +1,17 @@
 import { describe, it, expect, beforeEach } from '@jest/globals';
 import { IntelligentMessageParser } from '../../src/formatter/stages/intelligent-message-parser';
 import { FlexibleMessageParser } from '../../src/formatter/stages/flexible-message-parser';
-import { TestLogger } from '../helpers';
+import { TestLogger, createTestSettings } from '../helpers';
 
 describe('Unknown User Regression Test Suite', () => {
   let intelligentParser: IntelligentMessageParser;
   let flexibleParser: FlexibleMessageParser;
 
   beforeEach(() => {
-    intelligentParser = new IntelligentMessageParser(
-      { debug: false },
-      { userMap: {}, emojiMap: {} }
-    );
+    intelligentParser = new IntelligentMessageParser(createTestSettings({ debug: false }), {
+      userMap: {},
+      emojiMap: {},
+    });
     flexibleParser = new FlexibleMessageParser();
   });
 

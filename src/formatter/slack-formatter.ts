@@ -196,11 +196,7 @@ export class SlackFormatter implements ISlackFormatter {
 
     // Initialize components
     this.parser = new FlexibleMessageParser();
-    this.intelligentParser = new IntelligentMessageParser(
-      this.settings,
-      { userMap, emojiMap },
-      'standard'
-    );
+    this.intelligentParser = new IntelligentMessageParser(this.settings, { userMap, emojiMap });
     this.formatDetector = new ImprovedFormatDetector();
     this.unifiedProcessor = new UnifiedProcessor(this.settings);
     this.preprocessor = new PreProcessor(settings?.maxLines || 1000);
@@ -440,11 +436,7 @@ export class SlackFormatter implements ISlackFormatter {
 
       // 3. Parse messages with intelligent parser as primary (with detected format)
       // Recreate parser with detected format for context-aware parsing
-      this.intelligentParser = new IntelligentMessageParser(
-        this.settings,
-        this.parsedMaps,
-        formatType
-      );
+      this.intelligentParser = new IntelligentMessageParser(this.settings, this.parsedMaps);
       let messages = this.intelligentParser.parse(preprocessed.content, this.debugMode);
       let parsingMethod = 'intelligent';
 
@@ -1084,8 +1076,7 @@ export class SlackFormatter implements ISlackFormatter {
           messageCount: messages.length,
           totalLines,
           badIndicators: badIndicators.map((indicator, i) => ({ index: i, active: indicator })),
-        },
-        true
+        }
       );
     }
 
@@ -1099,18 +1090,7 @@ export class SlackFormatter implements ISlackFormatter {
    * @returns {string} The formatting standard type to use
    */
   private getFormattingStandardType(formatType: string): 'CONVERSATION' | 'COMPACT' | 'DETAILED' {
-    // Use settings preference if available
-    if (this.settings.formattingStyle) {
-      switch (this.settings.formattingStyle.toLowerCase()) {
-        case 'compact':
-          return 'COMPACT';
-        case 'detailed':
-          return 'DETAILED';
-        default:
-          return 'CONVERSATION';
-      }
-    }
-
+    // Note: formattingStyle is not part of SlackFormatSettings interface
     // Default based on format type
     switch (formatType) {
       case 'dm':

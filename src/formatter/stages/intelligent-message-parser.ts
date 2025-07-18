@@ -233,10 +233,10 @@ export class IntelligentMessageParser {
     }
 
     // Ensure all bound methods are still functions
-    const methodsToCheck: (keyof this)[] = ['couldBeMessageStart', 'looksLikeContinuation'];
+    const methodsToCheck = ['couldBeMessageStart', 'looksLikeContinuation'] as const;
     for (const method of methodsToCheck) {
       if (typeof this[method] !== 'function') {
-        throw new Error(`IntelligentMessageParser: method ${method} is not a function`);
+        throw new Error(`IntelligentMessageParser: method ${String(method)} is not a function`);
       }
     }
   }
@@ -286,17 +286,12 @@ export class IntelligentMessageParser {
     const messages = this.extractMessages(lines, messageBoundaries, structure);
 
     if (debugMode) {
-      Logger.debug(
-        'IntelligentMessageParser',
-        'Parsing results',
-        {
-          totalLines: lines.length,
-          boundaries: messageBoundaries.length,
-          messages: messages.length,
-          structure: structure,
-        },
-        debugMode
-      );
+      Logger.debug('IntelligentMessageParser', 'Parsing results', {
+        totalLines: lines.length,
+        boundaries: messageBoundaries.length,
+        messages: messages.length,
+        structure: structure,
+      });
     }
 
     return messages;
@@ -878,9 +873,7 @@ export class IntelligentMessageParser {
       if (debugEnabled) {
         Logger.debug(
           'IntelligentMessageParser',
-          `Extending boundary ${boundary.start}-${boundary.end}`,
-          undefined,
-          debugEnabled
+          `Extending boundary ${boundary.start}-${boundary.end}`
         );
       }
 
@@ -2858,22 +2851,22 @@ export class IntelligentMessageParser {
       }
 
       // Try each extraction pattern in priority order
-      let result = this.extractAppMessagePattern(line, debugEnabled);
+      let result = this.extractAppMessagePattern(line);
       if (result.username) return result;
 
-      result = this.extractDoubledUsernamePattern(line, debugEnabled);
+      result = this.extractDoubledUsernamePattern(line);
       if (result.username) return result;
 
-      result = this.extractBasicUsernameTimePattern(line, debugEnabled);
+      result = this.extractBasicUsernameTimePattern(line);
       if (result.username) return result;
 
-      result = this.extractEnhancedPatterns(line, debugEnabled);
+      result = this.extractEnhancedPatterns(line);
       if (result.username) return result;
 
-      result = this.extractSimpleUsernamePattern(line, debugEnabled);
+      result = this.extractSimpleUsernamePattern(line);
       if (result.username) return result;
 
-      result = this.extractFallbackPattern(line, debugEnabled);
+      result = this.extractFallbackPattern(line);
       if (result.username) return result;
 
       if (debugEnabled) {

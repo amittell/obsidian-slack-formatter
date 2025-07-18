@@ -1,6 +1,6 @@
 import { describe, it, expect } from '@jest/globals';
 import { IntelligentMessageParser } from '../../src/formatter/stages/intelligent-message-parser';
-import { TestLogger } from '../helpers';
+import { TestLogger, createTestSettings } from '../helpers';
 
 describe('Test findContinuationEnd', () => {
     it('should find correct continuation end for [time](url) format', () => {
@@ -13,7 +13,7 @@ Yeah, this is going to be fantastic.
 So, first attempt was copying and pasting this very thread`;
 
         const parser = new IntelligentMessageParser(
-            { debug: true },
+            createTestSettings({ debug: true }),
             { userMap: {}, emojiMap: {} }
         );
         

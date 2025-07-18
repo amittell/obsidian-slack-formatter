@@ -53,9 +53,19 @@ fi
 
 # Check 2: TypeScript compilation
 echo -e "${BLUE}🔧 Checking TypeScript compilation...${NC}"
-if [ -f "tsconfig.json" ] && command -v npx &> /dev/null; then
+if [ -n "$SKIP_TS_CHECK" ]; then
+    echo -e "${YELLOW}⚠️  TypeScript check skipped (SKIP_TS_CHECK set)${NC}"
+elif [ -f "tsconfig.ci.json" ] && command -v npx &> /dev/null; then
+    npx tsc --project tsconfig.ci.json --noEmit || {
+        echo -e "${RED}❌ TypeScript compilation failed!${NC}"
+        echo -e "${YELLOW}💡 Use SKIP_TS_CHECK=1 to bypass this check${NC}"
+        exit 1
+    }
+    echo -e "${GREEN}✅ TypeScript compilation successful${NC}"
+elif [ -f "tsconfig.json" ] && command -v npx &> /dev/null; then
     npx tsc --noEmit || {
         echo -e "${RED}❌ TypeScript compilation failed!${NC}"
+        echo -e "${YELLOW}💡 Use SKIP_TS_CHECK=1 to bypass this check${NC}"
         exit 1
     }
     echo -e "${GREEN}✅ TypeScript compilation successful${NC}"

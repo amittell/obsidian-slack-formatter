@@ -1,6 +1,6 @@
 import { describe, it, expect } from '@jest/globals';
 import { IntelligentMessageParser } from '../../src/formatter/stages/intelligent-message-parser';
-import { TestLogger } from '../helpers';
+import { TestLogger, createTestSettings } from '../helpers';
 
 describe('Test boundary extraction', () => {
     it('should extract correct content from boundaries', () => {
@@ -13,7 +13,7 @@ Yeah, this is going to be fantastic.
 So, first attempt was copying and pasting this very thread`;
 
         const parser = new IntelligentMessageParser(
-            { debug: false },
+            createTestSettings({ debug: false }),
             { userMap: {}, emojiMap: {} }
         );
         

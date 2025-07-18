@@ -1,6 +1,6 @@
 import { describe, it, expect } from '@jest/globals';
 import { IntelligentMessageParser } from '../../src/formatter/stages/intelligent-message-parser';
-import { TestLogger } from '../helpers';
+import { TestLogger, createTestSettings } from '../helpers';
 
 describe('Test extractContent', () => {
     it('should extract all content lines', () => {
@@ -14,7 +14,7 @@ describe('Test extractContent', () => {
         ];
         
         const parser = new IntelligentMessageParser(
-            { debug: false },
+            createTestSettings({ debug: false }),
             { userMap: {}, emojiMap: {} }
         );
         

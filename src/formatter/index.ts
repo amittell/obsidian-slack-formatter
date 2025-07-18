@@ -16,10 +16,9 @@ export * from './processors/attachment-processor';
 // Stages
 export * from './stages/flexible-message-parser';
 export * from './stages/improved-format-detector';
+export * from './stages/intelligent-message-parser';
 export * from './stages/preprocessor';
 export * from './stages/postprocessor';
-export * from './stages/format-detector';
-export * from './stages/message-parser';
 
 // Strategies
 export * from './strategies/base-format-strategy';
