@@ -42,9 +42,9 @@
 > [!slack]+ Message from Clay
 > **Time:** 6:28 PM
 >
-> Hi there, thanks so much for sharing this! We'l be passing your feedback along to our product team, and any additional context you can provide will help us prioritize with your needs in mind as we shape the roadmap.
+> Hi there, thanks so much for sharing this! We'll be passing your feedback along to our product team, and any additional context you can provide will help us prioritize with your needs in mind as we shape the roadmap.
 >
-> If there are specific use cases, workflows, or challenges where these suggestions would make a big difference, feel free to share-we'd love to hear more. Otherwise, we'l plan to close this ticket soon and review your input offline.
+> If there are specific use cases, workflows, or challenges where these suggestions would make a big difference, feel free to share--we'd love to hear more. Otherwise, we'll plan to close this ticket soon and review your input offline.
 
 > [!slack]+ Message from 628 (httpsclayrunhq.slack.comarchivesC025XGWSYTXp1749421722956409thread ts1749421707.955479cidC025XGWSYTX)
 > **Time:** 6:28 AM

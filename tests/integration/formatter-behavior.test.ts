@@ -183,7 +183,8 @@ function hello() {
 10:30 AM
 Great job! :thumbsup: :smile:`;
 
-      const emojiMap = { thumbsup: '👍', smile: '😊' };
+      // Use Unicode escape sequences for CI compatibility
+      const emojiMap = { thumbsup: '\u{1F44D}', smile: '\u{1F60A}' };
       const formatter = new SlackFormatter(
         { ...DEFAULT_SETTINGS, replaceEmoji: true },
         {},
@@ -191,8 +192,19 @@ Great job! :thumbsup: :smile:`;
       );
 
       const result = formatter.formatSlackContent(content);
-      expect(result).toContain('👍');
-      expect(result).toContain('😊');
+
+      // Debug output for CI
+      if (process.env.CI) {
+        console.log('CI Environment detected');
+        console.log('Input content:', JSON.stringify(content));
+        console.log('Result:', JSON.stringify(result));
+        console.log('Result includes thumbsup emoji:', result.includes('\u{1F44D}'));
+        console.log('Result includes smile emoji:', result.includes('\u{1F60A}'));
+      }
+
+      // Use Unicode escape sequences for CI compatibility
+      expect(result).toContain('\u{1F44D}'); // 👍
+      expect(result).toContain('\u{1F60A}'); // 😊
       expect(result).not.toContain(':thumbsup:');
       expect(result).not.toContain(':smile:');
     });

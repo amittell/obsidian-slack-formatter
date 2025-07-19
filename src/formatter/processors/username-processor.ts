@@ -108,14 +108,23 @@ export class UsernameProcessor extends BaseProcessor<string> {
       let content = line;
       let modified = false;
 
-      // Clean up doubled usernames
-      const cleanedContent = cleanupDoubledUsernames(content);
-      if (cleanedContent !== content) {
-        content = cleanedContent;
-        modified = true;
-        // Keep this log as debug
-        if (this.isDebugEnabled) {
-          Logger.debug(this.constructor.name, `Cleaned doubled username: ${line} -> ${content}`);
+      // Only clean up doubled usernames if the text looks like it might contain them
+      // Skip cleanup for regular message content that doesn't have username patterns
+      // Look for patterns like "John DoeJohn Doe" or "UserUser"
+      const hasDoubledPattern = /([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)*)\1/.test(content);
+      const isJustAName =
+        /^[A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+){0,3}$/.test(content.trim()) &&
+        content.trim().length < 50;
+
+      if (hasDoubledPattern || isJustAName) {
+        const cleanedContent = cleanupDoubledUsernames(content);
+        if (cleanedContent !== content) {
+          content = cleanedContent;
+          modified = true;
+          // Keep this log as debug
+          if (this.isDebugEnabled) {
+            Logger.debug(this.constructor.name, `Cleaned doubled username: ${line} -> ${content}`);
+          }
         }
       }
 

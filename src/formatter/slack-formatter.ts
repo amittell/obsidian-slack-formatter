@@ -479,6 +479,16 @@ export class SlackFormatter implements ISlackFormatter {
 
       debugInfo.push(`Processed ${messages.length} messages (${parsingMethod})`);
 
+      // Debug: Log parsed messages
+      if (this.debugMode) {
+        messages.forEach((msg, idx) => {
+          Logger.debug(
+            'SlackFormatter',
+            `Message ${idx}: username="${msg.username}", text="${msg.text}"`
+          );
+        });
+      }
+
       // 4. Process message content
       const processedMessages = messages.map(msg => {
         const processed = { ...msg };

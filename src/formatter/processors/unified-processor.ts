@@ -362,10 +362,16 @@ export class UnifiedProcessor extends BaseProcessor<string> {
 
       try {
         const before = processed;
+        if (debug) {
+          Logger.debug('UnifiedProcessor', `Before ${step.name}: "${before}"`);
+        }
         processed = step.process(processed, parsedMaps);
 
-        if (debug && before !== processed) {
-          debugInfo.push(`Applied: ${step.name}`);
+        if (debug) {
+          Logger.debug('UnifiedProcessor', `After ${step.name}: "${processed}"`);
+          if (before !== processed) {
+            debugInfo.push(`Applied: ${step.name}`);
+          }
         }
       } catch (error) {
         Logger.warn('UnifiedProcessor', `Error in ${step.name} processor`, error);

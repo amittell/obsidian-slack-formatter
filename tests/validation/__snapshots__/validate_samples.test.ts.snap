@@ -10,16 +10,16 @@ exports[`Slack Formatter Validation Samples should correctly format duckcreek-sa
 > [!slack]+ Message from User3
 > **Time:** 3:31 PM
 >
-> Hey
+> Hey 
 > [[user4]]
-> - as an aside, just visited Duck Creek's payments page again. They've now fully baked in emburse as a payments orchestrator - and are calling it Duck Creek Payments.. Whats interesting is that they haven't included our logo (we were in from an acquiring pov) but have included Adyen. Given their book - i find this a touch concerning. I know we can't pursue two strategic partnerships - and that its not the best use of Stripe to be an endpoint in another orchestrator. But considering they are the #2 player, and possibly still #1 on pay-ins, I think we should engage a plats AE to see if we can at least get our payments solution into the platform - as much from a "no disqualification" pov as anything else.
-> Link: https://www.duckcreek.com/wp-content/uploads/2024/1/Duck-Creek-Payments-Solutions.pdf
+>  - as an aside, just visited Duck Creek's payments page again. They've now fully baked in emburse as a payments orchestrator - and are calling it Duck Creek Payments.. Whats interesting is that they haven't included our logo (we were in from an acquiring pov) but have included Adyen. Given their book - i find this a touch concerning. I know we can't pursue two strategic partnerships - and that its not the best use of Stripe to be an endpoint in another orchestrator. But considering they are the #2 player, and possibly still #1 on pay-ins, I think we should engage a plats AE to see if we can at least get our payments solution into the platform - as much from a "no disqualification" pov as anything else.
+> Link: https://www.duckcreek.com/wp-content/uploads/2024/11/Duck-Creek-Payments-Solutions.pdf
 > Current users: https://www.duckcreek.com/customer/
-> C
+> CC 
 > [[user5]]
-> ,
+> , 
 > [[user6]]
-> (edited)
+>  (edited)
 
 > [!slack]+ Message from User7
 > **Time:** 3:43 PM
@@ -41,36 +41,45 @@ exports[`Slack Formatter Validation Samples should correctly format emoji-channe
 > **Time:** 3:04 PM
 >
 > replied to a thread:
-> wtb i.e. cookie monster, but blurple.
+> wtb :gptn-monster: i.e. cookie monster, but blurple.
+> :gptn-monster:
 
 > [!slack]+ Message from User2
 > **Time:** 12:46 PM
 >
-> Anyone else got beef with emoji?
-> Our partner merchant ids are in the format krngloballive:&lt;suffix&gt; so half of the time they get pasted as just "krngloballive"
+> Anyone else got beef with :partner: emoji? 👀
+> Our partner merchant ids are in the format krn:partner:global:account:live:&lt;suffix&gt; so half of the time they get pasted as just "krn:partner:global:account:live"
 > Also noticing the replacement a lot in automated messages since we've a bunch of ruby packages called partner
 
 > [!slack]+ Message from User3
 > **Time:** 2:23 PM
 >
 > test
+> 👍
+
+> [!slack]+ Message from User3
+> **Time:** 2:23 PM
+>
+> :fake-like-1::fake-like-2::fake-like-3:
+>
+> :nice-100: 11 :recursive-thumbsup-new: 11 :principle-emojincy-and-focus: 2 :add-bufo: 3 :fake-like-1: 2 :fake-like-2: 2 :fake-like-3: 2
 
 > [!slack]+ Message from User4
 > **Time:** 3:18 PM
 >
-> wtb (where bufo looks despondent and/or bored)
+> wtb :bufo-needs-a-hobby: (where bufo looks despondent and/or bored)
 
 > [!slack]+ Message from User5
 > **Time:** 3:24 PM
 >
-> wtb
+> wtb :bufo-goes-back-to-coding:
 >
 > :bufo-coding: 5 :bufo-happy-coding: 2 :bufo-yearns-for-the-mines: 9
 
 > [!slack]+ Message from User6
 > **Time:** 1:52 PM
 >
-> wtb
+> wtb :no-is-temporary-yes-is-forever:
 >
 > 2 months agoView thread
 > This message was deleted.
@@ -80,16 +89,24 @@ exports[`Slack Formatter Validation Samples should correctly format emoji-channe
 > [!slack]+ Message from User3
 > **Time:** 2:23 PM
 >
-> wts: is a very low quality emoji for how often it gets used (purely because of bufo/SEO). if someone creates a cleaner version, I'l gladly give up the emoji namespace to them. It is a &gt;p99 bufo according to go/emoji-scoreboard (edited)
+> wts: :bufo-clap: is a very low quality emoji for how often it gets used (purely because of bufo/SEO). if someone creates a cleaner version, I'll gladly give up the emoji namespace to them. It is a &gt;p99 bufo according to go/emoji-scoreboard (edited)
 >
 > :til-dark: 4 :bufo-clap: 5 :five-nines: 4
 
 > [!slack]+ Message from User7
 > **Time:** 8:01 PM
 >
+> :big-bless-0-0::big-bless-0-1:
+> :big-bless-1-0::big-bless-1-1:
 > 8:04
 > big bless
 > Custom response
+
+> [!slack]+ Message from Slackbot
+> **Time:** 8:04 PM
+>
+> :big-bless-0-0::big-bless-0-1:
+> :big-bless-1-0::big-bless-1-1:
 
 > [!slack]+ Message from User8
 > **Time:** 11:38 AM
@@ -99,14 +116,14 @@ exports[`Slack Formatter Validation Samples should correctly format emoji-channe
 > [!slack]+ Message from User9
 > **Time:** 1:58 AM
 >
-> Does anyone have the template for where I can replace the parrot?
+> Does anyone have the template for :everythings_fine_parrot: where I can replace the parrot?
 >
 > :bufo-worried-doctor: 1
 
 > [!slack]+ Message from User10
 > **Time:** 2:59 PM
 >
-> I need an emoji for
+> I need an emoji for :bufo-closed-the-tab-with-his-hubble-results:
 >
 > :bufo-takes-hubble: 6
 
@@ -116,8 +133,8 @@ exports[`Slack Formatter Validation Samples should correctly format emoji-channe
 > Has anyone studied bufo's migration? as I understand it many ex-stripes spread bufo to OpenAI, and Notion... where else?
 > X (formerly Twitter)X (formerly Twitter)
 > Notion ([[NotionHQ]]) on X
-> Last year we launched custom emojis in Notion
-> But how do you add 1.5M custom emojis to a workspace without breaking everything? (91 kB)
+> Last year we launched custom emojis in Notion :chefs-kiss:
+> But how do you add 1.5M custom emojis to a workspace without breaking everything? 🤔 (91 kB)
 >
 > 9+
 >
@@ -126,7 +143,7 @@ exports[`Slack Formatter Validation Samples should correctly format emoji-channe
 > [!slack]+ Message from User12
 > **Time:** 6:22 PM
 >
-> went to reference the anikan princess leia me and I was extremely disappointed we don't have a princess leia emoji... I thought we were nerds people
+> went to reference the anikan princess leia meme and I was extremely disappointed we don't have a princess leia emoji... I thought we were nerds people :laughing: :starwars2:
 >
 > :be-the-emoji-you-want-to-see: 1 :right-meme: 9 :r1-blurple: 1
 
@@ -135,7 +152,7 @@ exports[`Slack Formatter Validation Samples should correctly format emoji-channe
 >
 > replied to a thread:
 > Has anyone studied bufo's migration? as I understand it many ex-stripes spread bufo to OpenAI, and Notion... where else?
-> does anyone know which bufo is this?
+> does anyone know which bufo is this? :laughing:
 > image.png
 >
 > image.png
@@ -165,30 +182,30 @@ exports[`Slack Formatter Validation Samples should correctly format emoji-channe
 > [!slack]+ Message from User16
 > **Time:** 3:59 PM
 >
-> Emojiteam can we remove this? For photosensitivity
+> Emojiteam can we remove this? For photosensitivity :thread:
 >
 > +1
 
 > [!slack]+ Message from User17
 > **Time:** 3:04 PM
 >
-> wtb / which is like   or but with pompoms (animation optional)
+> wtb :bufo-cheerleader: / :bufo-cheers-you-on: which is like :bufo-excite:  or :doodle-bufo-yay: but with pompoms (animation optional)
 >
-> 2 days agoView thread
+> 22 days agoView thread
 >
 > :bufo-cheerleader: 6
 
 > [!slack]+ Message from User18
 > **Time:** 1:28 PM
 >
-> is so cursed
+> :hide-the-pain-bufo: is so cursed
 >
 > :yikes-harold: 5
 
 > [!slack]+ Message from User19
 > **Time:** 2:20 PM
 >
-> wtb to use when someone has linked to a private channel you're not in (see screenshot from Slack) (edited)
+> wtb :private-channel: to use when someone has linked to a private channel you're not in (see screenshot from Slack) (edited)
 
 > [!slack]+ Message from User20
 > **Time:** 3:43 PM
@@ -199,7 +216,7 @@ exports[`Slack Formatter Validation Samples should correctly format emoji-channe
 > [!slack]+ Message from User21
 > **Time:** 8:28 PM
 >
-> wtb
+> wtb :bufo-eating-ortolan:
 >
 > :big-yikes: 3 :bufo-blanket: 1 :fancy-bufo: 2 :bufo-eats-his-son-like-popcorn: 2 :bufo-what-have-you-done: 1 :wait-thats-illegal: 1
 
@@ -209,19 +226,21 @@ exports[`Slack Formatter Validation Samples should correctly format emoji-channe
 > From a fresh Slack instance. It's no way to live.
 > Image from iOS
 >
+> Image from iOS
+>
 > :nice-1: 5 :nice-brat: 5 :nice-icon: 5 :nice-100: 5 :nice-colors: 6 :nice-nice: 5 :nice-blurple: 5 :haha-nice: 5 :small-nice: 5 :super-nice: 5 :nice-in-swedish: 5 :party-nice: 4 :double-nice: 4
 
 > [!slack]+ Message from User22
 > **Time:** 2:24 PM
 >
-> I'm looking for help removing a reactji, specifically looking to retire jira-archreview-ask since that forum is deprecated. I cleaned up the go/askbot-sheet to remove the behavior, but the emoji is owned by a former Stripe.
+> 👋 I'm looking for help removing a reactji, specifically looking to retire jira-archreview-ask :jira-archreview-ask: since that forum is deprecated. I cleaned up the go/askbot-sheet to remove the behavior, but the emoji is owned by a former Stripe.
 >
 > 3 days agoView thread
 
 > [!slack]+ Message from User19
 > **Time:** 10:25 AM
 >
-> wtb ()
+> wtb :double-ty: (:ty::ty:)
 >
 > Last reply 19 hours ago
 >
@@ -232,27 +251,27 @@ exports[`Slack Formatter Validation Samples should correctly format fireside-sam
 "> [!slack]+ Message from User1
 > **Time:** 12:00 PM
 >
-> Hi Stripes, here's the agenda for this week's Friday Fireside, with
+> Hi Stripes, here's the agenda for this week's Friday Fireside, with 
 > [[user2]]
-> and
+>  and 
 > [[user3]]
-> We'l hear from Archive co-founder & CEO User4 and Co-founder & CTO User5. Archive powers profitable resale programs for apparel and footwear brands.
+> We'll hear from Archive co-founder & CEO User4 and Co-founder & CTO User5. Archive powers profitable resale programs for apparel and footwear brands. :internet-archive:
 > [[user6]]
-> and
+>  and 
 > [[user7]]
-> will update us on our six key financial metrics
+>  will update us on our six key financial metrics :party-chart:
 > [[user8]]
-> and
+>  and 
 > [[user9]]
-> from the Money Movement and Storage (MMS) team will demo key payouts features that improve merchant flexibility (and drive liquidity for Stripe)
-> Patrick will take us through tabs!
->   Oh and if you haven't already: make sure to read the 2024 annual letter.
+>  from the Money Movement and Storage (MMS) team will demo key payouts features that improve merchant flexibility (and drive liquidity for Stripe) :payouts:
+> Patrick will take us through tabs! :finger-cursor:
+> :bufo-reading:  Oh and if you haven't already: make sure to read the 2024 annual letter.
 > See you there!
 
 > [!slack]+ Message from User10
 > **Time:** 11:51 AM
 >
-> channel is open and we'l get start in 10 minutes
+> channel is open and we'll get start in 10 minutes :blob-dance:
 >
 > :bufo-reading: 3 :blob-omg: 4 :bufo-run: 1
 
@@ -260,7 +279,7 @@ exports[`Slack Formatter Validation Samples should correctly format fireside-sam
 > **Time:** 11:59 AM
 >
 > Rare blufo (blurfo?)
-> ED: yeah, (edited)
+> ED: yeah, :blurfo: (edited)
 >
 > :blurfo-vibe: 9 :bufo-offers-blurfo: 1
 
@@ -287,7 +306,7 @@ exports[`Slack Formatter Validation Samples should correctly format fireside-sam
 > [!slack]+ Message from Miriam Keil
 > **Time:** 12:08 PM
 >
-> Sounds like you didn't spend your youth thrifting clothes, P.
+> Sounds like you didn't spend your youth thrifting clothes, P. :hehehehe:
 
 > [!slack]+ Message from Dan Nelson
 > **Time:** 12:09 PM
@@ -299,7 +318,7 @@ exports[`Slack Formatter Validation Samples should correctly format fireside-sam
 > [!slack]+ Message from Anthony Voellm
 > **Time:** 12:09 PM
 >
-> Selling my Tandy Coco2 for a premium!!!! True vintage 1980s (edited)
+> Selling my Tandy Coco2 for a premium!!!! True vintage 1980s 🙂 (edited) 
 >
 > Adam O'Donnell
 >   12:09 PM
@@ -321,19 +340,19 @@ exports[`Slack Formatter Validation Samples should correctly format fireside-sam
 > **Time:** At Friday Fireside This week
 >
 > [[user3]]
-> hosted and we heard from
-> Archive co-founder & CEO User4 and Co-founder & CTO User5. Archive powers profitable resale programs for apparel and footwear brands
+>  hosted and we heard from
+> Archive co-founder & CEO User4 and Co-founder & CTO User5. Archive powers profitable resale programs for apparel and footwear brands :macklemore-thrift-shop:
 > [[user6]]
-> and
+>  and 
 > [[user7]]
-> updated us on our six key financial metrics and the impact of/on GTM
+>  updated us on our six key financial metrics and the impact of/on GTM :party-chart:
 > [[user8]]
-> and
+>  and 
 > [[user9]]
-> from the Money Movement and Storage (MMS) team demo'd key payouts features that improve merchant flexibility (and drive liquidity for Stripe)
-> Patrick took us through tabs! and then we heard from guest User12 on this week's QBR
-> The replay, notes, and audio are up at go/f-stream, go/f-notes and go/f-audio.
->   Oh and if you haven't already: make sure to read the 2024 annual letter.
+>  from the Money Movement and Storage (MMS) team demo'd key payouts features that improve merchant flexibility (and drive liquidity for Stripe) :one-million-dollars:
+> Patrick took us through tabs! :finger-cursor: and then we heard from guest User12 on this week's QBR
+> The replay, notes, and audio are up at go/ff-stream, go/ff-notes and go/ff-audio.
+> :bufo-reading:  Oh and if you haven't already: make sure to read the 2024 annual letter.
 >
 > :bufo-offers-stripetv: 2 :austin-spin: 1 :bufo-offers-stripetv-in-technicolor: 2"
 `;
@@ -347,32 +366,32 @@ exports[`Slack Formatter Validation Samples should correctly format guidewire-sa
 > [!slack]+ Message from User1
 > **Time:** 10:39 AM
 >
-> We haven't notified them yet
+> We haven't notified them yet 
 > [[user2]]
 > , we were hoping to get a more detailed BBG quote from User3 this week (still waiting to hear back).
 > Estimated timeline Endava gave us was min-22weeks from when we kick off the engamement to build all of the integrations we scoped.
-> One thing we would like to know
+> One thing we would like to know 
 > [[user2]]
-> is if Guidewire would be able to provide us with development licenses / instances for us to develop against? Endava are saying there is a $25k pass-through license cost from Guidewire to obtain this, which seems excessive and not very in the spirit of a strategic partnership with us.  (edited)
+>  is if Guidewire would be able to provide us with development licenses / instances for us to develop against? Endava are saying there is a $25k pass-through license cost from Guidewire to obtain this, which seems excessive and not very in the spirit of a strategic partnership with us.  (edited) 
 > Also sent to the channel
 
 > [!slack]+ Message from User4
 > **Time:** 8:19 PM
 >
 > [[user5]]
-> organized a super positive Insurance Solutioning Workshop with Infosys in the NY office today .
-> A more comprehensive update will be coming soon with additional AIs, but we wanted to get this one on your radar quickly
+>  organized a super positive Insurance Solutioning Workshop with Infosys in the NY office today :rocket::mvp_text:.
+> A more comprehensive update will be coming soon with additional AIs, but we wanted to get this one on your radar quickly 
 > [[user1]]
 >
 > [[user6]]
-> since there's a 3/10 target date for a decision on the Guidewire Connector approach in the SteerCo doc:
-> Infosys team showed high interest in our Guidewire Connector integration strategy-they're eager to hold a follow-up meeting to discuss partnering on building for the Marketplace. I know we're close with Endava, but the benefits Infosys mentioned make this worth exploring before gaveling on the build partner decision:
+>  since there's a 3/10 target date for a decision on the Guidewire Connector approach in the SteerCo doc:
+> Infosys team showed high interest in our Guidewire Connector integration strategy--they're eager to hold a follow-up meeting to discuss partnering on building for the Marketplace. I know we're close with Endava, but the benefits Infosys mentioned make this worth exploring before gaveling on the build partner decision:
 > They have 200+ Guidewire-certified employees.
 > They already have sandbox instances we'd be able to use for the Connectors without paying to obtain them from Guidewire.
 > They take on contracted liability for ongoing support/maintenance/upgrades of marketplace integrations.
 > The majority of Insurance businesses they've worked with have started with pre-existing Guidewire marketplace integrations before moving on to custom builds. "Land with Guidewire then expand."
-> They agreed to share a list of ~195 current/prospective Insurance users with business cases that Stripe may be able to solve for-we didn't ask about the overlap with Guidewire and can do so when the list is shared. Either way they agreed that driving customer leads our way, whether direct or through Guidewire, would be a key aspect of the partnership.
-> Let me know if I've misrepresented or missed anything (and huge thanks to you and the rest of the team that contributed to the workshop
+> They agreed to share a list of ~195 current/prospective Insurance users with business cases that Stripe may be able to solve for--we didn't ask about the overlap with Guidewire and can do so when the list is shared. Either way they agreed that driving customer leads our way, whether direct or through Guidewire, would be a key aspect of the partnership.
+> Let me know if I've misrepresented or missed anything (and huge thanks to you and the rest of the team that contributed to the workshop 🙌 
 > [[user7]]
 >
 > [[user8]]
@@ -382,12 +401,13 @@ exports[`Slack Formatter Validation Samples should correctly format guidewire-sa
 > [[user10]]
 >
 > [[user11]]
-> ). (edited)
+> ). (edited) 
+> 👍👍:skin-tone-4:
 
 > [!slack]+ Message from User4
 > **Time:** 8:26 PM
 >
-> c
+> cc 
 > [[user12]]
 >
 > [[user2]]
@@ -395,14 +415,14 @@ exports[`Slack Formatter Validation Samples should correctly format guidewire-sa
 > [[user13]]
 >
 > [[user14]]
-> for viz/thoughts/concerns
+>  for viz/thoughts/concerns
 
 > [!slack]+ Message from User1
 > **Time:** 9:43 AM
 >
-> Good to have alternatives I think we should definitely at least give Infosys a shot at a proposal. Can you make an intro for me
+> Good to have alternatives I think we should definitely at least give Infosys a shot at a proposal. Can you make an intro for me 
 > [[user4]]
-> so we can get the ball rolling on it asap?
+>  so we can get the ball rolling on it asap?
 
 > [!slack]+ Message from User14
 > **Time:** 9:44 AM
@@ -412,7 +432,7 @@ exports[`Slack Formatter Validation Samples should correctly format guidewire-sa
 > [!slack]+ Message from User4
 > **Time:** 12:15 PM
 >
-> Looped you into an intro
+> Looped you into an intro 
 > [[user1]]
 > !
 >
@@ -440,11 +460,11 @@ exports[`Slack Formatter Validation Samples should correctly format guidewire-sa
 > [!slack]+ Message from User7
 > **Time:** 3:40 PM
 >
-> Thanks for the clarity
+> Thanks for the clarity 
 > [[user6]]
-> but I think it may cause the wrong expectation with Infosys if we validate our approach with them if we've already decided to go with another partner. They were very eager to have a discussion around the potential of building a connector when
+>  but I think it may cause the wrong expectation with Infosys if we validate our approach with them if we've already decided to go with another partner. They were very eager to have a discussion around the potential of building a connector when 
 > [[user4]]
-> proposed it. Shall we rethink having the call? I'd need to think about the way to frame it given they've been asking us to get in front of work like this for them and we were already far along with Endava. Cc
+>  proposed it. Shall we rethink having the call? I'd need to think about the way to frame it given they've been asking us to get in front of work like this for them and we were already far along with Endava. Cc 
 > [[user5]]
 >
 > [[user10]]
@@ -459,23 +479,23 @@ exports[`Slack Formatter Validation Samples should correctly format guidewire-sa
 > They bring a list of 195 users.
 > As long as we're happy with what Endava offers in comparison (e.g., speed to ramp) and the benefits of going with Endava will drive the ultimate goal of expanding our customer pipeline, then I'm peaceful with the decision.
 > I think there is value in User1 reviewing our planned approach with Infosys to get their take and our A&C team engaging them in our GTM strategy
-> Whichever we're going with, I think we should still have the quick follow-up call with Infosys, since it will not even include their offshore Guidewire development team next week (it will be more information-trading rather than validation/proposal of any solution, which
+> Whichever we're going with, I think we should still have the quick follow-up call with Infosys, since it will not even include their offshore Guidewire development team next week (it will be more information-trading rather than validation/proposal of any solution, which 
 > [[user1]]
 >
 > [[user6]]
-> I think you still may find intriguing). More than anything, my hope is that we don't lose momentum on the partnership in general, as we already know it's leading us to 3 named user workshops and a list of 195 other Insurance businesses.
+>  I think you still may find intriguing). More than anything, my hope is that we don't lose momentum on the partnership in general, as we already know it's leading us to 3 named user workshops and a list of 195 other Insurance businesses.
 > [[user7]]
-> let me know if I'm thinking about it the wrong way, but a discussion on the topic of connectors doesn't come with an obligation or an expectation-we can do the quick discovery and then come back and say "let's focus on direct to start because we have the demand". (edited)
+>  let me know if I'm thinking about it the wrong way, but a discussion on the topic of connectors doesn't come with an obligation or an expectation--we can do the quick discovery and then come back and say "let's focus on direct to start because we have the demand". (edited)
 >
 > :bufo-clap: 1
 
 > [!slack]+ Message from User8
 > **Time:** 4:11 PM
 >
-> One more chime in here - is there a world in which we use both? Does the GW work need to be exclusive? (edited)
+> One more chime in here - is there a world in which we use both? Does the GW work need to be exclusive? (edited) 
 >
 > User4
->   Yesterday at 4:3 PM
+>   Yesterday at 4:33 PM
 > I'm down to sync in a bit if it's helpful for us all to connect briefly on this topic! Would just like to understand a little more about decisions and next steps and context I might have missed from separate threads, and then happy to disagree and commit if needed!
 > 4:34
 > One more chime in here - is there a world in which we use both? Does the GW work need to be exclusive?
@@ -496,7 +516,7 @@ exports[`Slack Formatter Validation Samples should correctly format guidewire-sa
 >
 > User4
 >   Yesterday at 4:37 PM
-> Let me know if you're free to connect this afternoon real quick
+> Let me know if you're free to connect this afternoon real quick 
 > [[user6]]
 >
 > [[user1]]
@@ -509,7 +529,7 @@ exports[`Slack Formatter Validation Samples should correctly format guidewire-sa
 > [!slack]+ Message from User4
 > **Time:** 4:37 PM
 >
-> Let me know if you're free to connect this afternoon real quick
+> Let me know if you're free to connect this afternoon real quick 
 > [[user6]]
 >
 > [[user1]]
@@ -522,26 +542,27 @@ exports[`Slack Formatter Validation Samples should correctly format guidewire-sa
 > [!slack]+ Message from User1
 > **Time:** 4:37 PM
 >
-> Happy to jump on a quick call.
+> Happy to jump on a quick call. :bufo-thumbsup:
 
 > [!slack]+ Message from User4
 > **Time:** 5:50 PM
 >
 > User1 and I just caught up, here's a recap:
-> Most importantly, User1 flagged that the benefit of speed we get from Endava is partially because they're in our LDAP, they're in our JIRA, we have an SoW with them-basically, all the legal/logistical/admin details are already taken care of, they're fully integrated.
+> Most importantly, User1 flagged that the benefit of speed we get from Endava is partially because they're in our LDAP, they're in our JIRA, we have an SoW with them--basically, all the legal/logistical/admin details are already taken care of, they're fully integrated. 
 > [[user7]]
 >
 > [[user9]]
-> do you know if Infosys is already set up with us in the same way from any prior engagement? If not, we'l have to go through contracting, legal redlines, provisioning, permissions, etc ... this process will push us far past the June 30th integration deadline. If this is the case, the Connector discussion is a moot point and we keep focus on Guidewire-to-user direct.
-> If there are no admin roadblocks and Infosys is fully contracted and in our systems, then User1 is open to a quick discussion if they can get it scheduled ASAP next week, just in case they bring something to the table that blows Endava out of the water. We've already stressed in the email thread that we're on a major time crunch to make a decision; we'l be sure to stress this in the meeting as well in order to set clear expectations.
+>  do you know if Infosys is already set up with us in the same way from any prior engagement? If not, we'll have to go through contracting, legal redlines, provisioning, permissions, etc ... this process will push us far past the June 30th integration deadline. If this is the case, the Connector discussion is a moot point and we keep focus on Guidewire-to-user direct.
+> If there are no admin roadblocks and Infosys is fully contracted and in our systems, then User1 is open to a quick discussion if they can get it scheduled ASAP next week, just in case they bring something to the table that blows Endava out of the water. We've already stressed in the email thread that we're on a major time crunch to make a decision; we'll be sure to stress this in the meeting as well in order to set clear expectations.
 > We will highlight that, Connector or not, we're committed to continuing discovery with them on non-Marketplace Guidewire-to-user integrations. The direct opportunities with Travelers, MassMutual, and The Hartford are still very much something we want to pursue, and we also have no shortage of Guidewire-to-user opportunities that could use the expertise of a dedicated partner if there's a fit.
 
 > [!slack]+ Message from User7
 > **Time:** 6:49 PM
 >
-> Infosys does not have these contractual agreements in place.
+> Infosys does not have these contractual agreements in place. 
 > [[user4]]
-> let's talk strategy on this on Monday. There's some history here
+>  let's talk strategy on this on Monday. There's some history here
+> 👍
 >
 > :ack-sg2: 1"
 `;
@@ -556,7 +577,7 @@ exports[`Slack Formatter Validation Samples should correctly format multi-person
 >
 > Google Docs
 >
-> Guidewire-Stripe Connector: Consolidated Strategy & Decision Document
+> Guidewire--Stripe Connector: Consolidated Strategy & Decision Document
 
 > [!slack]+ Message from Google Doc
 > **Time:** 3:14 AM
@@ -568,16 +589,16 @@ exports[`Slack Formatter Validation Samples should correctly format multi-person
 > [!slack]+ Message from User2
 > **Time:** 3:14 PM
 >
-> hi
+> hi 
 > [[user1]]
-> will look at it in a bit.. great to hear from you..
+>  will look at it in a bit.. great to hear from you..
 
 > [!slack]+ Message from User1
 > **Time:** 3:14 PM
 >
 > You too dude! Hope you're not too sick!
 > 3:14
-> My whole household had Norovirus last week, fun times (edited)
+> My whole household had Norovirus last week, fun times (edited) 
 >
 > User2
 
@@ -597,7 +618,7 @@ exports[`Slack Formatter Validation Samples should correctly format multi-person
 >   3:20 PM
 > Cheers gentlemen!
 > 3:20
-> I will take a look at the doc
+> I will take a look at the doc 
 > [[user1]]
 
 > [!slack]+ Message from User3
@@ -605,13 +626,13 @@ exports[`Slack Formatter Validation Samples should correctly format multi-person
 >
 > Cheers gentlemen!
 > 3:20
-> I will take a look at the doc
+> I will take a look at the doc 
 > [[user1]]
 
 > [!slack]+ Message from User1
 > **Time:** 3:20 PM
 >
-> cool thank you
+> cool thank you :bufo+1:
 
 > [!slack]+ Message from User3
 > **Time:** 3:20 PM
@@ -625,7 +646,8 @@ exports[`Slack Formatter Validation Samples should correctly format multi-person
 >
 > dont get too hung up on costs those are under negotiation
 > 3:21
-> it'l be toward the lower end of the range I gave
+> it'll be toward the lower end of the range I gave
+> 👍
 
 > [!slack]+ Message from User3
 > **Time:** 3:21 PM
@@ -635,5 +657,6 @@ exports[`Slack Formatter Validation Samples should correctly format multi-person
 > [!slack]+ Message from User1
 > **Time:** 3:22 PM
 >
-> feel free to drop comments on it, it's a WIP"
+> feel free to drop comments on it, it's a WIP
+> 👍👍:skin-tone-4:"
 `;
