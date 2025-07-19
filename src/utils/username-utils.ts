@@ -284,30 +284,40 @@ export function cleanupDoubledUsernames(text: string, format?: MessageFormat): s
     );
     cleaned = cleaned.replace(separatedPartsPattern, '$1 $2');
 
-    // Fifth pass: Handle case-insensitive duplicates
-    const words = cleaned.split(/\s+/);
-    const cleanedWords: string[] = [];
+    // Fifth pass: Handle case-insensitive duplicates while preserving line breaks
+    // Process each line separately to maintain line structure
+    const lines = cleaned.split('\n');
+    const processedLines = lines.map(line => {
+      const words = line.split(/\s+/);
+      const cleanedWords: string[] = [];
 
-    for (let i = 0; i < words.length; i++) {
-      const current = words[i];
-      const next = words[i + 1];
+      for (let i = 0; i < words.length; i++) {
+        const current = words[i];
+        const next = words[i + 1];
 
-      // Skip if current word equals next word (case-insensitive)
-      if (next && current.toLowerCase() === next.toLowerCase()) {
-        cleanedWords.push(current);
-        i++; // Skip the duplicate
-      } else {
-        cleanedWords.push(current);
+        // Skip if current word equals next word (case-insensitive)
+        if (next && current.toLowerCase() === next.toLowerCase()) {
+          cleanedWords.push(current);
+          i++; // Skip the duplicate
+        } else {
+          cleanedWords.push(current);
+        }
       }
-    }
 
-    let result = cleanedWords.join(' ');
+      return cleanedWords.join(' ');
+    });
+
+    let result = processedLines.join('\n');
 
     // Final cleanup: Remove emojis that may remain after username deduplication
     result = removeEmojisFromText(result);
 
-    // Clean up any double spaces that may have been created
-    result = result.replace(/\s+/g, ' ').trim();
+    // Clean up any double spaces that may have been created (but preserve line breaks)
+    result = result
+      .split('\n')
+      .map(line => line.replace(/\s+/g, ' ').trim())
+      .join('\n')
+      .trim();
 
     return result;
   } catch (error) {

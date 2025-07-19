@@ -887,17 +887,13 @@ export class IntelligentMessageParser {
           if (debugEnabled) {
             Logger.debug(
               'IntelligentMessageParser',
-              `Found continuation within boundary at line ${i}: "${line.trimmed}"`,
-              undefined,
-              debugEnabled
+              `Found continuation within boundary at line ${i}: "${line.trimmed}"`
             );
           }
           if (debugEnabled) {
             Logger.debug(
               'IntelligentMessageParser',
-              `Continuation extends from ${i} to ${continuationEnd}`,
-              undefined,
-              debugEnabled
+              `Continuation extends from ${i} to ${continuationEnd}`
             );
           }
           extendedEnd = Math.max(extendedEnd, continuationEnd);
@@ -911,9 +907,7 @@ export class IntelligentMessageParser {
       if (debugEnabled) {
         Logger.debug(
           'IntelligentMessageParser',
-          `Checking for continuations after boundary ${boundary.start}-${boundary.end}, extendedEnd=${extendedEnd}`,
-          undefined,
-          debugEnabled
+          `Checking for continuations after boundary ${boundary.start}-${boundary.end}, extendedEnd=${extendedEnd}`
         );
       }
 
@@ -932,9 +926,7 @@ export class IntelligentMessageParser {
           if (debugEnabled) {
             Logger.debug(
               'IntelligentMessageParser',
-              `Checking line ${nextNonEmpty} after boundary: "${nextLine.trimmed}"`,
-              undefined,
-              debugEnabled
+              `Checking line ${nextNonEmpty} after boundary: "${nextLine.trimmed}"`
             );
           }
 
@@ -944,9 +936,7 @@ export class IntelligentMessageParser {
             if (debugEnabled) {
               Logger.debug(
                 'IntelligentMessageParser',
-                `Found continuation at ${nextNonEmpty}, extends to ${continuationEnd}`,
-                undefined,
-                debugEnabled
+                `Found continuation at ${nextNonEmpty}, extends to ${continuationEnd}`
               );
             }
             currentEnd = continuationEnd;
@@ -966,9 +956,7 @@ export class IntelligentMessageParser {
       if (debugEnabled) {
         Logger.debug(
           'IntelligentMessageParser',
-          `Extended boundary to ${boundary.start}-${boundary.end}`,
-          undefined,
-          debugEnabled
+          `Extended boundary to ${boundary.start}-${boundary.end}`
         );
       }
     }
@@ -977,9 +965,7 @@ export class IntelligentMessageParser {
     if (legacyDebugEnabled) {
       Logger.debug(
         'IntelligentMessageParser',
-        `Boundaries before merging: ${boundaries.map(b => `${b.start}-${b.end}`).join(', ')}`,
-        undefined,
-        legacyDebugEnabled
+        `Boundaries before merging: ${boundaries.map(b => `${b.start}-${b.end}`).join(', ')}`
       );
     }
 
@@ -1025,9 +1011,7 @@ export class IntelligentMessageParser {
               if (debugEnabled) {
                 Logger.debug(
                   'IntelligentMessageParser',
-                  `Checking continuation at line ${k}, ends at ${contEnd}, next boundary starts at ${next.start}`,
-                  undefined,
-                  debugEnabled
+                  `Checking continuation at line ${k}, ends at ${contEnd}, next boundary starts at ${next.start}`
                 );
               }
 
@@ -1082,9 +1066,7 @@ export class IntelligentMessageParser {
                   if (debugEnabled) {
                     Logger.debug(
                       'IntelligentMessageParser',
-                      `Not merging boundaries because next boundary at ${next.start} has strong message start: "${nextBoundaryFirstLine.trimmed}"`,
-                      undefined,
-                      debugEnabled
+                      `Not merging boundaries because next boundary at ${next.start} has strong message start: "${nextBoundaryFirstLine.trimmed}"`
                     );
                   }
                 }
@@ -1155,9 +1137,7 @@ export class IntelligentMessageParser {
             if (debugEnabled) {
               Logger.debug(
                 'IntelligentMessageParser',
-                `Merged boundary ${i} with ${j}, new range: ${current.start}-${current.end}`,
-                undefined,
-                debugEnabled
+                `Merged boundary ${i} with ${j}, new range: ${current.start}-${current.end}`
               );
             }
 
@@ -1565,7 +1545,7 @@ export class IntelligentMessageParser {
     // Start diagnostic logging for continuation detection
     const diagnosticContext: DiagnosticContext = {
       operationId,
-      text: line.original?.substring(0, 100) || line.trimmed?.substring(0, 100) || '',
+      text: line.content?.substring(0, 100) || line.trimmed?.substring(0, 100) || '',
       matchedPatterns: [],
       rejectedPatterns: [],
       boundaryDecision: '',
@@ -1756,12 +1736,7 @@ export class IntelligentMessageParser {
     try {
       const isDebugEnabled = this?.debugMode === true;
       if (isDebugEnabled && result) {
-        Logger.debug(
-          'IntelligentMessageParser',
-          `Line looks like continuation: "${line.trimmed}"`,
-          undefined,
-          true
-        );
+        Logger.debug('IntelligentMessageParser', `Line looks like continuation: "${line.trimmed}"`);
       }
     } catch (e) {
       // Silently ignore debug logging errors
@@ -1780,9 +1755,7 @@ export class IntelligentMessageParser {
     if (debugEnabled) {
       Logger.debug(
         'IntelligentMessageParser',
-        `findContinuationEnd starting at line ${startIndex}: "${lines[startIndex]?.trimmed}"`,
-        undefined,
-        debugEnabled
+        `findContinuationEnd starting at line ${startIndex}: "${lines[startIndex]?.trimmed}"`
       );
     }
 
@@ -1806,9 +1779,7 @@ export class IntelligentMessageParser {
             if (debugEnabled) {
               Logger.debug(
                 'IntelligentMessageParser',
-                `Empty line ${i} followed by line ${nextNonEmpty} which is within continuation range`,
-                undefined,
-                debugEnabled
+                `Empty line ${i} followed by line ${nextNonEmpty} which is within continuation range`
               );
             }
           } else if (this.couldBeMessageStart(lines[nextNonEmpty], lines, nextNonEmpty)) {
@@ -1816,9 +1787,7 @@ export class IntelligentMessageParser {
             if (debugEnabled) {
               Logger.debug(
                 'IntelligentMessageParser',
-                `Stopping at empty line ${i} because line ${nextNonEmpty} is a message start`,
-                undefined,
-                debugEnabled
+                `Stopping at empty line ${i} because line ${nextNonEmpty} is a message start`
               );
             }
             break;
@@ -1832,12 +1801,7 @@ export class IntelligentMessageParser {
       // Stop if we hit obvious metadata
       if (this.isObviousMetadata(line)) {
         if (debugEnabled) {
-          Logger.debug(
-            'IntelligentMessageParser',
-            `Stopping at line ${i} - obvious metadata`,
-            undefined,
-            debugEnabled
-          );
+          Logger.debug('IntelligentMessageParser', `Stopping at line ${i} - obvious metadata`);
         }
         break;
       }
@@ -1858,9 +1822,7 @@ export class IntelligentMessageParser {
           if (debugEnabled) {
             Logger.debug(
               'IntelligentMessageParser',
-              `Line ${i} has very strong indicators, stopping`,
-              undefined,
-              debugEnabled
+              `Line ${i} has very strong indicators, stopping`
             );
           }
           break;
@@ -1875,9 +1837,7 @@ export class IntelligentMessageParser {
           if (debugEnabled) {
             Logger.debug(
               'IntelligentMessageParser',
-              `Stopping at line ${i} - could be message start`,
-              undefined,
-              debugEnabled
+              `Stopping at line ${i} - could be message start`
             );
           }
           break;
@@ -1889,12 +1849,7 @@ export class IntelligentMessageParser {
     }
 
     if (debugEnabled) {
-      Logger.debug(
-        'IntelligentMessageParser',
-        `findContinuationEnd returning ${endIndex}`,
-        undefined,
-        debugEnabled
-      );
+      Logger.debug('IntelligentMessageParser', `findContinuationEnd returning ${endIndex}`);
     }
 
     return endIndex;
@@ -2003,8 +1958,8 @@ export class IntelligentMessageParser {
     }
 
     message.text = text;
-    message.reactions = reactions;
-    message.threadInfo = threadInfo;
+    message.reactions = reactions || [];
+    message.threadInfo = threadInfo || undefined;
 
     return message;
   }
@@ -2109,9 +2064,7 @@ export class IntelligentMessageParser {
     if (debugEnabled) {
       Logger.debug(
         'IntelligentMessageParser',
-        `Extracting content from ${contentLines.length} lines`,
-        undefined,
-        debugEnabled
+        `Extracting content from ${contentLines.length} lines`
       );
     }
 
@@ -2121,12 +2074,7 @@ export class IntelligentMessageParser {
 
       if (debugEnabled && i < 10) {
         // Log first 10 lines
-        Logger.debug(
-          'IntelligentMessageParser',
-          `Content line ${i}: "${trimmed}"`,
-          undefined,
-          debugEnabled
-        );
+        Logger.debug('IntelligentMessageParser', `Content line ${i}: "${trimmed}"`);
       }
 
       if (!trimmed) {
@@ -2138,12 +2086,7 @@ export class IntelligentMessageParser {
       // This handles cases like "Owen ChandlerOwen Chandler" at the start of content
       if (i === 0 && this.isDuplicatedUsername(trimmed)) {
         if (debugEnabled) {
-          Logger.debug(
-            'IntelligentMessageParser',
-            `Skipping duplicated username: "${trimmed}"`,
-            undefined,
-            debugEnabled
-          );
+          Logger.debug('IntelligentMessageParser', `Skipping duplicated username: "${trimmed}"`);
         }
         continue;
       }
@@ -2196,12 +2139,7 @@ export class IntelligentMessageParser {
     }
 
     if (debugEnabled) {
-      Logger.debug(
-        'IntelligentMessageParser',
-        `Extracted ${textLines.length} text lines`,
-        undefined,
-        debugEnabled
-      );
+      Logger.debug('IntelligentMessageParser', `Extracted ${textLines.length} text lines`);
     }
 
     // Clean up the final text by removing any remaining username artifacts
@@ -2209,19 +2147,9 @@ export class IntelligentMessageParser {
     finalText = this.cleanContentText(finalText);
 
     if (debugEnabled) {
-      Logger.debug(
-        'IntelligentMessageParser',
-        `Final text length: ${finalText.length}`,
-        undefined,
-        debugEnabled
-      );
+      Logger.debug('IntelligentMessageParser', `Final text length: ${finalText.length}`);
       if (finalText.length < 100) {
-        Logger.debug(
-          'IntelligentMessageParser',
-          `Final text: "${finalText}"`,
-          undefined,
-          debugEnabled
-        );
+        Logger.debug('IntelligentMessageParser', `Final text: "${finalText}"`);
       }
     }
 
@@ -2348,7 +2276,7 @@ export class IntelligentMessageParser {
       prevLine.trimmed.endsWith(']') || // [120], [8:26], etc.
       prevLine.trimmed.endsWith(')') || // URLs ending with )
       prevLine.trimmed.endsWith(':') || // Labels like "Expected Output:"
-      prevLine.trimmed.match(/^[A-Za-z][A-Za-z0-9\s\-_.()\[\]]{1,30}$/) || // Standalone usernames
+      !!prevLine.trimmed.match(/^[A-Za-z][A-Za-z0-9\s\-_.()\[\]]{1,30}$/) || // Standalone usernames
       this.looksLikeUsername(prevLine.trimmed) || // Username-like patterns
       prevLine.trimmed.length < 5; // Very short lines often end messages
 
@@ -2800,7 +2728,7 @@ export class IntelligentMessageParser {
     }
 
     // Non-Unknown User messages are valid if they have any content
-    return message.text && message.text.trim().length > 0;
+    return !!message.text && message.text.trim().length > 0;
   }
 
   /**
@@ -2851,22 +2779,22 @@ export class IntelligentMessageParser {
       }
 
       // Try each extraction pattern in priority order
-      let result = this.extractAppMessagePattern(line);
+      let result = this.extractAppMessagePattern(line, debugEnabled);
       if (result.username) return result;
 
-      result = this.extractDoubledUsernamePattern(line);
+      result = this.extractDoubledUsernamePattern(line, debugEnabled);
       if (result.username) return result;
 
-      result = this.extractBasicUsernameTimePattern(line);
+      result = this.extractBasicUsernameTimePattern(line, debugEnabled);
       if (result.username) return result;
 
-      result = this.extractEnhancedPatterns(line);
+      result = this.extractEnhancedPatterns(line, debugEnabled);
       if (result.username) return result;
 
-      result = this.extractSimpleUsernamePattern(line);
+      result = this.extractSimpleUsernamePattern(line, debugEnabled);
       if (result.username) return result;
 
-      result = this.extractFallbackPattern(line);
+      result = this.extractFallbackPattern(line, debugEnabled);
       if (result.username) return result;
 
       if (debugEnabled) {

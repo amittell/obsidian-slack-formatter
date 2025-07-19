@@ -153,9 +153,17 @@ export class UnifiedProcessor extends BaseProcessor<string> {
     const attachmentProcessor = new AttachmentProcessor();
 
     // Define processing pipeline
-    // Order matters! Sanitize text first, then process attachments early to clean up metadata
+    // Order matters! Sanitize text first, then process code blocks to protect them,
+    // THEN escape angle brackets to avoid escaping content inside code blocks
     // Process URLs before usernames to avoid converting "slack" in URLs to wikilinks
     this.steps = [
+      {
+        name: 'Spacing Preservation',
+        enabled: s => true, // Always enabled to preserve all spacing patterns
+        processor: this, // Use self as processor
+        process: text => this.preserveIndentation(text),
+        fallback: text => text, // Keep original if preservation fails
+      },
       {
         name: 'Text Sanitization',
         enabled: s => true, // Always enabled for text sanitization
@@ -169,6 +177,13 @@ export class UnifiedProcessor extends BaseProcessor<string> {
         processor: codeBlockProcessor,
         process: text => codeBlockProcessor.process(text).content,
         fallback: text => this.preserveCodeFences(text),
+      },
+      {
+        name: 'Angle Bracket Escaping',
+        enabled: s => true, // Always enabled to prevent HTML interpretation
+        processor: this, // Use self as processor
+        process: text => this.escapeAngleBrackets(text),
+        fallback: text => text, // Keep original if escaping fails
       },
       {
         name: 'Attachments',
@@ -210,6 +225,13 @@ export class UnifiedProcessor extends BaseProcessor<string> {
         processor: threadLinkProcessor,
         process: text => threadLinkProcessor.process(text).content,
         fallback: text => text, // Keep original thread text
+      },
+      {
+        name: 'Spacing Restoration',
+        enabled: s => true, // Always enabled to restore protected spacing
+        processor: this, // Use self as processor
+        process: text => this.restoreIndentation(text),
+        fallback: text => text, // Keep text as-is if restoration fails
       },
     ];
   }
@@ -469,6 +491,162 @@ export class UnifiedProcessor extends BaseProcessor<string> {
     } catch (error) {
       Logger.warn('UnifiedProcessor', 'Error in text sanitization:', error);
       return text; // Return original text if sanitization fails
+    }
+  }
+
+  /**
+   * Preserves all spacing patterns from Slack messages to maintain formatting.
+   *
+   * Slack messages often contain intentional spacing for:
+   * - Indentation and hierarchical lists
+   * - Table-like alignment
+   * - Column formatting
+   * - Visual spacing between elements
+   *
+   * This method detects and preserves ALL multiple space sequences by protecting
+   * them with placeholders that survive the whitespace normalization process.
+   *
+   * @param {string} text - The text to process for spacing preservation
+   * @returns {string} Text with all spacing patterns protected by placeholders
+   * @private
+   * @since 1.0.0
+   */
+  private preserveIndentation(text: string): string {
+    try {
+      const spacingMappings: { placeholder: string; spaces: string }[] = [];
+      let placeholderIndex = 0;
+
+      // Find and replace ALL multiple space sequences (2 or more spaces)
+      // This includes both leading spaces (indentation) and internal spacing
+      let result = text.replace(/( {2,})/g, match => {
+        const spaces = match;
+        const placeholder = `__SPACE_${placeholderIndex++}__`;
+        spacingMappings.push({ placeholder, spaces });
+
+        // Log for debugging
+        if (this.settings?.debug) {
+          Logger.info(
+            'UnifiedProcessor',
+            `Protecting ${spaces.length} spaces with placeholder ${placeholder}`
+          );
+        }
+
+        return placeholder;
+      });
+
+      // Store the spacing mappings for restoration after other processing
+      (this as any)._spacingMappings = spacingMappings;
+
+      return result;
+    } catch (error) {
+      Logger.warn('UnifiedProcessor', 'Error preserving spacing:', error);
+      return text; // Return original text if processing fails
+    }
+  }
+
+  /**
+   * Restores spacing placeholders with their original spacing patterns.
+   *
+   * This method restores all spacing that was protected during the preservation step.
+   * It replaces placeholders with the original space sequences that were stored
+   * earlier in the pipeline, preserving indentation, alignment, and formatting.
+   *
+   * @param {string} text - The text containing spacing placeholders
+   * @returns {string} Text with placeholders replaced by original spacing
+   * @private
+   * @since 1.0.0
+   */
+  private restoreIndentation(text: string): string {
+    try {
+      const spacingMappings = (this as any)._spacingMappings;
+
+      if (!spacingMappings || !Array.isArray(spacingMappings)) {
+        // No spacing mappings to restore
+        return text;
+      }
+
+      let result = text;
+
+      // Restore each spacing placeholder with its original spaces
+      for (const { placeholder, spaces } of spacingMappings) {
+        // Log for debugging
+        if (this.settings?.debug) {
+          Logger.info(
+            'UnifiedProcessor',
+            `Restoring ${spaces.length} spaces for placeholder ${placeholder}`
+          );
+        }
+
+        result = result.replace(placeholder, spaces);
+      }
+
+      // Clean up the stored mappings
+      delete (this as any)._spacingMappings;
+
+      return result;
+    } catch (error) {
+      Logger.warn('UnifiedProcessor', 'Error restoring spacing:', error);
+      return text; // Return original text if restoration fails
+    }
+  }
+
+  /**
+   * Escapes angle brackets in text to prevent them from being interpreted as HTML tags
+   * in Obsidian's preview mode. This prevents text like <oneaway> from disappearing.
+   *
+   * Only escapes angle brackets that are not part of:
+   * - Code blocks (already processed by CodeBlockProcessor)
+   * - Slack user mentions (<@U12345>)
+   * - Slack channel mentions (<#C12345|channel>)
+   * - Slack links (<https://example.com|text> or <https://example.com>)
+   * - Already escaped entities (&lt; &gt;)
+   *
+   * @param {string} text - The text to process
+   * @returns {string} Text with problematic angle brackets escaped
+   * @private
+   * @since 1.0.0
+   */
+  private escapeAngleBrackets(text: string): string {
+    try {
+      // Pattern to match angle brackets that should NOT be escaped
+      // This includes Slack-specific patterns, code blocks, and already escaped entities
+      const preservePatterns = [
+        /```[\s\S]*?```/g, // Code blocks (already processed)
+        /<@[A-Z0-9]+>/g, // User mentions: <@U12345>
+        /<#[A-Z0-9]+\|[^>]+>/g, // Channel mentions: <#C12345|general>
+        /<#[A-Z0-9]+>/g, // Channel mentions without name: <#C12345>
+        /<https?:\/\/[^>]+\|[^>]+>/g, // Links with text: <https://example.com|text>
+        /<https?:\/\/[^>]+>/g, // Plain links: <https://example.com>
+        /&lt;/g, // Already escaped <
+        /&gt;/g, // Already escaped >
+      ];
+
+      // First, temporarily replace all patterns we want to preserve with placeholders
+      const placeholders: { placeholder: string; original: string }[] = [];
+      let tempText = text;
+      let placeholderIndex = 0;
+
+      preservePatterns.forEach(pattern => {
+        tempText = tempText.replace(pattern, match => {
+          const placeholder = `__PRESERVE_PLACEHOLDER_${placeholderIndex}__`;
+          placeholders.push({ placeholder, original: match });
+          placeholderIndex++;
+          return placeholder;
+        });
+      });
+
+      // Now escape any remaining angle brackets
+      tempText = tempText.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+      // Restore the preserved patterns
+      placeholders.forEach(({ placeholder, original }) => {
+        tempText = tempText.replace(placeholder, original);
+      });
+
+      return tempText;
+    } catch (error) {
+      Logger.warn('UnifiedProcessor', 'Error escaping angle brackets:', error);
+      return text; // Return original text if escaping fails
     }
   }
 

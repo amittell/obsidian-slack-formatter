@@ -30,6 +30,7 @@ Thumbs.db
 *.tmp
 *.temp
 *.bak
+temp/
 
 # Archives
 archived/

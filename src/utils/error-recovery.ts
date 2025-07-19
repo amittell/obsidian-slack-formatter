@@ -1042,8 +1042,9 @@ ${this.generateRecommendations()
         fallbackAction: 'partial',
         recoveryFunction: (error, context) => {
           // Force garbage collection if available
-          if (typeof global !== 'undefined' && ((global as any).gc as (() => void) | undefined)) {
-            ((global as any).gc as (() => void) | undefined)();
+          if (typeof global !== 'undefined' && (global as any).gc) {
+            const gc = (global as any).gc as () => void;
+            gc();
           }
           return { recovered: true, error: 'memory-limit' };
         },

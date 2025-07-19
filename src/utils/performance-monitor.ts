@@ -518,9 +518,12 @@ export class PerformanceMonitor {
       if (Logger.isPerformanceEnabled()) {
         Logger.performance('PerformanceMonitor', `Completed tracking: ${profile.operation}`, {
           operation: profile.operation,
+          startTime: profile.startTime,
+          endTime: profile.endTime,
           duration: profile.duration,
+          memoryBefore: profile.memoryBefore,
+          memoryAfter: profile.memoryAfter,
           memoryDelta: profile.memoryDelta || 0,
-          success,
         });
       }
 

@@ -433,9 +433,9 @@ export class OutputFormattingStandards {
     this.context = {
       settings,
       standardType,
-      showMetadata: settings.includeMetadata ?? true,
-      preserveFormatting: settings.preserveFormatting ?? true,
-      cleanupEmbedded: settings.cleanupEmbedded ?? true,
+      showMetadata: true,
+      preserveFormatting: true,
+      cleanupEmbedded: true,
     };
   }
 
@@ -564,7 +564,12 @@ export class OutputFormattingStandards {
     }
 
     // Add thread information
-    if (message.threadInfo && effectiveContext.showMetadata && standard.includeThreadInfo) {
+    if (
+      message.threadInfo &&
+      effectiveContext.showMetadata &&
+      'includeThreadInfo' in standard &&
+      standard.includeThreadInfo
+    ) {
       const formattedThreadInfo = this.formatThreadInfo(message.threadInfo, standard);
       parts.push(formattedThreadInfo);
     }

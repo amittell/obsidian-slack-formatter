@@ -1280,7 +1280,8 @@ export class ContentSanitizationPipeline {
       // Check if execution time exceeded timeout
       const executionTime = Date.now() - startTime;
       if (executionTime > timeoutMs) {
-        this.logger.warn(
+        Logger.warn(
+          'ContentSanitizationPipeline',
           `Processor ${processor.id} took ${executionTime}ms (timeout: ${timeoutMs}ms)`
         );
         return {

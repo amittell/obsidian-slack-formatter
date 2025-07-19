@@ -67,10 +67,6 @@ export class SafeRegexUtilities {
   public test(regex: RegExp, text: string): boolean {
     try {
       if (!text || typeof text !== 'string') return false;
-      if (!this) {
-        Logger.error(this.componentName, 'safeRegexTest called without proper this context');
-        return false;
-      }
       return regex.test(text);
     } catch (error) {
       Logger.error(this.componentName, 'Regex test failed', {
@@ -176,7 +172,7 @@ export class SafeRegexUtilities {
     try {
       if (!text || typeof text !== 'string') return text || '';
       // Type-safe replacement handling - TypeScript knows replacement is compatible with replace()
-      return text.replace(regex, replacement);
+      return text.replace(regex, replacement as any);
     } catch (error) {
       Logger.error(this.componentName, 'Regex replace failed', {
         error: error instanceof Error ? error.message : 'Unknown error',

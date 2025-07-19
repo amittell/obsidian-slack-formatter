@@ -452,7 +452,11 @@ export class DiagnosticReports {
 
     const reportId = `diagnostic-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
 
-    Logger.info('DiagnosticReports', `Generating comprehensive report: ${reportId}`, opts);
+    Logger.info(
+      'DiagnosticReports',
+      `Generating comprehensive report: ${reportId}`,
+      opts as unknown as Record<string, unknown>
+    );
 
     const report: DiagnosticReport = {
       id: reportId,
@@ -1712,7 +1716,7 @@ export class DiagnosticReports {
                       .map(
                         entry => `
                     <div class="issue ${entry.level === 'ERROR' ? 'critical' : entry.level === 'WARN' ? 'medium' : 'low'}">
-                        <h3>${entry.level} - ${entry.component}</h3>
+                        <h3>${entry.level} - ${entry.className}</h3>
                         <p>${entry.message}</p>
                         <p><small>Timestamp: ${entry.timestamp}</small></p>
                     </div>

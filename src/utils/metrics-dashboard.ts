@@ -1,4 +1,4 @@
-import { MetricsCollector, MetricsDashboard } from './metrics-collector.js';
+import { MetricsCollector } from './metrics-collector.js';
 import { Logger } from './logger.js';
 
 /**
@@ -292,7 +292,7 @@ export class MetricsDashboard {
    * @complexity O(1) - cached retrieval
    * @performance ~1-5ms for cached data access
    */
-  public getMetrics(): MetricsDashboard {
+  public getMetrics(): import('./metrics-collector.js').MetricsDashboard {
     return this.metricsCollector.collectMetrics();
   }
 
@@ -466,7 +466,7 @@ export class MetricsDashboard {
   /**
    * Check metrics against thresholds and generate alerts
    */
-  private checkForAlerts(metrics: MetricsDashboard): void {
+  private checkForAlerts(metrics: import('./metrics-collector.js').MetricsDashboard): void {
     const now = new Date().toISOString();
 
     // Check parsing success rate

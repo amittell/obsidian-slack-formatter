@@ -46,16 +46,11 @@ export class DuplicateDetectionService {
         seen.add(key);
         deduped.push(msg);
       } else if (debugMode) {
-        Logger.debug(
-          'DuplicateDetectionService',
-          'Removing duplicate message',
-          {
-            username: msg.username,
-            timestamp: msg.timestamp,
-            contentPreview: msg.text.substring(0, this.contentPreviewLength).trim(),
-          },
-          debugMode
-        );
+        Logger.debug('DuplicateDetectionService', 'Removing duplicate message', {
+          username: msg.username,
+          timestamp: msg.timestamp,
+          contentPreview: msg.text.substring(0, this.contentPreviewLength).trim(),
+        });
       }
     }
 

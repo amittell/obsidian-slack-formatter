@@ -20,7 +20,7 @@
     "allowUnreachableCode": true,
     "allowUnusedLabels": true,
     "target": "ES2021",
-    "lib": ["ES2021"],
+    "lib": ["ES2021", "DOM"],
     "isolatedModules": false
   }
 }

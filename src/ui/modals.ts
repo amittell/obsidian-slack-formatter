@@ -17,6 +17,7 @@ import { ISlackFormatter } from '../interfaces';
 import { Logger } from '../utils/logger';
 import { SlackFormatSettings } from '../types/settings.types';
 import { ParsedMaps } from '../types/formatters.types';
+import { DEFAULT_SETTINGS } from '../settings';
 
 /**
  * Type guard to check if a formatter has settings property
@@ -202,7 +203,7 @@ export class SlackPreviewModal extends BaseModal {
 
       // Update debug setting based on toggle state
       if ('updateSettings' in this.formatter) {
-        const settings = hasSettings(this.formatter) ? this.formatter.settings : {};
+        const settings = hasSettings(this.formatter) ? this.formatter.settings : DEFAULT_SETTINGS;
         const parsedMaps = hasParsedMaps(this.formatter)
           ? this.formatter.parsedMaps
           : { userMap: {}, emojiMap: {} };
@@ -226,7 +227,7 @@ export class SlackPreviewModal extends BaseModal {
 
       // Restore original debug setting
       if (originalDebug !== undefined && 'updateSettings' in this.formatter) {
-        const settings = hasSettings(this.formatter) ? this.formatter.settings : {};
+        const settings = hasSettings(this.formatter) ? this.formatter.settings : DEFAULT_SETTINGS;
         const parsedMaps = hasParsedMaps(this.formatter)
           ? this.formatter.parsedMaps
           : { userMap: {}, emojiMap: {} };
