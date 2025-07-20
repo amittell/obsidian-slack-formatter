@@ -6,6 +6,5 @@
   "description": "Format pasted Slack conversations into Obsidian callouts with proper markdown formatting.",
   "author": "Alex Mittell",
   "authorUrl": "https://github.com/amittell",
-  "isDesktopOnly": true,
-  "main": "main.js"
+  "isDesktopOnly": true
 }
