@@ -1,6 +1,8 @@
 import { Logger } from './logger.js';
 
 declare global {
+  // TypeScript requires 'var' for global augmentation - this is the correct usage
+  // eslint-disable-next-line no-var
   var gc: (() => void) | undefined;
 }
 
