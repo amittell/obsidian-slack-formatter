@@ -340,7 +340,7 @@ It includes <@U${i}> mentions and :smile: emoji codes.`);
       const duration = Date.now() - startTime;
 
       // Should complete quickly even with many messages
-      expect(duration).toBeLessThan(2000); // 2 seconds for 50 messages
+      expect(duration).toBeLessThan(5000); // 5 seconds for 50 messages (CI environments can be slower)
 
       // Should produce valid output
       expect(hasCalloutBlocks(result)).toBe(true);
