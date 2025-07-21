@@ -372,7 +372,8 @@ export class MetricsCollector {
       }
 
       if (entry.data && typeof entry.data === 'object' && 'trimmed' in entry.data) {
-        const trimmed = (entry.data as any).trimmed;
+        const dataWithTrimmed = entry.data as Record<string, unknown>;
+        const trimmed = dataWithTrimmed.trimmed;
         if (typeof trimmed === 'string') {
           totalMessageLength += trimmed.length;
         }
@@ -445,9 +446,9 @@ export class MetricsCollector {
         // Extract format from message
         const formatMatch = entry.message.match(/completed: (\w+)/);
         if (formatMatch) {
-          const format = formatMatch[1];
+          const format = formatMatch[1] as keyof typeof formatCounts;
           if (format in formatCounts) {
-            (formatCounts as any)[format]++;
+            formatCounts[format]++;
           }
         }
 
@@ -693,7 +694,8 @@ export class MetricsCollector {
 
       // Track content length if available
       if (entry.data && typeof entry.data === 'object' && 'contentLength' in entry.data) {
-        const length = (entry.data as any).contentLength;
+        const dataWithLength = entry.data as Record<string, unknown>;
+        const length = dataWithLength.contentLength;
         if (typeof length === 'number') {
           totalContentLength += length;
         }

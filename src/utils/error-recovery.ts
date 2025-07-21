@@ -28,7 +28,7 @@ interface RecoveryStrategy {
   /** Action to take when recovery function is not provided or fails */
   fallbackAction: 'skip' | 'default' | 'partial' | 'retry';
   /** Optional custom recovery function that attempts to fix the error and return a result */
-  recoveryFunction?: (error: Error, context: any) => any;
+  recoveryFunction?: (error: Error, context: unknown) => unknown;
 }
 
 /**
@@ -42,7 +42,7 @@ interface RecoveryContext {
   /** Name of the operation being recovered */
   operation: string;
   /** Original input data that caused the error */
-  input: any;
+  input: unknown;
   /** Current attempt number (1-based) */
   attempt: number;
   /** Maximum attempts allowed for this recovery */
@@ -50,7 +50,7 @@ interface RecoveryContext {
   /** Array of errors from previous attempts */
   previousErrors: Error[];
   /** Additional context data including timing and recovery ID */
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
 }
 
 /**
@@ -705,7 +705,7 @@ ${this.generateRecommendations()
    *
    * @private
    */
-  private async applyRecoveryStrategy(error: Error, context: RecoveryContext): Promise<any> {
+  private async applyRecoveryStrategy(error: Error, context: RecoveryContext): Promise<unknown> {
     const applicableStrategies = this.config.strategies.filter(strategy =>
       strategy.errorTypes.some(
         type => error.constructor.name === type || error.message.includes(type) || type === '*'
@@ -747,7 +747,7 @@ ${this.generateRecommendations()
   /**
    * Apply synchronous recovery
    */
-  private applySyncRecovery(operation: string, error: Error, context: any): any {
+  private applySyncRecovery(operation: string, error: Error, context: unknown): unknown {
     const applicableStrategies = this.config.strategies.filter(strategy =>
       strategy.errorTypes.some(
         type => error.constructor.name === type || error.message.includes(type) || type === '*'
@@ -1000,11 +1000,12 @@ ${this.generateRecommendations()
         backoffMs: 100,
         fallbackAction: 'partial',
         recoveryFunction: (error, context) => {
-          if (context.operation?.includes('parse') && context.input) {
+          const ctx = context as { operation?: string; input?: unknown };
+          if (ctx.operation?.includes('parse') && ctx.input) {
             // Try simplified parsing
             return {
               messages: [],
-              metadata: { error: error.message, recovered: true, originalInput: context.input },
+              metadata: { error: error.message, recovered: true, originalInput: ctx.input },
             };
           }
           return null;
@@ -1042,9 +1043,8 @@ ${this.generateRecommendations()
         fallbackAction: 'partial',
         recoveryFunction: (error, context) => {
           // Force garbage collection if available
-          if (typeof global !== 'undefined' && (global as any).gc) {
-            const gc = (global as any).gc as () => void;
-            gc();
+          if (typeof global !== 'undefined' && global.gc) {
+            global.gc();
           }
           return { recovered: true, error: 'memory-limit' };
         },

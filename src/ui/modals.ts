@@ -120,7 +120,6 @@ export class SlackPreviewModal extends BaseModal {
 
     // Debug toggle
     const debugContainer = contentEl.createDiv({ cls: 'debug-toggle-container' });
-    debugContainer.style.marginBottom = '10px';
 
     const debugToggle = new ToggleComponent(debugContainer)
       .setValue(this.debugMode)
@@ -133,10 +132,6 @@ export class SlackPreviewModal extends BaseModal {
 
     // View toggle (raw vs formatted)
     const viewToggleContainer = contentEl.createDiv({ cls: 'view-toggle-container' });
-    viewToggleContainer.style.marginBottom = '10px';
-    viewToggleContainer.style.display = 'flex';
-    viewToggleContainer.style.alignItems = 'center';
-    viewToggleContainer.style.gap = '10px';
 
     viewToggleContainer.createSpan({ text: 'Formatted view' });
 
@@ -151,18 +146,9 @@ export class SlackPreviewModal extends BaseModal {
 
     // Stats container
     this.statsContainer = contentEl.createDiv({ cls: 'slack-stats-container' });
-    this.statsContainer.style.fontSize = '0.9em';
-    this.statsContainer.style.color = 'var(--text-muted)';
-    this.statsContainer.style.marginBottom = '10px';
 
     // Create preview container
     this.previewContainer = contentEl.createDiv({ cls: 'slack-preview-container' });
-    this.previewContainer.style.maxHeight = '400px';
-    this.previewContainer.style.overflow = 'auto';
-    this.previewContainer.style.border = '1px solid var(--background-modifier-border)';
-    this.previewContainer.style.padding = '10px';
-    this.previewContainer.style.marginBottom = '10px';
-    this.previewContainer.style.backgroundColor = 'var(--background-secondary)';
 
     // Initial preview
     this.updatePreview();
@@ -241,13 +227,16 @@ export class SlackPreviewModal extends BaseModal {
       // Update stats
       if ('getThreadStats' in this.formatter) {
         const stats = this.formatter.getThreadStats();
-        this.statsContainer.innerHTML = `
-                    <strong>Statistics:</strong> 
-                    ${stats.messageCount || 0} messages • 
-                    ${stats.uniqueUsers || 0} participants • 
-                    ${stats.formatStrategy || 'unknown'} format
-                    ${stats.processingTime ? ` • ${stats.processingTime}ms` : ''}
-                `;
+        this.statsContainer.empty();
+
+        const strong = this.statsContainer.createEl('strong', { text: 'Statistics:' });
+        this.statsContainer.appendText(' ');
+        this.statsContainer.appendText(`${stats.messageCount || 0} messages • `);
+        this.statsContainer.appendText(`${stats.uniqueUsers || 0} participants • `);
+        this.statsContainer.appendText(`${stats.formatStrategy || 'unknown'} format`);
+        if (stats.processingTime) {
+          this.statsContainer.appendText(` • ${stats.processingTime}ms`);
+        }
       }
 
       // Clear and re-render preview
@@ -256,11 +245,7 @@ export class SlackPreviewModal extends BaseModal {
       // Check if we should show raw content or formatted
       if (this.showRawContent) {
         // Show raw markdown content
-        const pre = this.previewContainer.createEl('pre');
-        pre.style.whiteSpace = 'pre-wrap';
-        pre.style.overflow = 'auto';
-        pre.style.fontFamily = 'var(--font-monospace)';
-        pre.style.fontSize = '0.9em';
+        const pre = this.previewContainer.createEl('pre', { cls: 'preview-raw-content' });
         pre.textContent = this.formattedText;
       } else {
         // Use MarkdownRenderer to properly render the content
@@ -315,9 +300,7 @@ export class SlackPreviewModal extends BaseModal {
             formattedTextSample: this.formattedText.substring(0, 100),
           });
           this.previewContainer.empty();
-          const pre = this.previewContainer.createEl('pre');
-          pre.style.whiteSpace = 'pre-wrap';
-          pre.style.overflow = 'auto';
+          const pre = this.previewContainer.createEl('pre', { cls: 'preview-raw-content' });
           pre.textContent = this.formattedText;
 
           // Clean up component on error
@@ -334,7 +317,6 @@ export class SlackPreviewModal extends BaseModal {
       // Show error in preview
       this.previewContainer.empty();
       const errorEl = this.previewContainer.createDiv({ cls: 'slack-preview-error' });
-      errorEl.style.color = 'var(--text-error)';
       errorEl.createEl('h3', { text: '⚠️ Formatting Error' });
       errorEl.createEl('p', { text: error.message || 'Unknown error occurred' });
 
@@ -342,9 +324,6 @@ export class SlackPreviewModal extends BaseModal {
       const fallbackEl = errorEl.createEl('details');
       fallbackEl.createEl('summary', { text: 'Show raw content' });
       const pre = fallbackEl.createEl('pre');
-      pre.style.fontSize = '0.8em';
-      pre.style.overflow = 'auto';
-      pre.style.maxHeight = '200px';
       pre.textContent = this.rawText.substring(0, 1000) + (this.rawText.length > 1000 ? '...' : '');
     }
   }

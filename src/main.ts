@@ -66,6 +66,9 @@ export default class SlackFormatPlugin extends Plugin {
    */
   private initFormatter(): void {
     try {
+      // Set debug mode based on settings
+      Logger.setDebugEnabled(this.settings.debug ?? false);
+
       Logger.info('SlackFormatPlugin', 'Initializing formatter...');
       let errorOccurred = false;
 
@@ -268,12 +271,6 @@ export default class SlackFormatPlugin extends Plugin {
     this.addCommand({
       id: 'format-slack-paste-hotkey',
       name: 'Format Slack paste with hotkey',
-      hotkeys: [
-        {
-          modifiers: ['Mod', 'Shift'],
-          key: 'v',
-        },
-      ],
       editorCallback: async (editor: Editor) => {
         const clipboardContent = await this.getClipboardContent();
         if (clipboardContent !== null) {

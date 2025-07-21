@@ -95,7 +95,9 @@ interface ProcessingStep {
 export class UnifiedProcessor extends BaseProcessor<string> {
   private readonly steps: ProcessingStep[];
   // Remove instance logger - use static methods instead
-  private readonly cachedPipelineOptions: PipelineOptions;
+  private cachedPipelineOptions: PipelineOptions;
+  // Temporary storage for spacing mappings during processing
+  private _spacingMappings?: Array<{ placeholder: string; spaces: string }>;
 
   /**
    * Creates a new UnifiedProcessor instance and initializes the complete processing pipeline.
@@ -541,7 +543,7 @@ export class UnifiedProcessor extends BaseProcessor<string> {
       });
 
       // Store the spacing mappings for restoration after other processing
-      (this as any)._spacingMappings = spacingMappings;
+      this._spacingMappings = spacingMappings;
 
       return result;
     } catch (error) {
@@ -564,7 +566,7 @@ export class UnifiedProcessor extends BaseProcessor<string> {
    */
   private restoreIndentation(text: string): string {
     try {
-      const spacingMappings = (this as any)._spacingMappings;
+      const spacingMappings = this._spacingMappings;
 
       if (!spacingMappings || !Array.isArray(spacingMappings)) {
         // No spacing mappings to restore
@@ -587,7 +589,7 @@ export class UnifiedProcessor extends BaseProcessor<string> {
       }
 
       // Clean up the stored mappings
-      delete (this as any)._spacingMappings;
+      delete this._spacingMappings;
 
       return result;
     } catch (error) {
@@ -678,7 +680,7 @@ export class UnifiedProcessor extends BaseProcessor<string> {
   updateSettings(settings: SlackFormatSettings): void {
     this.settings = settings;
     // Update cached pipeline options when settings change
-    (this as any).cachedPipelineOptions = this.createPipelineOptions();
+    this.cachedPipelineOptions = this.createPipelineOptions();
   }
 
   /**

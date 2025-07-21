@@ -263,7 +263,7 @@ export class IntelligentMessageParser {
    * ```typescript
    * const parser = new IntelligentMessageParser(settings, maps);
    * const messages = parser.parse(slackExportText, true);
-   * console.log(`Parsed ${messages.length} messages`);
+   Logger.debug('IntelligentMessageParser', 'Debug log', `Parsed ${messages.length} messages`);
    * ```
    * @since 1.0.0
    */
@@ -410,8 +410,15 @@ export class IntelligentMessageParser {
     const debugEnabled = process.env.DEBUG_BOUNDARY_DETECTION === 'true';
 
     if (debugEnabled) {
-      console.log('\n=== BOUNDARY DETECTION: Starting identifyPatterns ===');
-      console.log(`Total lines to analyze: ${analysis.length}`);
+      Logger.debug(
+        'IntelligentMessageParser',
+        '\n=== BOUNDARY DETECTION: Starting identifyPatterns ==='
+      );
+      Logger.debug(
+        'IntelligentMessageParser',
+        'Debug log',
+        `Total lines to analyze: ${analysis.length}`
+      );
     }
 
     const messageStartCandidates: number[] = [];
@@ -425,7 +432,7 @@ export class IntelligentMessageParser {
       const line = analysis[i];
       if (line.isEmpty) {
         if (debugEnabled) {
-          console.log(`Line ${i}: [EMPTY] - skipping`);
+          Logger.debug('IntelligentMessageParser', 'Debug log', `Line ${i}: [EMPTY] - skipping`);
         }
         continue;
       }
@@ -447,13 +454,21 @@ export class IntelligentMessageParser {
       const couldBeStart = this.couldBeMessageStart(line, analysis, i);
 
       if (debugEnabled) {
-        console.log(`  Could be message start: ${couldBeStart}`);
+        Logger.debug(
+          'IntelligentMessageParser',
+          'Debug log',
+          `  Could be message start: ${couldBeStart}`
+        );
       }
 
       if (couldBeStart) {
         messageStartCandidates.push(i);
         if (debugEnabled) {
-          console.log(`  -> Added to messageStartCandidates`);
+          Logger.debug(
+            'IntelligentMessageParser',
+            'Debug log',
+            `  -> Added to messageStartCandidates`
+          );
         }
       }
 
@@ -461,7 +476,7 @@ export class IntelligentMessageParser {
       if (line.characteristics.hasTimestamp) {
         timestamps.push(i);
         if (debugEnabled) {
-          console.log(`  -> Added to timestamps`);
+          Logger.debug('IntelligentMessageParser', 'Debug log', `  -> Added to timestamps`);
         }
       }
 
@@ -469,7 +484,7 @@ export class IntelligentMessageParser {
       if (this.couldBeUsername(line, analysis, i)) {
         usernames.push(i);
         if (debugEnabled) {
-          console.log(`  -> Added to usernames`);
+          Logger.debug('IntelligentMessageParser', 'Debug log', `  -> Added to usernames`);
         }
       }
 
@@ -477,17 +492,28 @@ export class IntelligentMessageParser {
       if (this.isMetadata(line)) {
         metadata.push(i);
         if (debugEnabled) {
-          console.log(`  -> Added to metadata`);
+          Logger.debug('IntelligentMessageParser', 'Debug log', `  -> Added to metadata`);
         }
       }
     }
 
     if (debugEnabled) {
-      console.log('\n=== BOUNDARY DETECTION: identifyPatterns Results ===');
-      console.log(`Message start candidates: [${messageStartCandidates.join(', ')}]`);
-      console.log(`Timestamps: [${timestamps.join(', ')}]`);
-      console.log(`Usernames: [${usernames.join(', ')}]`);
-      console.log(`Metadata: [${metadata.join(', ')}]`);
+      Logger.debug(
+        'IntelligentMessageParser',
+        '\n=== BOUNDARY DETECTION: identifyPatterns Results ==='
+      );
+      Logger.debug('IntelligentMessageParser', 'Debug log', {
+        message: `Message start candidates: [${messageStartCandidates.join(', data: ')}]`,
+      });
+      Logger.debug('IntelligentMessageParser', 'Debug log', {
+        message: `Timestamps: [${timestamps.join(', data: ')}]`,
+      });
+      Logger.debug('IntelligentMessageParser', 'Debug log', {
+        message: `Usernames: [${usernames.join(', data: ')}]`,
+      });
+      Logger.debug('IntelligentMessageParser', 'Debug log', {
+        message: `Metadata: [${metadata.join(', data: ')}]`,
+      });
     }
 
     return {
@@ -543,7 +569,11 @@ export class IntelligentMessageParser {
     // Empty lines can't be message starts
     if (line.isEmpty) {
       if (debugEnabled) {
-        console.log(`    couldBeMessageStart(${index}): FALSE - line is empty`);
+        Logger.debug(
+          'IntelligentMessageParser',
+          'Debug log',
+          `    couldBeMessageStart(${index}): FALSE - line is empty`
+        );
       }
       return false;
     }
@@ -564,7 +594,11 @@ export class IntelligentMessageParser {
 
     if (clearContentPatterns.some(pattern => this.regexUtils.test(pattern, text))) {
       if (debugEnabled) {
-        console.log(`    couldBeMessageStart(${index}): FALSE - matches clear content pattern`);
+        Logger.debug(
+          'IntelligentMessageParser',
+          'Debug log',
+          `    couldBeMessageStart(${index}): FALSE - matches clear content pattern`
+        );
       }
       return false;
     }
@@ -576,7 +610,11 @@ export class IntelligentMessageParser {
     );
     if (appMessageIndicator) {
       if (debugEnabled) {
-        console.log(`    couldBeMessageStart(${index}): TRUE - app message indicator`);
+        Logger.debug(
+          'IntelligentMessageParser',
+          'Debug log',
+          `    couldBeMessageStart(${index}): TRUE - app message indicator`
+        );
       }
       return true;
     }
@@ -609,8 +647,9 @@ export class IntelligentMessageParser {
 
       if (hasPreviousContent) {
         if (debugEnabled) {
-          console.log(
-            `    couldBeMessageStart(${index}): TRUE - section header indicator with previous content`
+          Logger.debug(
+            'IntelligentMessageParser',
+            `    couldBeMessageStart(${index});: TRUE - section header indicator with previous content`
           );
         }
         return true;
@@ -624,11 +663,31 @@ export class IntelligentMessageParser {
     const usernameIndicator = this.looksLikeUsername(line.trimmed);
 
     if (debugEnabled) {
-      console.log(`    couldBeMessageStart(${index}): Checking indicators:`);
-      console.log(`      timestampIndicator: ${timestampIndicator}`);
-      console.log(`      avatarIndicator: ${avatarIndicator}`);
-      console.log(`      userTimestampIndicator: ${userTimestampIndicator}`);
-      console.log(`      usernameIndicator: ${usernameIndicator}`);
+      Logger.debug(
+        'IntelligentMessageParser',
+        'Debug log',
+        `    couldBeMessageStart(${index}): Checking indicators:`
+      );
+      Logger.debug(
+        'IntelligentMessageParser',
+        'Debug log',
+        `      timestampIndicator: ${timestampIndicator}`
+      );
+      Logger.debug(
+        'IntelligentMessageParser',
+        'Debug log',
+        `      avatarIndicator: ${avatarIndicator}`
+      );
+      Logger.debug(
+        'IntelligentMessageParser',
+        'Debug log',
+        `      userTimestampIndicator: ${userTimestampIndicator}`
+      );
+      Logger.debug(
+        'IntelligentMessageParser',
+        'Debug log',
+        `      usernameIndicator: ${usernameIndicator}`
+      );
     }
 
     // Check for username followed by timestamp on next line (Clay format)
@@ -648,8 +707,16 @@ export class IntelligentMessageParser {
       clayFormatIndicator;
 
     if (debugEnabled) {
-      console.log(`      clayFormatIndicator: ${clayFormatIndicator}`);
-      console.log(`      hasStrongIndicators: ${hasStrongIndicators}`);
+      Logger.debug(
+        'IntelligentMessageParser',
+        'Debug log',
+        `      clayFormatIndicator: ${clayFormatIndicator}`
+      );
+      Logger.debug(
+        'IntelligentMessageParser',
+        'Debug log',
+        `      hasStrongIndicators: ${hasStrongIndicators}`
+      );
     }
 
     // For lines that only look like usernames, be more careful
@@ -664,14 +731,19 @@ export class IntelligentMessageParser {
       }
 
       if (debugEnabled) {
-        console.log(`      hasTimestampAfter: ${hasTimestampAfter}`);
+        Logger.debug(
+          'IntelligentMessageParser',
+          'Debug log',
+          `      hasTimestampAfter: ${hasTimestampAfter}`
+        );
       }
 
       // If there's no timestamp after this username, it's likely content continuation
       if (!hasTimestampAfter) {
         if (debugEnabled) {
-          console.log(
-            `    couldBeMessageStart(${index}): FALSE - username without timestamp after`
+          Logger.debug(
+            'IntelligentMessageParser',
+            `    couldBeMessageStart(${index});: FALSE - username without timestamp after`
           );
         }
         return false;
@@ -680,7 +752,11 @@ export class IntelligentMessageParser {
 
     const result = hasStrongIndicators || usernameIndicator;
     if (debugEnabled) {
-      console.log(`    couldBeMessageStart(${index}): ${result ? 'TRUE' : 'FALSE'} - final result`);
+      Logger.debug(
+        'IntelligentMessageParser',
+        'Debug log',
+        `    couldBeMessageStart(${index}): ${result ? 'TRUE' : 'FALSE'} - final result`
+      );
     }
 
     return result;
@@ -768,14 +844,18 @@ export class IntelligentMessageParser {
     const debugEnabled = process.env.DEBUG_BOUNDARY_DETECTION === 'true';
 
     if (debugEnabled) {
-      console.log('\n=== BOUNDARY DETECTION: Finding Message Boundaries ===');
+      Logger.debug(
+        'IntelligentMessageParser',
+        '\n=== BOUNDARY DETECTION: Finding Message Boundaries ==='
+      );
     }
 
     const boundaries: MessageBoundary[] = [];
     const { patterns } = structure;
 
     if (debugEnabled) {
-      console.log(
+      Logger.debug(
+        'IntelligentMessageParser',
         `Initial message start candidates: [${patterns.messageStartCandidates.join(', ')}]`
       );
     }
@@ -787,7 +867,9 @@ export class IntelligentMessageParser {
     );
 
     if (debugEnabled) {
-      console.log(`Ranked candidates: [${candidateStarts.join(', ')}]`);
+      Logger.debug('IntelligentMessageParser', 'Debug log', {
+        message: `Ranked candidates: [${candidateStarts.join(', data: ')}]`,
+      });
     }
 
     // Filter out continuation timestamps from candidates
@@ -796,7 +878,9 @@ export class IntelligentMessageParser {
     );
 
     if (debugEnabled) {
-      console.log(`After filtering continuations: [${trueCandidateStarts.join(', ')}]`);
+      Logger.debug('IntelligentMessageParser', 'Debug log', {
+        message: `After filtering continuations: [${trueCandidateStarts.join(', data: ')}]`,
+      });
     }
 
     // Filter out consecutive duplicate usernames to prevent splitting single messages
@@ -806,7 +890,9 @@ export class IntelligentMessageParser {
     );
 
     if (debugEnabled) {
-      console.log(`After filtering duplicates: [${filteredCandidateStarts.join(', ')}]`);
+      Logger.debug('IntelligentMessageParser', 'Debug log', {
+        message: `After filtering duplicates: [${filteredCandidateStarts.join(', data: ')}]`,
+      });
     }
 
     // GROUP MULTI-LINE MESSAGE PATTERNS: The key fix is here
@@ -815,7 +901,9 @@ export class IntelligentMessageParser {
     const messageStartGroups = this.groupMessageComponents(filteredCandidateStarts, structure);
 
     if (debugEnabled) {
-      console.log(`After grouping message components: [${messageStartGroups.join(', ')}]`);
+      Logger.debug('IntelligentMessageParser', 'Debug log', {
+        message: `After grouping message components: [${messageStartGroups.join(', data: ')}]`,
+      });
     }
 
     let currentStart = 0;
@@ -824,8 +912,16 @@ export class IntelligentMessageParser {
       const startIndex = messageStartGroups[i];
 
       if (debugEnabled) {
-        console.log(`\nProcessing boundary ${i}: startIndex=${startIndex}`);
-        console.log(`  Line content: "${lines[startIndex] || ''}"`);
+        Logger.debug(
+          'IntelligentMessageParser',
+          'Debug log',
+          `\nProcessing boundary ${i}: startIndex=${startIndex}`
+        );
+        Logger.debug(
+          'IntelligentMessageParser',
+          'Debug log',
+          `  Line content: "${lines[startIndex] || ''}"`
+        );
       }
 
       if (startIndex > currentStart) {
@@ -837,7 +933,8 @@ export class IntelligentMessageParser {
         };
         boundaries.push(boundary);
         if (debugEnabled) {
-          console.log(
+          Logger.debug(
+            'IntelligentMessageParser',
             `  -> Created boundary: ${boundary.start} to ${boundary.end} (confidence: ${boundary.confidence.toFixed(2)})`
           );
         }
@@ -859,7 +956,8 @@ export class IntelligentMessageParser {
       };
       boundaries.push(finalBoundary);
       if (debugEnabled) {
-        console.log(
+        Logger.debug(
+          'IntelligentMessageParser',
           `  -> Created final boundary: ${finalBoundary.start} to ${finalBoundary.end} (confidence: ${finalBoundary.confidence.toFixed(2)})`
         );
       }
@@ -1170,8 +1268,10 @@ export class IntelligentMessageParser {
     const debugEnabled = process.env.DEBUG_BOUNDARY_DETECTION === 'true';
 
     if (debugEnabled) {
-      console.log('\n=== GROUPING MESSAGE COMPONENTS ===');
-      console.log(`Input candidates: [${candidates.join(', ')}]`);
+      Logger.debug('IntelligentMessageParser', '\n=== GROUPING MESSAGE COMPONENTS ===');
+      Logger.debug('IntelligentMessageParser', 'Debug log', {
+        message: `Input candidates: [${candidates.join(', data: ')}]`,
+      });
     }
 
     if (candidates.length <= 1) {
@@ -1186,7 +1286,8 @@ export class IntelligentMessageParser {
       const currentLine = structure.lines?.[currentIndex];
 
       if (debugEnabled) {
-        console.log(
+        Logger.debug(
+          'IntelligentMessageParser',
           `\nProcessing candidate ${i}: line ${currentIndex}: "${currentLine?.trimmed || ''}"`
         );
       }
@@ -1211,7 +1312,11 @@ export class IntelligentMessageParser {
           groupEnd = j;
 
           if (debugEnabled) {
-            console.log(`  -> Grouping with line ${nextIndex}: "${nextLine?.trimmed || ''}"`);
+            Logger.debug(
+              'IntelligentMessageParser',
+              'Debug log',
+              `  -> Grouping with line ${nextIndex}: "${nextLine?.trimmed || ''}"`
+            );
           }
         } else {
           break;
@@ -1223,7 +1328,9 @@ export class IntelligentMessageParser {
         messageStarts.push(currentIndex);
 
         if (debugEnabled) {
-          console.log(`  -> Group start: ${currentIndex}, skipping ${groupEnd - i} candidates`);
+          Logger.debug('IntelligentMessageParser', 'Debug log', {
+            message: `  -> Group start: ${currentIndex}, data: skipping ${groupEnd - i} candidates`,
+          });
         }
 
         // Skip the grouped candidates
@@ -1233,7 +1340,11 @@ export class IntelligentMessageParser {
         messageStarts.push(currentIndex);
 
         if (debugEnabled) {
-          console.log(`  -> Standalone message start: ${currentIndex}`);
+          Logger.debug(
+            'IntelligentMessageParser',
+            'Debug log',
+            `  -> Standalone message start: ${currentIndex}`
+          );
         }
 
         i++;
@@ -1241,7 +1352,9 @@ export class IntelligentMessageParser {
     }
 
     if (debugEnabled) {
-      console.log(`\nFinal grouped message starts: [${messageStarts.join(', ')}]`);
+      Logger.debug('IntelligentMessageParser', 'Debug log', {
+        message: `\nFinal grouped message starts: [${messageStarts.join(', data: ')}]`,
+      });
     }
 
     return messageStarts;
@@ -1270,8 +1383,9 @@ export class IntelligentMessageParser {
     // Lines must be close to each other (within 2 lines)
     if (index2 - index1 > 2) {
       if (debugEnabled) {
-        console.log(
-          `    arePartOfSameMessage: FALSE - lines too far apart (${index2 - index1} lines)`
+        Logger.debug(
+          'IntelligentMessageParser',
+          `    arePartOfSameMessage: FALSE - lines too far apart (${index2 - index1} lines);`
         );
       }
       return false;
@@ -1283,7 +1397,11 @@ export class IntelligentMessageParser {
     // Pattern 1: Username followed by timestamp
     if (this.looksLikeUsername(text1) && line2.characteristics.hasTimestamp) {
       if (debugEnabled) {
-        console.log(`    arePartOfSameMessage: TRUE - username followed by timestamp`);
+        Logger.debug(
+          'IntelligentMessageParser',
+          'Debug log',
+          `    arePartOfSameMessage: TRUE - username followed by timestamp`
+        );
       }
       return true;
     }
@@ -1296,7 +1414,11 @@ export class IntelligentMessageParser {
       !this.looksLikeUsername(text2)
     ) {
       if (debugEnabled) {
-        console.log(`    arePartOfSameMessage: TRUE - username followed by content`);
+        Logger.debug(
+          'IntelligentMessageParser',
+          'Debug log',
+          `    arePartOfSameMessage: TRUE - username followed by content`
+        );
       }
       return true;
     }
@@ -1309,7 +1431,11 @@ export class IntelligentMessageParser {
       !this.isMetadata(line2)
     ) {
       if (debugEnabled) {
-        console.log(`    arePartOfSameMessage: TRUE - timestamp followed by content`);
+        Logger.debug(
+          'IntelligentMessageParser',
+          'Debug log',
+          `    arePartOfSameMessage: TRUE - timestamp followed by content`
+        );
       }
       return true;
     }
@@ -1322,13 +1448,21 @@ export class IntelligentMessageParser {
       !this.isMetadata(line2)
     ) {
       if (debugEnabled) {
-        console.log(`    arePartOfSameMessage: TRUE - username+timestamp followed by content`);
+        Logger.debug(
+          'IntelligentMessageParser',
+          'Debug log',
+          `    arePartOfSameMessage: TRUE - username+timestamp followed by content`
+        );
       }
       return true;
     }
 
     if (debugEnabled) {
-      console.log(`    arePartOfSameMessage: FALSE - no matching pattern`);
+      Logger.debug(
+        'IntelligentMessageParser',
+        'Debug log',
+        `    arePartOfSameMessage: FALSE - no matching pattern`
+      );
     }
 
     return false;
@@ -1866,8 +2000,12 @@ export class IntelligentMessageParser {
     const debugEnabled = process.env.DEBUG_BOUNDARY_DETECTION === 'true';
 
     if (debugEnabled) {
-      console.log('\n=== BOUNDARY DETECTION: Extracting Messages ===');
-      console.log(`Total boundaries: ${boundaries.length}`);
+      Logger.debug('IntelligentMessageParser', '\n=== BOUNDARY DETECTION: Extracting Messages ===');
+      Logger.debug(
+        'IntelligentMessageParser',
+        'Debug log',
+        `Total boundaries: ${boundaries.length}`
+      );
     }
 
     const messages: SlackMessage[] = [];
@@ -1877,11 +2015,19 @@ export class IntelligentMessageParser {
       const messageLines = lines.slice(boundary.start, boundary.end + 1);
 
       if (debugEnabled) {
-        console.log(`\nMessage ${i + 1}:`);
-        console.log(`  Boundary: ${boundary.start} to ${boundary.end}`);
-        console.log(`  Lines (${messageLines.length}):`);
+        Logger.debug('IntelligentMessageParser', 'Debug log', `\nMessage ${i + 1}:`);
+        Logger.debug(
+          'IntelligentMessageParser',
+          'Debug log',
+          `  Boundary: ${boundary.start} to ${boundary.end}`
+        );
+        Logger.debug('IntelligentMessageParser', 'Debug log', `  Lines (${messageLines.length}):`);
         messageLines.forEach((line, idx) => {
-          console.log(`    ${boundary.start + idx}: "${line}"`);
+          Logger.debug(
+            'IntelligentMessageParser',
+            'Debug log',
+            `    ${boundary.start + idx}: "${line}"`
+          );
         });
       }
 
@@ -1890,27 +2036,41 @@ export class IntelligentMessageParser {
       if (message && this.isValidMessage(message)) {
         messages.push(message);
         if (debugEnabled) {
-          console.log(`  -> Extracted message with username: "${message.username}"`);
-          console.log(
+          Logger.debug(
+            'IntelligentMessageParser',
+            'Debug log',
+            `  -> Extracted message with username: "${message.username}"`
+          );
+          Logger.debug(
+            'IntelligentMessageParser',
             `  -> Message content preview: "${message.text.substring(0, 100)}${message.text.length > 100 ? '...' : ''}"`
           );
         }
       } else {
         if (debugEnabled) {
-          console.log(`  -> Failed to extract message`);
+          Logger.debug('IntelligentMessageParser', 'Debug log', `  -> Failed to extract message`);
         }
       }
     }
 
     if (debugEnabled) {
-      console.log(`\n=== BOUNDARY DETECTION: Final Results ===`);
-      console.log(`Total messages extracted: ${messages.length}`);
+      Logger.debug(
+        'IntelligentMessageParser',
+        'Debug log',
+        `\n=== BOUNDARY DETECTION: Final Results ===`
+      );
+      Logger.debug(
+        'IntelligentMessageParser',
+        'Debug log',
+        `Total messages extracted: ${messages.length}`
+      );
       messages.forEach((msg, idx) => {
-        console.log(
+        Logger.debug(
+          'IntelligentMessageParser',
           `Message ${idx + 1}: ${msg.username} - "${msg.text.substring(0, 50)}${msg.text.length > 50 ? '...' : ''}"`
         );
       });
-      console.log('=== END BOUNDARY DETECTION DEBUG ===\n');
+      Logger.debug('IntelligentMessageParser', '=== END BOUNDARY DETECTION DEBUG ===\n');
     }
 
     return messages;
@@ -1938,10 +2098,18 @@ export class IntelligentMessageParser {
     );
 
     if (debugEnabled) {
-      console.log(`    extractSingleMessage: metadata extraction results:`);
-      console.log(`      username: "${username}"`);
-      console.log(`      timestamp: "${timestamp || 'none'}"`);
-      console.log(`      contentStart: ${contentStart}`);
+      Logger.debug(
+        'IntelligentMessageParser',
+        'Debug log',
+        `    extractSingleMessage: metadata extraction results:`
+      );
+      Logger.debug('IntelligentMessageParser', 'Debug log', `      username: "${username}"`);
+      Logger.debug(
+        'IntelligentMessageParser',
+        'Debug log',
+        `      timestamp: "${timestamp || 'none'}"`
+      );
+      Logger.debug('IntelligentMessageParser', 'Debug log', `      contentStart: ${contentStart}`);
     }
 
     message.username = username || 'Unknown User';
@@ -1952,8 +2120,9 @@ export class IntelligentMessageParser {
     const { text, reactions, threadInfo } = this.extractContent(contentLines);
 
     if (debugEnabled) {
-      console.log(
-        `      content lines (${contentLines.length}): [${contentLines.map(l => `"${l}"`).join(', ')}]`
+      Logger.debug(
+        'IntelligentMessageParser',
+        `      content lines (${contentLines.length});: [${contentLines.map(l => `"${l}"`).join(', ')}]`
       );
     }
 
@@ -2798,8 +2967,8 @@ export class IntelligentMessageParser {
       if (result.username) return result;
 
       if (debugEnabled) {
-        console.log('\n--- NO PATTERNS MATCHED ---');
-        console.log('Returning empty object: {}');
+        Logger.debug('IntelligentMessageParser', '\n--- NO PATTERNS MATCHED ---');
+        Logger.debug('IntelligentMessageParser', 'Returning empty object: {}');
       }
       return {};
     } catch (error) {
@@ -2812,13 +2981,17 @@ export class IntelligentMessageParser {
    * Debug logging for extraction process
    */
   private debugExtractionProcess(line: string): void {
-    console.log('\n=== extractUserAndTime DEBUG ===');
-    console.log('Input line:', JSON.stringify(line));
-    console.log('Line length:', line.length);
-    console.log('Line trimmed:', JSON.stringify(line.trim()));
-    console.log('Special chars found:', line.match(/[^\w\s\-_.()[\]]/g) || 'none');
-    console.log('Starts with letter:', /^[A-Za-z]/.test(line));
-    console.log('Contains URL:', line.includes('http'));
+    Logger.debug('IntelligentMessageParser', '\n=== extractUserAndTime DEBUG ===');
+    Logger.debug('IntelligentMessageParser', 'Input line:', JSON.stringify(line));
+    Logger.debug('IntelligentMessageParser', 'Line length:', line.length);
+    Logger.debug('IntelligentMessageParser', 'Line trimmed:', JSON.stringify(line.trim()));
+    Logger.debug(
+      'IntelligentMessageParser',
+      'Special chars found:',
+      line.match(/[^\w\s\-_.()[\]]/g) || 'none'
+    );
+    Logger.debug('IntelligentMessageParser', 'Starts with letter:', /^[A-Za-z]/.test(line));
+    Logger.debug('IntelligentMessageParser', 'Contains URL:', line.includes('http'));
   }
 
   /**
@@ -2828,20 +3001,20 @@ export class IntelligentMessageParser {
     line: string,
     debugEnabled: boolean
   ): { username?: string; timestamp?: string } {
-    if (debugEnabled) console.log('\n--- Testing App Message Format ---');
+    Logger.debug('IntelligentMessageParser', '\n--- Testing App Message Format ---');
     const isApp = isAppMessage(line);
-    if (debugEnabled) console.log('isAppMessage result:', isApp);
+    Logger.debug('IntelligentMessageParser', 'isAppMessage result:', isApp);
 
     if (isApp) {
       const appUsername = extractAppUsername(line);
-      if (debugEnabled) console.log('extractAppUsername result:', appUsername);
+      Logger.debug('IntelligentMessageParser', 'extractAppUsername result:', appUsername);
 
       if (appUsername && isValidUsername(appUsername)) {
         const result = {
           username: normalizeUsername(appUsername),
           timestamp: this.extractTimestampFromLine(line),
         };
-        if (debugEnabled) console.log('App message MATCH - returning:', result);
+        Logger.debug('IntelligentMessageParser', 'App message MATCH - returning:', result);
         return result;
       }
     }
@@ -2857,48 +3030,62 @@ export class IntelligentMessageParser {
   ): { username?: string; timestamp?: string } {
     // Pattern 1: UserUser [timestamp](url) - doubled username with linked timestamp
     if (debugEnabled)
-      console.log('\n--- Testing Pattern 1: Doubled username with linked timestamp ---');
+      Logger.debug(
+        'IntelligentMessageParser',
+        '\n--- Testing Pattern 1: Doubled username with linked timestamp ---'
+      );
     const pattern1 = /^([A-Za-z][A-Za-z0-9\s\-_.]*?)\1(?:!\[:[^\]]+:\][^\[]*)\s*\[([^\]]+)\]/;
-    if (debugEnabled) console.log('Pattern 1 regex:', pattern1);
+    Logger.debug('IntelligentMessageParser', 'Pattern 1 regex:', pattern1.toString());
 
     let match = this.regexUtils.match(line, pattern1);
-    if (debugEnabled) console.log('Pattern 1 match result:', match);
+    Logger.debug('IntelligentMessageParser', 'Pattern 1 match result:', match);
 
     if (match && match.length > 2 && match[1] && match[2]) {
       const username = extractUsername(match[1], MessageFormat.THREAD);
-      if (debugEnabled) console.log('Pattern 1 extracted username:', username);
-      if (debugEnabled) console.log('Pattern 1 isValidUsername:', isValidUsername(username));
+      Logger.debug('IntelligentMessageParser', 'Pattern 1 extracted username:', username);
+      Logger.debug(
+        'IntelligentMessageParser',
+        'Pattern 1 isValidUsername:',
+        isValidUsername(username)
+      );
 
       if (isValidUsername(username)) {
         const result = {
           username: normalizeUsername(username),
           timestamp: match[2],
         };
-        if (debugEnabled) console.log('Pattern 1 MATCH - returning:', result);
+        Logger.debug('IntelligentMessageParser', 'Pattern 1 MATCH - returning:', result);
         return result;
       }
     }
 
     // Pattern 2: Single user [timestamp](url) - single username with linked timestamp
     if (debugEnabled)
-      console.log('\n--- Testing Pattern 2: Single username with linked timestamp ---');
+      Logger.debug(
+        'IntelligentMessageParser',
+        '\n--- Testing Pattern 2: Single username with linked timestamp ---'
+      );
     const pattern2 = /^([A-Za-z][A-Za-z0-9\s\-_.]*?)\s*\[([^\]]+)\]/;
-    if (debugEnabled) console.log('Pattern 2 regex:', pattern2);
+    Logger.debug('IntelligentMessageParser', 'Pattern 2 regex:', pattern2.toString());
 
     match = this.regexUtils.match(line, pattern2);
-    if (debugEnabled) console.log('Pattern 2 match result:', match);
+    Logger.debug('IntelligentMessageParser', 'Pattern 2 match result:', match);
 
     if (match && match.length > 2 && match[1] && match[2]) {
       const username = extractUsername(match[1], MessageFormat.THREAD);
-      if (debugEnabled) console.log('Pattern 2 extracted username:', username);
-      if (debugEnabled) console.log('Pattern 2 isValidUsername:', isValidUsername(username));
+      Logger.debug('IntelligentMessageParser', 'Pattern 2 extracted username:', username);
+      Logger.debug(
+        'IntelligentMessageParser',
+        'Pattern 2 isValidUsername:',
+        isValidUsername(username)
+      );
 
       if (isValidUsername(username)) {
         const result = {
           username: normalizeUsername(username),
           timestamp: match[2],
         };
-        if (debugEnabled) console.log('Pattern 2 MATCH - returning:', result);
+        Logger.debug('IntelligentMessageParser', 'Pattern 2 MATCH - returning:', result);
         return result;
       }
     }
@@ -2912,27 +3099,34 @@ export class IntelligentMessageParser {
     line: string,
     debugEnabled: boolean
   ): { username?: string; timestamp?: string } {
-    if (debugEnabled) console.log('\n--- Testing Pattern 3: Username followed by time ---');
+    Logger.debug(
+      'IntelligentMessageParser',
+      '\n--- Testing Pattern 3: Username followed by time ---'
+    );
     const pattern3 = /^([A-Za-z0-9\s\-_.]+?)\s+(\d{1,2}:\d{2}(?:\s*[AP]M)?)/i;
-    if (debugEnabled) console.log('Pattern 3 regex:', pattern3);
+    Logger.debug('IntelligentMessageParser', 'Pattern 3 regex:', pattern3.toString());
 
     const match = this.regexUtils.match(line, pattern3);
-    if (debugEnabled) console.log('Pattern 3 match result:', match);
+    Logger.debug('IntelligentMessageParser', 'Pattern 3 match result:', match);
 
     if (match && match.length > 2 && match[1] && match[2]) {
       const potentialUsername = match[1];
-      if (debugEnabled) console.log('Pattern 3 potential username:', potentialUsername);
+      Logger.debug('IntelligentMessageParser', 'Pattern 3 potential username:', potentialUsername);
 
       // Enhanced rejection pattern for date/time constructs
       const dateTimePattern =
         /\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|January|February|March|April|May|June|July|August|September|October|November|December)\b.*\b(at|on)\s*$|\d+(st|nd|rd|th).*\bat\s*$|^.*(today|yesterday|monday|tuesday|wednesday|thursday|friday|saturday|sunday).*at\s*$/i;
       const isDateTimeConstruct = dateTimePattern.test(potentialUsername);
-      if (debugEnabled) console.log('Pattern 3 isDateTimeConstruct:', isDateTimeConstruct);
+      Logger.debug(
+        'IntelligentMessageParser',
+        'Pattern 3 isDateTimeConstruct:',
+        isDateTimeConstruct
+      );
 
       const containsTimeWords = /\b(at|on|today|yesterday|am|pm)\b/i.test(potentialUsername);
       const isTooLong = potentialUsername.length > 30;
-      if (debugEnabled) console.log('Pattern 3 containsTimeWords:', containsTimeWords);
-      if (debugEnabled) console.log('Pattern 3 isTooLong:', isTooLong);
+      Logger.debug('IntelligentMessageParser', 'Pattern 3 containsTimeWords:', containsTimeWords);
+      Logger.debug('IntelligentMessageParser', 'Pattern 3 isTooLong:', isTooLong);
 
       if (
         !isDateTimeConstruct &&
@@ -2944,7 +3138,7 @@ export class IntelligentMessageParser {
           username: this.cleanUsername(potentialUsername),
           timestamp: match[2],
         };
-        if (debugEnabled) console.log('Pattern 3 MATCH - returning:', result);
+        Logger.debug('IntelligentMessageParser', 'Pattern 3 MATCH - returning:', result);
         return result;
       }
     }
@@ -2959,36 +3153,46 @@ export class IntelligentMessageParser {
     debugEnabled: boolean
   ): { username?: string; timestamp?: string } {
     // Pattern 3b: Enhanced doubled username pattern
-    if (debugEnabled) console.log('\n--- Testing Pattern 3b: Enhanced doubled username ---');
+    Logger.debug(
+      'IntelligentMessageParser',
+      '\n--- Testing Pattern 3b: Enhanced doubled username ---'
+    );
     const pattern3b = /^([A-Za-z][A-Za-z0-9\s\-_.]{2,30})(?:[\s\n]*)?\1(?:[\s\n]+)(.+)$/;
-    if (debugEnabled) console.log('Pattern 3b regex:', pattern3b);
+    Logger.debug('IntelligentMessageParser', 'Pattern 3b regex:', pattern3b.toString());
 
     let match = this.regexUtils.match(line, pattern3b);
-    if (debugEnabled) console.log('Pattern 3b match result:', match);
+    Logger.debug('IntelligentMessageParser', 'Pattern 3b match result:', match);
 
     if (match && match.length > 2 && match[1] && match[2]) {
       const potentialTimestamp = match[2].trim();
-      if (debugEnabled) console.log('Pattern 3b potential timestamp:', potentialTimestamp);
+      Logger.debug(
+        'IntelligentMessageParser',
+        'Pattern 3b potential timestamp:',
+        potentialTimestamp
+      );
 
       const hasTimestamp =
         this.hasTimestampPattern(potentialTimestamp) ||
         potentialTimestamp.includes('AM') ||
         potentialTimestamp.includes('PM') ||
         /\d{1,2}:\d{2}/.test(potentialTimestamp);
-      if (debugEnabled) console.log('Pattern 3b hasTimestamp:', hasTimestamp);
+      Logger.debug('IntelligentMessageParser', 'Pattern 3b hasTimestamp:', hasTimestamp);
 
       if (hasTimestamp && this.looksLikeUsername(match[1])) {
         const result = {
           username: this.cleanUsername(match[1]),
           timestamp: potentialTimestamp,
         };
-        if (debugEnabled) console.log('Pattern 3b MATCH - returning:', result);
+        Logger.debug('IntelligentMessageParser', 'Pattern 3b MATCH - returning:', result);
         return result;
       }
     }
 
     // Pattern 3c: Simple username fallback
-    if (debugEnabled) console.log('\n--- Testing Pattern 3c: Simple username fallback ---');
+    Logger.debug(
+      'IntelligentMessageParser',
+      '\n--- Testing Pattern 3c: Simple username fallback ---'
+    );
     const trimmedForPattern3c = line.trim();
     const isCleanUsername = /^[A-Za-z][A-Za-z0-9\s\-_.]*$/.test(trimmedForPattern3c);
     const isShortEnough = trimmedForPattern3c.length <= 30 && trimmedForPattern3c.length >= 2;
@@ -2997,35 +3201,46 @@ export class IntelligentMessageParser {
     const hasNoUrl = !trimmedForPattern3c.includes('http');
 
     if (debugEnabled) {
-      console.log('Pattern 3c trimmed line:', JSON.stringify(trimmedForPattern3c));
-      console.log('Pattern 3c isCleanUsername:', isCleanUsername);
-      console.log('Pattern 3c isShortEnough:', isShortEnough);
-      console.log('Pattern 3c looksLikeUsername:', looksLikeUserPattern3c);
-      console.log('Pattern 3c hasNoTimestamp:', hasNoTimestamp);
-      console.log('Pattern 3c hasNoUrl:', hasNoUrl);
+      Logger.debug(
+        'IntelligentMessageParser',
+        'Pattern 3c trimmed line:',
+        JSON.stringify(trimmedForPattern3c)
+      );
+      Logger.debug('IntelligentMessageParser', 'Pattern 3c isCleanUsername:', isCleanUsername);
+      Logger.debug('IntelligentMessageParser', 'Pattern 3c isShortEnough:', isShortEnough);
+      Logger.debug(
+        'IntelligentMessageParser',
+        'Pattern 3c looksLikeUsername:',
+        looksLikeUserPattern3c
+      );
+      Logger.debug('IntelligentMessageParser', 'Pattern 3c hasNoTimestamp:', hasNoTimestamp);
+      Logger.debug('IntelligentMessageParser', 'Pattern 3c hasNoUrl:', hasNoUrl);
     }
 
     if (isCleanUsername && isShortEnough && looksLikeUserPattern3c && hasNoTimestamp && hasNoUrl) {
       const result = {
         username: this.cleanUsername(trimmedForPattern3c),
       };
-      if (debugEnabled) console.log('Pattern 3c MATCH - returning:', result);
+      Logger.debug('IntelligentMessageParser', 'Pattern 3c MATCH - returning:', result);
       return result;
     }
 
     // Pattern 3d: Username with APP indicator
-    if (debugEnabled) console.log('\n--- Testing Pattern 3d: Username with APP indicator ---');
+    Logger.debug(
+      'IntelligentMessageParser',
+      '\n--- Testing Pattern 3d: Username with APP indicator ---'
+    );
     const pattern3d = /^([A-Za-z][A-Za-z0-9\s\-_.]*?)(?:[\s\n]+APP[\s\n]+(.+))?$/;
-    if (debugEnabled) console.log('Pattern 3d regex:', pattern3d);
+    Logger.debug('IntelligentMessageParser', 'Pattern 3d regex:', pattern3d.toString());
 
     match = this.regexUtils.match(line, pattern3d);
-    if (debugEnabled) console.log('Pattern 3d match result:', match);
+    Logger.debug('IntelligentMessageParser', 'Pattern 3d match result:', match);
 
     if (match && match.length > 1 && match[1]) {
       const username = match[1].trim();
       const timestampPart = match[2] ? match[2].trim() : undefined;
-      if (debugEnabled) console.log('Pattern 3d username:', username);
-      if (debugEnabled) console.log('Pattern 3d timestamp part:', timestampPart);
+      Logger.debug('IntelligentMessageParser', 'Pattern 3d username:', username);
+      Logger.debug('IntelligentMessageParser', 'Pattern 3d timestamp part:', timestampPart);
 
       const looksLikeUser = this.looksLikeUsername(username);
       const isReasonableLength = username.length >= 2 && username.length <= 25;
@@ -3042,11 +3257,19 @@ export class IntelligentMessageParser {
         looksLikeUser && isReasonableLength && isNotSentence && isNotCommonContent;
 
       if (debugEnabled) {
-        console.log('Pattern 3d looksLikeUsername:', looksLikeUser);
-        console.log('Pattern 3d isReasonableLength:', isReasonableLength);
-        console.log('Pattern 3d isNotSentence:', isNotSentence);
-        console.log('Pattern 3d isNotCommonContent:', isNotCommonContent);
-        console.log('Pattern 3d isValidPattern:', isValidPattern);
+        Logger.debug('IntelligentMessageParser', 'Pattern 3d looksLikeUsername:', looksLikeUser);
+        Logger.debug(
+          'IntelligentMessageParser',
+          'Pattern 3d isReasonableLength:',
+          isReasonableLength
+        );
+        Logger.debug('IntelligentMessageParser', 'Pattern 3d isNotSentence:', isNotSentence);
+        Logger.debug(
+          'IntelligentMessageParser',
+          'Pattern 3d isNotCommonContent:',
+          isNotCommonContent
+        );
+        Logger.debug('IntelligentMessageParser', 'Pattern 3d isValidPattern:', isValidPattern);
       }
 
       if (username && isValidPattern) {
@@ -3054,7 +3277,7 @@ export class IntelligentMessageParser {
           username: this.cleanUsername(username),
           timestamp: timestampPart,
         };
-        if (debugEnabled) console.log('Pattern 3d MATCH - returning:', result);
+        Logger.debug('IntelligentMessageParser', 'Pattern 3d MATCH - returning:', result);
         return result;
       }
     }
@@ -3068,7 +3291,7 @@ export class IntelligentMessageParser {
     line: string,
     debugEnabled: boolean
   ): { username?: string; timestamp?: string } {
-    if (debugEnabled) console.log('\n--- Testing Pattern 4: Just username ---');
+    Logger.debug('IntelligentMessageParser', '\n--- Testing Pattern 4: Just username ---');
     const looksLikeUser = this.looksLikeUsername(line);
     const hasTimestamp = this.hasTimestampPattern(line);
     const trimmedLine = line.trim();
@@ -3080,12 +3303,16 @@ export class IntelligentMessageParser {
     const isNotContentIndicator = !/^(#|\*|>|-)/.test(trimmedLine);
 
     if (debugEnabled) {
-      console.log('Pattern 4 looksLikeUsername:', looksLikeUser);
-      console.log('Pattern 4 isSimpleName:', isSimpleName);
-      console.log('Pattern 4 isNotUrl:', isNotUrl);
-      console.log('Pattern 4 isNotTimestamp:', isNotTimestamp);
-      console.log('Pattern 4 isNotMetadata:', isNotMetadata);
-      console.log('Pattern 4 isNotContentIndicator:', isNotContentIndicator);
+      Logger.debug('IntelligentMessageParser', 'Pattern 4 looksLikeUsername:', looksLikeUser);
+      Logger.debug('IntelligentMessageParser', 'Pattern 4 isSimpleName:', isSimpleName);
+      Logger.debug('IntelligentMessageParser', 'Pattern 4 isNotUrl:', isNotUrl);
+      Logger.debug('IntelligentMessageParser', 'Pattern 4 isNotTimestamp:', isNotTimestamp);
+      Logger.debug('IntelligentMessageParser', 'Pattern 4 isNotMetadata:', isNotMetadata);
+      Logger.debug(
+        'IntelligentMessageParser',
+        'Pattern 4 isNotContentIndicator:',
+        isNotContentIndicator
+      );
     }
 
     if (
@@ -3099,7 +3326,7 @@ export class IntelligentMessageParser {
       const result = {
         username: this.cleanUsername(trimmedLine),
       };
-      if (debugEnabled) console.log('Pattern 4 MATCH - returning:', result);
+      Logger.debug('IntelligentMessageParser', 'Pattern 4 MATCH - returning:', result);
       return result;
     }
     return {};
@@ -3112,19 +3339,22 @@ export class IntelligentMessageParser {
     line: string,
     debugEnabled: boolean
   ): { username?: string; timestamp?: string } {
-    if (debugEnabled) console.log('\n--- Testing Pattern 5: Fallback complex parsing ---');
+    Logger.debug(
+      'IntelligentMessageParser',
+      '\n--- Testing Pattern 5: Fallback complex parsing ---'
+    );
     const pattern5 = /^([A-Za-z][A-Za-z0-9\s\-_.]{1,25})\s+(.+)$/;
-    if (debugEnabled) console.log('Pattern 5 regex:', pattern5);
+    Logger.debug('IntelligentMessageParser', 'Pattern 5 regex:', pattern5.toString());
 
     const match = this.regexUtils.match(line, pattern5);
-    if (debugEnabled) console.log('Pattern 5 match result:', match);
+    Logger.debug('IntelligentMessageParser', 'Pattern 5 match result:', match);
 
     if (match && match.length > 2 && match[1] && match[2]) {
       const potentialUsername = match[1].trim();
       const remainder = match[2].trim();
 
-      if (debugEnabled) console.log('Pattern 5 potentialUsername:', potentialUsername);
-      if (debugEnabled) console.log('Pattern 5 remainder:', remainder);
+      Logger.debug('IntelligentMessageParser', 'Pattern 5 potentialUsername:', potentialUsername);
+      Logger.debug('IntelligentMessageParser', 'Pattern 5 remainder:', remainder);
 
       const firstPartIsUsername =
         this.looksLikeUsername(potentialUsername) &&
@@ -3136,15 +3366,23 @@ export class IntelligentMessageParser {
         remainder.includes('PM') ||
         /\d{1,2}:\d{2}/.test(remainder);
 
-      if (debugEnabled) console.log('Pattern 5 firstPartIsUsername:', firstPartIsUsername);
-      if (debugEnabled) console.log('Pattern 5 remainderHasTimestamp:', remainderHasTimestamp);
+      Logger.debug(
+        'IntelligentMessageParser',
+        'Pattern 5 firstPartIsUsername:',
+        firstPartIsUsername
+      );
+      Logger.debug(
+        'IntelligentMessageParser',
+        'Pattern 5 remainderHasTimestamp:',
+        remainderHasTimestamp
+      );
 
       if (firstPartIsUsername && remainderHasTimestamp) {
         const result = {
           username: this.cleanUsername(potentialUsername),
           timestamp: remainder,
         };
-        if (debugEnabled) console.log('Pattern 5 MATCH - returning:', result);
+        Logger.debug('IntelligentMessageParser', 'Pattern 5 MATCH - returning:', result);
         return result;
       }
     }

@@ -873,7 +873,10 @@ ${this.generateRecommendations()
 
     // Browser fallback (limited accuracy)
     if (typeof performance !== 'undefined' && 'memory' in performance) {
-      return (performance as any).memory.usedJSHeapSize || 0;
+      const perfWithMemory = performance as Performance & {
+        memory?: { usedJSHeapSize?: number };
+      };
+      return perfWithMemory.memory?.usedJSHeapSize || 0;
     }
 
     return 0;

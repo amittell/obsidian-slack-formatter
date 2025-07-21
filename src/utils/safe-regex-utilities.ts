@@ -167,11 +167,11 @@ export class SafeRegexUtilities {
   public replace(
     text: string,
     regex: RegExp,
-    replacement: string | ((substring: string, ...args: any[]) => string)
+    replacement: string | ((match: string, ...args: any[]) => string)
   ): string {
     try {
       if (!text || typeof text !== 'string') return text || '';
-      // Type-safe replacement handling - TypeScript knows replacement is compatible with replace()
+      // Type-safe replacement handling
       return text.replace(regex, replacement as any);
     } catch (error) {
       Logger.error(this.componentName, 'Regex replace failed', {

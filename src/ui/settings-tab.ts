@@ -18,12 +18,10 @@ export class SlackFormatSettingTab extends PluginSettingTab {
     if (message) {
       inputEl.addClass('is-invalid');
       messageEl.setText(message);
-      messageEl.style.display = 'block';
-      messageEl.style.color = 'var(--text-error)'; // Use theme error color
-      messageEl.style.fontSize = 'var(--font-ui-smaller)'; // Smaller font size
+      messageEl.addClass('is-visible');
     } else {
       inputEl.removeClass('is-invalid');
-      messageEl.style.display = 'none';
+      messageEl.removeClass('is-visible');
       messageEl.setText('');
     }
   }
@@ -247,7 +245,7 @@ export class SlackFormatSettingTab extends PluginSettingTab {
       txt.setPlaceholder('{\n  "U123ABC": "[[Alice]]",\n  "U456DEF": "Bob"\n}');
       txt.setValue(this.plugin.settings.userMapJson);
       txt.inputEl.rows = 6;
-      txt.inputEl.style.width = '100%';
+      txt.inputEl.addClass('full-width');
       txt.onChange(async val => {
         if (isValidJson(val)) {
           // Use imported function
@@ -272,7 +270,7 @@ export class SlackFormatSettingTab extends PluginSettingTab {
       txt.setPlaceholder('{\n  "smile": "😄",\n  "+1": "👍",\n  "bufo-thumbsup": "👍"\n}');
       txt.setValue(this.plugin.settings.emojiMapJson);
       txt.inputEl.rows = 6;
-      txt.inputEl.style.width = '100%';
+      txt.inputEl.addClass('full-width');
       txt.onChange(async val => {
         if (isValidJson(val)) {
           // Use imported function
