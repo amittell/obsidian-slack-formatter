@@ -118,7 +118,7 @@ export class InfrastructureManager {
   public async executeWithFullProtection<T>(
     operation: string,
     fn: () => Promise<T> | T,
-    context?: any
+    context?: unknown
   ): Promise<T> {
     // Start performance tracking
     const performanceId = this.performanceMonitor.startOperation(operation, context);
@@ -172,10 +172,10 @@ ${JSON.stringify(this.dashboard.getStatus(), null, 2)}
    * Get all monitoring statistics
    */
   public getMonitoringStats(): {
-    performance: any;
-    recovery: any;
-    metrics: any;
-    dashboard: any;
+    performance: unknown;
+    recovery: unknown;
+    metrics: unknown;
+    dashboard: unknown;
   } {
     return {
       performance: this.performanceMonitor.getStatistics(),
@@ -206,10 +206,10 @@ ${JSON.stringify(this.dashboard.getStatus(), null, 2)}
  * Utility decorators for automatic monitoring
  */
 export function withPerformanceTracking(operation: string) {
-  return function (target: any, propertyKey: string, descriptor: PropertyDescriptor) {
+  return function (target: unknown, propertyKey: string, descriptor: PropertyDescriptor) {
     const originalMethod = descriptor.value;
 
-    descriptor.value = async function (...args: any[]) {
+    descriptor.value = async function (...args: unknown[]) {
       const monitor = new PerformanceMonitor();
       const operationId = monitor.startOperation(operation, { args });
 
@@ -230,11 +230,11 @@ export function withPerformanceTracking(operation: string) {
 export function withErrorRecovery(
   recoveryConfig?: Partial<import('./error-recovery.js').ErrorBoundaryConfig>
 ) {
-  return function (target: any, propertyKey: string, descriptor: PropertyDescriptor) {
+  return function (target: unknown, propertyKey: string, descriptor: PropertyDescriptor) {
     const originalMethod = descriptor.value;
     const recovery = new ErrorRecoverySystem(recoveryConfig);
 
-    descriptor.value = async function (...args: any[]) {
+    descriptor.value = async function (...args: unknown[]) {
       const result = await recovery.executeWithRecovery(
         `${target.constructor.name}.${propertyKey}`,
         () => originalMethod.apply(this, args),

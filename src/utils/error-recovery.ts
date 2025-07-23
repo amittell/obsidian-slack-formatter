@@ -67,7 +67,7 @@ interface RecoveryResult {
   /** Whether the operation ultimately succeeded (with or without recovery) */
   success: boolean;
   /** The final result value if successful */
-  result?: any;
+  result?: unknown;
   /** Name of the strategy that achieved recovery, or 'direct' if no recovery needed */
   strategy: string;
   /** Total number of attempts made before success or final failure */
@@ -278,7 +278,7 @@ export class ErrorRecoverySystem {
   public async executeWithRecovery<T>(
     operation: string,
     fn: () => Promise<T> | T,
-    context?: any
+    context?: unknown
   ): Promise<RecoveryResult> {
     const recoveryId = `${operation}-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
     const startTime = Date.now();
@@ -383,7 +383,7 @@ export class ErrorRecoverySystem {
    * @complexity O(m) where m = number of applicable synchronous strategies
    * @performance ~1-5ms depending on recovery strategy complexity
    */
-  public executeSync<T>(operation: string, fn: () => T, context?: any): RecoveryResult {
+  public executeSync<T>(operation: string, fn: () => T, context?: unknown): RecoveryResult {
     try {
       const result = fn();
       return {
@@ -809,7 +809,7 @@ ${this.generateRecommendations()
    *
    * @private
    */
-  private applyFallbackAction(strategy: RecoveryStrategy, error: Error, context: any): any {
+  private applyFallbackAction(strategy: RecoveryStrategy, error: Error, context: unknown): unknown {
     switch (strategy.fallbackAction) {
       case 'skip':
         return undefined;
@@ -852,12 +852,13 @@ ${this.generateRecommendations()
    *
    * @private
    */
-  private getDefaultValue(context: any): any {
-    if (context?.operation?.includes('parse')) {
+  private getDefaultValue(context: unknown): unknown {
+    const ctx = context as { operation?: string };
+    if (ctx?.operation?.includes('parse')) {
       return { messages: [], metadata: { recovered: true } };
     }
 
-    if (context?.operation?.includes('format')) {
+    if (ctx?.operation?.includes('format')) {
       return 'standard';
     }
 
@@ -867,11 +868,12 @@ ${this.generateRecommendations()
   /**
    * Get partial result for operation
    */
-  private getPartialResult(context: any): any {
-    if (context?.input) {
+  private getPartialResult(context: unknown): unknown {
+    const ctx = context as { input?: unknown };
+    if (ctx?.input) {
       return {
         partial: true,
-        originalInput: context.input,
+        originalInput: ctx.input,
         recovered: true,
       };
     }

@@ -37,7 +37,7 @@ export class TestDebugLogger {
     if (!this.config.enabled) return;
     const timestamp = this.config.includeTimestamp ? `[${new Date().toISOString()}] ` : '';
     const prefix = this.config.prefix ? `${this.config.prefix} ` : '';
-    console.log(`${timestamp}${prefix}${this.testName}: ${message}`);
+    // console.log(`${timestamp}${prefix}${this.testName}: ${message}`);
   }
 
   logParsingResults(messages: any[], inputLength: number): void {
@@ -65,11 +65,11 @@ export class TestDebugLogger {
 }
 
 export function debugLog(message: string, enabled = false): void {
-  if (enabled) console.log(`[DEBUG] ${message}`);
+  // if (enabled) console.log(`[DEBUG] ${message}`);
 }
 
 export function debugLogTest(testName: string, message: string, enabled = false): void {
-  if (enabled) console.log(`[DEBUG:${testName}] ${message}`);
+  // if (enabled) console.log(`[DEBUG:${testName}] ${message}`);
 }
 
 // Test logging utilities - inline to avoid CI module resolution issues
@@ -79,16 +79,16 @@ export class TestLogger {
 
   static log(...args: any[]): void {
     if (TestLogger.isEnabled) {
-      console.log('[TEST]', ...args);
+      // console.log('[TEST]', ...args);
     }
   }
 
   static error(...args: any[]): void {
-    console.error('[TEST ERROR]', ...args);
+    // console.error('[TEST ERROR]', ...args);
   }
 
   static warn(...args: any[]): void {
-    console.warn('[TEST WARN]', ...args);
+    // console.warn('[TEST WARN]', ...args);
   }
 
   static enable(): void {
@@ -565,12 +565,12 @@ export function validatePerformance(
 }
 
 export function logPerformanceBenchmark(benchmark: PerformanceBenchmark): void {
-  console.log(`Performance Benchmark: ${benchmark.name}`);
-  console.log(`  Iterations: ${benchmark.iterations}`);
-  console.log(`  Average Time: ${benchmark.averageTime.toFixed(2)}ms`);
-  console.log(`  Min Time: ${benchmark.minTime.toFixed(2)}ms`);
-  console.log(`  Max Time: ${benchmark.maxTime.toFixed(2)}ms`);
-  console.log(`  Characters/sec: ${benchmark.metrics.charactersPerSecond.toFixed(0)}`);
+  // console.log(`Performance Benchmark: ${benchmark.name}`);
+  // console.log(`  Iterations: ${benchmark.iterations}`);
+  // console.log(`  Average Time: ${benchmark.averageTime.toFixed(2)}ms`);
+  // console.log(`  Min Time: ${benchmark.minTime.toFixed(2)}ms`);
+  // console.log(`  Max Time: ${benchmark.maxTime.toFixed(2)}ms`);
+  // console.log(`  Characters/sec: ${benchmark.metrics.charactersPerSecond.toFixed(0)}`);
 }
 
 export class PerformanceTestSuite {

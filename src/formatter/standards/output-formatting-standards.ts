@@ -132,6 +132,11 @@ export const FORMATTING_STANDARDS = {
 } as const;
 
 /**
+ * Type for formatting standard configuration
+ */
+type FormattingStandard = (typeof FORMATTING_STANDARDS)[keyof typeof FORMATTING_STANDARDS];
+
+/**
  * Content type classifications for specialized formatting and processing rules.
  *
  * This enumeration provides semantic categorization of different message types
@@ -815,7 +820,11 @@ export class OutputFormattingStandards {
    * @complexity O(1) time and space
    * @since 1.0.0
    */
-  private formatUsername(username: string, standard: any, contentType: ContentType): string {
+  private formatUsername(
+    username: string,
+    standard: FormattingStandard,
+    contentType: ContentType
+  ): string {
     let formattedUsername = standard.usernameFormat.replace('{username}', username);
 
     // Apply content-type specific formatting
@@ -834,7 +843,11 @@ export class OutputFormattingStandards {
   /**
    * Format timestamp according to standards
    */
-  private formatTimestamp(timestamp: string, standard: any, contentType: ContentType): string {
+  private formatTimestamp(
+    timestamp: string,
+    standard: FormattingStandard,
+    contentType: ContentType
+  ): string {
     const formattedTimestamp = standard.timestampFormat.replace('{timestamp}', timestamp);
 
     // Apply content-type specific adjustments
@@ -886,7 +899,7 @@ export class OutputFormattingStandards {
    */
   private formatMessageText(
     text: string,
-    standard: any,
+    standard: FormattingStandard,
     contentType: ContentType,
     context: FormattingContext
   ): string {
@@ -899,7 +912,7 @@ export class OutputFormattingStandards {
 
     // Apply indentation based on content type
     const lines = formattedText.split('\n');
-    let indent = standard.textIndent;
+    let indent: string = standard.textIndent;
 
     switch (contentType) {
       case ContentType.THREAD_REPLY:
@@ -927,12 +940,13 @@ export class OutputFormattingStandards {
   /**
    * Format reactions according to standards
    */
-  private formatReactions(reactions: any[], standard: any): string {
+  private formatReactions(reactions: unknown[], standard: FormattingStandard): string {
     if (!reactions || reactions.length === 0) return '';
 
     const formattedReactions = reactions.map(reaction => {
-      const emoji = reaction.emoji || reaction.name || '👍';
-      const count = reaction.count || 1;
+      const r = reaction as { emoji?: string; name?: string; count?: number };
+      const emoji = r.emoji || r.name || '👍';
+      const count = r.count || 1;
       return standard.reactionFormat.replace('{emoji}', emoji).replace('{count}', count.toString());
     });
 
@@ -942,14 +956,18 @@ export class OutputFormattingStandards {
   /**
    * Format thread information
    */
-  private formatThreadInfo(threadInfo: string, standard: any): string {
+  private formatThreadInfo(threadInfo: string, standard: FormattingStandard): string {
     return `*${threadInfo}*`;
   }
 
   /**
    * Combine message parts according to content type
    */
-  private combineMessageParts(parts: string[], standard: any, contentType: ContentType): string {
+  private combineMessageParts(
+    parts: string[],
+    standard: FormattingStandard,
+    contentType: ContentType
+  ): string {
     // For callout formats, combine parts properly with newlines
     if (standard.usernameFormat.startsWith('> [!slack]')) {
       // First part should be the username header

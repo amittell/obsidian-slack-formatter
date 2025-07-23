@@ -124,11 +124,12 @@ https://www.guidewire.com
 Insurance software platform`;
 
       const lines = doubledTitleContent.split('\n');
-      const isPreview = (attachmentProcessor as any).looksLikeLinkPreview(
-        'GuidewireGuidewire',
-        lines,
-        0
-      );
+      // Testing private method - type assertion for test access
+      const isPreview = (
+        attachmentProcessor as unknown as {
+          looksLikeLinkPreview: (text: string, lines: string[], index: number) => boolean;
+        }
+      ).looksLikeLinkPreview('GuidewireGuidewire', lines, 0);
 
       expect(isPreview).toBe(true);
     });
