@@ -296,8 +296,6 @@ exports[`SlackFormatter Integration Tests (Snapshot) Sample: emoji-channel-sampl
 >
 > image.png
 >
-> View newer replies
->
 > :bufo-ages-rapidly-in-the-void: 18
 
 > [!slack]+ Message from User14
@@ -315,8 +313,6 @@ exports[`SlackFormatter Integration Tests (Snapshot) Sample: emoji-channel-sampl
 > the github one has bufos that we don't have! https://github.com/knobiknows/all-the-bufo/blob/main/all-the-bufo/bufo-intern.png
 > bufo-intern.png
 > [knobiknows/all-the-bufo](https://github.com/knobiknows/all-the-bufo)knobiknows/all-the-bufo | Added by GitHub (23 kB)
->
-> View newer replies
 
 > [!slack]+ Message from User16
 > **Time:** 3:59 PM
@@ -507,8 +503,6 @@ exports[`SlackFormatter Integration Tests (Snapshot) Sample: emoji-channel-sampl
 >
 > image.png
 >
-> View newer replies
->
 > :bufo-ages-rapidly-in-the-void: 18
 
 > [!slack]+ Message from User14
@@ -526,8 +520,6 @@ exports[`SlackFormatter Integration Tests (Snapshot) Sample: emoji-channel-sampl
 > the github one has bufos that we don't have! https://github.com/knobiknows/all-the-bufo/blob/main/all-the-bufo/bufo-intern.png
 > bufo-intern.png
 > [knobiknows/all-the-bufo](https://github.com/knobiknows/all-the-bufo)knobiknows/all-the-bufo | Added by GitHub (23 kB)
->
-> View newer replies
 
 > [!slack]+ Message from User16
 > **Time:** 3:59 PM
@@ -718,8 +710,6 @@ exports[`SlackFormatter Integration Tests (Snapshot) Sample: emoji-channel-sampl
 >
 > image.png
 >
-> View newer replies
->
 > :bufo-ages-rapidly-in-the-void: 18
 
 > [!slack]+ Message from User14
@@ -737,8 +727,6 @@ exports[`SlackFormatter Integration Tests (Snapshot) Sample: emoji-channel-sampl
 > the github one has bufos that we don't have! https://github.com/knobiknows/all-the-bufo/blob/main/all-the-bufo/bufo-intern.png
 > bufo-intern.png
 > [knobiknows/all-the-bufo](https://github.com/knobiknows/all-the-bufo)knobiknows/all-the-bufo | Added by GitHub (23 kB)
->
-> View newer replies
 
 > [!slack]+ Message from User16
 > **Time:** 3:59 PM
@@ -929,8 +917,6 @@ exports[`SlackFormatter Integration Tests (Snapshot) Sample: emoji-channel-sampl
 >
 > image.png
 >
-> View newer replies
->
 > :bufo-ages-rapidly-in-the-void: 18
 
 > [!slack]+ Message from User14
@@ -948,8 +934,6 @@ exports[`SlackFormatter Integration Tests (Snapshot) Sample: emoji-channel-sampl
 > the github one has bufos that we don't have! https://github.com/knobiknows/all-the-bufo/blob/main/all-the-bufo/bufo-intern.png
 > bufo-intern.png
 > [knobiknows/all-the-bufo](https://github.com/knobiknows/all-the-bufo)knobiknows/all-the-bufo | Added by GitHub (23 kB)
->
-> View newer replies
 
 > [!slack]+ Message from User16
 > **Time:** 3:59 PM
@@ -1490,12 +1474,7 @@ exports[`SlackFormatter Integration Tests (Snapshot) Sample: guidewire-sample.tx
 `;
 
 exports[`SlackFormatter Integration Tests (Snapshot) Sample: guidewire-sample.txt should format correctly with settings: C1-Default: C1-Default 1`] = `
-"> [!slack]+ Message from Thread
-> **Time:** 
->
-> guidewire-gtm-pursuit
-
-> [!slack]+ Message from User1
+"> [!slack]+ Message from User1
 > **Time:** 10:39 AM
 >
 > We haven't notified them yet 
@@ -1700,12 +1679,7 @@ exports[`SlackFormatter Integration Tests (Snapshot) Sample: guidewire-sample.tx
 `;
 
 exports[`SlackFormatter Integration Tests (Snapshot) Sample: guidewire-sample.txt should format correctly with settings: C2-NoFeatures: C2-NoFeatures 1`] = `
-"> [!slack]+ Message from Thread
-> **Time:** 
->
-> guidewire-gtm-pursuit
-
-> [!slack]+ Message from User1
+"> [!slack]+ Message from User1
 > **Time:** 10:39 AM
 >
 > We haven't notified them yet 
@@ -1910,12 +1884,7 @@ exports[`SlackFormatter Integration Tests (Snapshot) Sample: guidewire-sample.tx
 `;
 
 exports[`SlackFormatter Integration Tests (Snapshot) Sample: guidewire-sample.txt should format correctly with settings: C3-CustomMaps: C3-CustomMaps 1`] = `
-"> [!slack]+ Message from Thread
-> **Time:** 
->
-> guidewire-gtm-pursuit
-
-> [!slack]+ Message from User1
+"> [!slack]+ Message from User1
 > **Time:** 10:39 AM
 >
 > We haven't notified them yet 
@@ -2120,12 +2089,7 @@ exports[`SlackFormatter Integration Tests (Snapshot) Sample: guidewire-sample.tx
 `;
 
 exports[`SlackFormatter Integration Tests (Snapshot) Sample: guidewire-sample.txt should format correctly with settings: C4-ThreadCollapse: C4-ThreadCollapse 1`] = `
-"> [!slack]+ Message from Thread
-> **Time:** 
->
-> guidewire-gtm-pursuit
-
-> [!slack]+ Message from User1
+"> [!slack]+ Message from User1
 > **Time:** 10:39 AM
 >
 > We haven't notified them yet 

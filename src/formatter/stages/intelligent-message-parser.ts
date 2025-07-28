@@ -619,6 +619,50 @@ export class IntelligentMessageParser {
       return true;
     }
 
+    // Check if this line might be content following a multi-line message header
+    // This helps prevent content lines from being mistakenly identified as new messages
+    if (index >= 1) {
+      // Look back to see if we're in the middle of a multi-line message structure
+      let possibleMessageHeaderStart = -1;
+
+      // Check if any of the previous 3 lines was identified as an app message
+      for (let i = Math.max(0, index - 3); i < index; i++) {
+        if (allLines[i] && !allLines[i].isEmpty && isAppMessage(allLines[i].trimmed)) {
+          possibleMessageHeaderStart = i;
+          break;
+        }
+      }
+
+      // If we found an app message indicator recently, check if we're still within its structure
+      if (possibleMessageHeaderStart >= 0 && index - possibleMessageHeaderStart <= 4) {
+        // This could be part of a multi-line app message structure
+        // Check if this line looks like pure content (no strong message indicators)
+        if (
+          !line.characteristics.hasTimestamp &&
+          !line.characteristics.hasAvatar &&
+          !this.hasUserTimestampCombination(text)
+        ) {
+          // Also check that it doesn't look like a clear username line
+          const words = this.regexUtils.split(text, /\s+/);
+          const looksLikeContent =
+            words.length > 2 || // Multi-word phrases are usually content
+            text.length > 30 || // Longer lines are usually content
+            /[.,!?;:]/.test(text); // Punctuation suggests content
+
+          if (looksLikeContent) {
+            if (debugEnabled) {
+              Logger.debug(
+                'IntelligentMessageParser',
+                'Debug log',
+                `    couldBeMessageStart(${index}): FALSE - likely content within multi-line message structure`
+              );
+            }
+            return false;
+          }
+        }
+      }
+    }
+
     // Check for section headers that should start new messages (e.g., #CONTEXT#)
     // But only if they appear after some content (not at the very beginning)
     const sectionHeaderPatterns = [
@@ -691,11 +735,31 @@ export class IntelligentMessageParser {
     }
 
     // Check for username followed by timestamp on next line (Clay format)
+    // Enhanced to handle user tags between username and timestamp
     let clayFormatIndicator = false;
-    if (usernameIndicator && !line.characteristics.hasTimestamp && index + 1 < allLines.length) {
-      const nextLine = allLines[index + 1];
-      if (nextLine && !nextLine.isEmpty && this.hasTimestampPattern(nextLine.trimmed)) {
-        clayFormatIndicator = true;
+    if (usernameIndicator && !line.characteristics.hasTimestamp) {
+      // Look ahead up to 3 lines for a timestamp, skipping duplicate usernames and tags
+      for (let j = index + 1; j < Math.min(index + 4, allLines.length); j++) {
+        const nextLine = allLines[j];
+        if (!nextLine || nextLine.isEmpty) continue;
+
+        const nextText = nextLine.trimmed;
+
+        // Skip if it's a duplicate of the current username
+        if (nextText === line.trimmed) continue;
+
+        // Check if this line contains a timestamp
+        if (this.hasTimestampPattern(nextText)) {
+          clayFormatIndicator = true;
+          break;
+        }
+
+        // Check if this line has both a tag and timestamp (like "New hire  6:10 PM")
+        const tagWithTimestampPattern = /^[A-Za-z][A-Za-z\s]+\s+\d{1,2}:\d{2}(?:\s*[AP]M)?/i;
+        if (this.regexUtils.test(tagWithTimestampPattern, nextText)) {
+          clayFormatIndicator = true;
+          break;
+        }
       }
     }
 
@@ -1393,6 +1457,35 @@ export class IntelligentMessageParser {
 
     const text1 = line1.trimmed;
     const text2 = line2.trimmed;
+
+    // Clay APP Pattern: Check if this is a Clay APP message structure
+    // Line 1: App message indicator "(https://...)Clay"
+    // Line 2: Username "Clay"
+    // Line 3: APP timestamp "APP  Jun 8th at 6:28 PM"
+    if (isAppMessage(text1) && index2 === index1 + 1) {
+      // Check if next line is just the app name
+      const appName = extractAppUsername(text1);
+      if (appName && text2 === appName) {
+        // Check if line after that has APP timestamp
+        if (index2 + 1 < structure.lines.length) {
+          const line3 = structure.lines[index2 + 1];
+          if (line3 && !line3.isEmpty) {
+            const text3 = line3.trimmed;
+            // Check for APP timestamp pattern
+            if (/^APP\s+\w+\s+\d+/i.test(text3) && line3.characteristics.hasTimestamp) {
+              if (debugEnabled) {
+                Logger.debug(
+                  'IntelligentMessageParser',
+                  'Debug log',
+                  `    arePartOfSameMessage: TRUE - Clay APP message structure detected`
+                );
+              }
+              return true;
+            }
+          }
+        }
+      }
+    }
 
     // Pattern 1: Username followed by timestamp
     if (this.looksLikeUsername(text1) && line2.characteristics.hasTimestamp) {
@@ -2174,39 +2267,67 @@ export class IntelligentMessageParser {
 
     // If we didn't find username from section header handling, do normal analysis
     if (!username) {
-      // Analyze first few lines for metadata
-      for (let i = 0; i < Math.min(3, messageLines.length); i++) {
-        const line = messageLines[i].trim();
-        if (!line) continue;
+      // Check for Clay APP format first (3-line structure)
+      if (messageLines.length >= 3) {
+        const line0 = messageLines[0].trim();
+        const line1 = messageLines[1].trim();
+        const line2 = messageLines[2].trim();
 
-        // Try to extract username and timestamp from same line first
-        const extracted = this.extractUserAndTime(line, structure);
-
-        if (extracted.username && !username) {
-          username = extracted.username;
-          usernameLineIndex = i;
-          if (extracted.timestamp && !timestamp) {
-            timestamp = extracted.timestamp;
-            timestampLineIndex = i;
+        // Check if this is Clay APP format:
+        // Line 0: App message indicator "(https://...)Clay"
+        // Line 1: Username "Clay"
+        // Line 2: APP timestamp "APP  Jun 8th at 6:28 PM"
+        if (isAppMessage(line0) && line2.startsWith('APP ')) {
+          const appName = extractAppUsername(line0);
+          if (appName && line1 === appName) {
+            // Extract timestamp from the APP line
+            const timestampMatch = line2.match(/APP\s+(.+)/);
+            if (timestampMatch && timestampMatch[1]) {
+              username = appName;
+              timestamp = timestampMatch[1];
+              usernameLineIndex = 0;
+              timestampLineIndex = 2;
+              contentStart = 3; // Content starts after the APP timestamp line
+            }
           }
         }
+      }
 
-        // Check if this line is just a username (if we don't have one yet)
-        // PRIORITIZE EARLIER LINES: only check if we haven't found a username yet
-        if (!username && this.looksLikeUsername(line)) {
-          username = this.cleanUsername(line);
-          usernameLineIndex = i;
-        }
+      // If not Clay APP format, analyze first few lines for metadata (increased to handle user tags)
+      if (!username) {
+        for (let i = 0; i < Math.min(5, messageLines.length); i++) {
+          const line = messageLines[i].trim();
+          if (!line) continue;
 
-        // Check if this line is just a timestamp (if we don't have one yet)
-        if (!timestamp && this.hasTimestampPattern(line)) {
-          timestamp = this.extractTimestampFromLine(line) || line;
-          timestampLineIndex = i;
-        }
+          // Try to extract username and timestamp from same line first
+          const extracted = this.extractUserAndTime(line, structure);
 
-        // EARLY EXIT: If we found both username and timestamp, no need to continue
-        if (username && timestamp) {
-          break;
+          if (extracted.username && !username) {
+            username = extracted.username;
+            usernameLineIndex = i;
+            if (extracted.timestamp && !timestamp) {
+              timestamp = extracted.timestamp;
+              timestampLineIndex = i;
+            }
+          }
+
+          // Check if this line is just a username (if we don't have one yet)
+          // PRIORITIZE EARLIER LINES: only check if we haven't found a username yet
+          if (!username && this.looksLikeUsername(line)) {
+            username = this.cleanUsername(line);
+            usernameLineIndex = i;
+          }
+
+          // Check if this line is just a timestamp (if we don't have one yet)
+          if (!timestamp && this.hasTimestampPattern(line)) {
+            timestamp = this.extractTimestampFromLine(line) || line;
+            timestampLineIndex = i;
+          }
+
+          // EARLY EXIT: If we found both username and timestamp, no need to continue
+          if (username && timestamp) {
+            break;
+          }
         }
       }
     }
@@ -2274,9 +2395,17 @@ export class IntelligentMessageParser {
       }
 
       // Check for reactions (enhanced to handle multi-line format)
+      // First try single reaction
       const reaction = this.parseReaction(trimmed);
       if (reaction) {
         reactions.push(reaction);
+        continue;
+      }
+
+      // Check for multiple reactions on one line (e.g., "😀 1    👍 1    🔁")
+      const multipleReactions = this.parseMultipleReactions(trimmed);
+      if (multipleReactions.length > 0) {
+        reactions.push(...multipleReactions);
         continue;
       }
 
@@ -2951,6 +3080,15 @@ export class IntelligentMessageParser {
       let result = this.extractAppMessagePattern(line, debugEnabled);
       if (result.username) return result;
 
+      // Check for user tag with timestamp (e.g., "New hire  6:10 PM")
+      // This should NOT extract a username, only a timestamp
+      // Skip this check if the line contains "APP" followed by a date pattern (Clay APP messages)
+      const isClayAppTimestamp = /^APP\s+\w+\s+\d+/i.test(line);
+      if (!isClayAppTimestamp) {
+        result = this.extractUserTagWithTimestamp(line, debugEnabled);
+        if (result.timestamp) return result;
+      }
+
       result = this.extractDoubledUsernamePattern(line, debugEnabled);
       if (result.username) return result;
 
@@ -2992,6 +3130,74 @@ export class IntelligentMessageParser {
     );
     Logger.debug('IntelligentMessageParser', 'Starts with letter:', /^[A-Za-z]/.test(line));
     Logger.debug('IntelligentMessageParser', 'Contains URL:', line.includes('http'));
+  }
+
+  /**
+   * Extract user tag with timestamp pattern (e.g., "New hire  6:10 PM")
+   */
+  private extractUserTagWithTimestamp(
+    line: string,
+    debugEnabled: boolean
+  ): { username?: string; timestamp?: string } {
+    if (debugEnabled) {
+      Logger.debug('IntelligentMessageParser', '\n--- Testing User Tag with Timestamp ---');
+    }
+
+    // Pattern for user tags/roles followed by timestamp
+    // Examples: "New hire  6:10 PM", "Admin 3:15 PM", "Team Lead  3:20 PM"
+    const tagWithTimestampPattern = /^([A-Za-z][A-Za-z\s🌟🔧]+?)\s+(\d{1,2}:\d{2}(?:\s*[AP]M)?)/i;
+    const match = this.regexUtils.match(line, tagWithTimestampPattern);
+
+    if (match && match.length > 2 && match[2]) {
+      const tag = match[1].trim();
+      const timestamp = match[2];
+
+      // Common user tags/roles that should not be treated as usernames
+      const commonTags = [
+        'New hire',
+        'Admin',
+        'Team Lead',
+        'Manager',
+        'Engineer',
+        'Designer',
+        'Product Manager',
+        'CEO',
+        'CTO',
+        'CFO',
+        'Intern',
+        'Contractor',
+        'Senior',
+        'Junior',
+        'Lead',
+        'Staff',
+        'Principal',
+        'VP',
+        'Director',
+        'New member',
+        'Guest',
+        'Bot',
+        // Removed 'App' to avoid conflicts with Clay APP format
+      ];
+
+      // Check if this looks like a tag rather than a username
+      const looksLikeTag =
+        commonTags.some(t => tag.toLowerCase() === t.toLowerCase()) || // Exact match only
+        (tag.length < 3 && tag.toLowerCase() !== 'app') || // Very short, likely a tag (but not APP)
+        tag.split(' ').length > 2; // Multiple words, likely a title
+
+      if (looksLikeTag) {
+        if (debugEnabled) {
+          Logger.debug(
+            'IntelligentMessageParser',
+            `User tag detected: "${tag}", timestamp: "${timestamp}"`
+          );
+        }
+        // Return only timestamp, no username
+        return { timestamp };
+      }
+    }
+
+    return {};
   }
 
   /**
@@ -3463,6 +3669,13 @@ export class IntelligentMessageParser {
     // FIXED: Enhanced username validation logic
     const trimmed = text.trim();
 
+    // Exclude file names with common extensions
+    const fileExtensionPattern =
+      /\.(pdf|doc|docx|txt|jpg|jpeg|png|gif|mp4|mp3|zip|rar|csv|xls|xlsx|ppt|pptx|mov|avi|wav|json|xml|html|css|js|ts|py|java|cpp|c|h|go|rb|php|sql|md|log|bak|tmp)$/i;
+    if (this.regexUtils.test(fileExtensionPattern, trimmed)) {
+      return false;
+    }
+
     // FIXED: Handle doubled usernames like "Clement MiaoClement Miao" by normalizing them
     let normalizedText = trimmed;
 
@@ -3584,6 +3797,64 @@ export class IntelligentMessageParser {
       };
     }
     return null;
+  }
+
+  private parseMultipleReactions(text: string): SlackReaction[] {
+    const reactions: SlackReaction[] = [];
+
+    // Check if this line looks like a reaction line (multiple emojis with counts)
+    // It should NOT match regular text that happens to contain an emoji
+    // Valid reaction lines: "😀 1    👍 1    🔁" or "😀 1 👍 1"
+    // Invalid (regular text): "hopefully soon 😊" or "Great work! 🎉"
+
+    // First check if the line starts with text (not an emoji)
+    if (/^[A-Za-z]/.test(text)) {
+      return []; // Regular text, not a reaction line
+    }
+
+    // Pattern to match emoji or reaction followed by count, with flexible spacing
+    // Matches: "😀 1", "👍 1", "🔁" (without count defaults to 1)
+    const reactionPattern = /([\u{1F300}-\u{1F9FF}]|:\w+:)\s*(\d*)/gu;
+    let match;
+    let foundReactions = 0;
+
+    while ((match = reactionPattern.exec(text)) !== null) {
+      const emoji = match[1];
+      const count = match[2] ? parseInt(match[2], 10) : 1;
+
+      // Only count it as a reaction if it has a number after it or if there are multiple emojis
+      if (match[2] || foundReactions > 0) {
+        reactions.push({
+          name: this.regexUtils.replace(emoji, /:/g, ''),
+          count: count,
+        });
+        foundReactions++;
+      }
+    }
+
+    // Also check if the entire line is just emojis and numbers (no other text)
+    const onlyEmojisAndNumbers = /^[\s\u{1F300}-\u{1F9FF}0-9:_-]+$/u.test(text);
+    if (!onlyEmojisAndNumbers && reactions.length === 0) {
+      return [];
+    }
+
+    // If we only found one emoji without a count and there's other text, it's not a reaction line
+    if (foundReactions === 0 && /[A-Za-z]/.test(text)) {
+      return [];
+    }
+
+    // Special case: if it's just a single emoji (like "🔁"), treat it as a reaction
+    if (reactions.length === 0 && /^[\s]*([\u{1F300}-\u{1F9FF}]|:\w+:)[\s]*$/u.test(text)) {
+      const singleEmojiMatch = text.match(/([\u{1F300}-\u{1F9FF}]|:\w+:)/u);
+      if (singleEmojiMatch) {
+        reactions.push({
+          name: this.regexUtils.replace(singleEmojiMatch[1], /:/g, ''),
+          count: 1,
+        });
+      }
+    }
+
+    return reactions;
   }
 
   private isThreadInfo(text: string): boolean {

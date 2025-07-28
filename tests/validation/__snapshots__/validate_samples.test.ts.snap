@@ -157,8 +157,6 @@ exports[`Slack Formatter Validation Samples should correctly format emoji-channe
 >
 > image.png
 >
-> View newer replies
->
 > :bufo-ages-rapidly-in-the-void: 18
 
 > [!slack]+ Message from User14
@@ -176,8 +174,6 @@ exports[`Slack Formatter Validation Samples should correctly format emoji-channe
 > the github one has bufos that we don't have! https://github.com/knobiknows/all-the-bufo/blob/main/all-the-bufo/bufo-intern.png
 > bufo-intern.png
 > [knobiknows/all-the-bufo](https://github.com/knobiknows/all-the-bufo)knobiknows/all-the-bufo | Added by GitHub (23 kB)
->
-> View newer replies
 
 > [!slack]+ Message from User16
 > **Time:** 3:59 PM
@@ -358,12 +354,7 @@ exports[`Slack Formatter Validation Samples should correctly format fireside-sam
 `;
 
 exports[`Slack Formatter Validation Samples should correctly format guidewire-sample.txt 1`] = `
-"> [!slack]+ Message from Thread
-> **Time:** 
->
-> guidewire-gtm-pursuit
-
-> [!slack]+ Message from User1
+"> [!slack]+ Message from User1
 > **Time:** 10:39 AM
 >
 > We haven't notified them yet 
