@@ -28,6 +28,7 @@
     "pre-commit": "npm run format:check && npm run type-check && npm run test:quick"
   },
   "dependencies": {
+    "@esbuild/darwin-arm64": "^0.25.10",
     "esbuild": "^0.25.1",
     "esm": "^3.2.25",
     "obsidian": "latest"
