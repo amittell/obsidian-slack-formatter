@@ -8,12 +8,27 @@ export class Logger {
   private static readonly prefix = '[SlackFormatter]';
   private static debugEnabled = false;
 
+  private static getLogger(level: LogLevel): (...args: unknown[]) => void {
+    switch (level) {
+      case 'debug':
+        return (console.debug ?? console.log).bind(console);
+      case 'info':
+        return (console.info ?? console.log).bind(console);
+      case 'warn':
+        return (console.warn ?? console.log).bind(console);
+      case 'error':
+        return (console.error ?? console.log).bind(console);
+      default:
+        return console.log.bind(console);
+    }
+  }
+
   private static log(level: LogLevel, className: string, message: string, data?: unknown): void {
     if (level === 'debug' && !Logger.debugEnabled) {
       return;
     }
 
-    const logger = (console[level] ?? console.log).bind(console);
+    const logger = Logger.getLogger(level);
     const formatted = `${Logger.prefix} [${className}] ${message}`;
 
     if (data === undefined) {

@@ -1908,7 +1908,12 @@ export class IntelligentMessageParser {
   }
 
   private logContinuationDecision(reason: string, preview: string, matched: boolean): void {
-    if (!this.debugMode) {
+    const debugEnabled =
+      this?.debugMode === true ||
+      Logger.isDebugEnabled() ||
+      process.env.DEBUG_BOUNDARY_DETECTION === 'true';
+
+    if (!debugEnabled) {
       return;
     }
     const status = matched ? 'matched' : 'skipped';
