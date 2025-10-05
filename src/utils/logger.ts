@@ -8,12 +8,7 @@ export class Logger {
   private static readonly prefix = '[SlackFormatter]';
   private static debugEnabled = false;
 
-  private static log(
-    level: LogLevel,
-    className: string,
-    message: string,
-    data?: unknown
-  ): void {
+  private static log(level: LogLevel, className: string, message: string, data?: unknown): void {
     if (level === 'debug' && !Logger.debugEnabled) {
       return;
     }

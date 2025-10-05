@@ -87,16 +87,20 @@ export class ContentPreservationValidator {
       const highFailures = failedChecks.filter(check => check.severity === 'high');
 
       const isValid =
-        criticalFailures.length === 0 && (opts.strictness === 'lenient' || highFailures.length === 0);
+        criticalFailures.length === 0 &&
+        (opts.strictness === 'lenient' || highFailures.length === 0);
 
-      const avgConfidence = checks.reduce((sum, check) => sum + check.confidence, 0) / checks.length;
+      const avgConfidence =
+        checks.reduce((sum, check) => sum + check.confidence, 0) / checks.length;
       const severityPenalty = criticalFailures.length * 0.3 + highFailures.length * 0.1;
       const confidence = Math.max(0, avgConfidence - severityPenalty);
 
       for (const check of failedChecks) {
         issues.push(`${check.name}: ${check.details || check.description}`);
         if (check.severity === 'critical' || check.severity === 'high') {
-          recommendations.push(`Address ${check.name.toLowerCase()} to improve content preservation`);
+          recommendations.push(
+            `Address ${check.name.toLowerCase()} to improve content preservation`
+          );
         }
       }
 
@@ -126,7 +130,8 @@ export class ContentPreservationValidator {
     try {
       const originalWords = original.match(/\w+/g)?.length || 0;
       const processedWords = processed.match(/\w+/g)?.length || 0;
-      const wordLossRate = originalWords === 0 ? 0 : (originalWords - processedWords) / originalWords;
+      const wordLossRate =
+        originalWords === 0 ? 0 : (originalWords - processedWords) / originalWords;
       if (wordLossRate > 0.1) return false;
 
       if (!original.includes('�') && processed.includes('�')) return false;
@@ -174,8 +179,13 @@ export class ContentPreservationValidator {
     return intersection.size / originalWords.size;
   }
 
-  private checkBasicIntegrity(original: string, processed: string, tolerance: number): ValidationCheck {
-    const lengthChange = original.length === 0 ? 0 : Math.abs(processed.length - original.length) / original.length;
+  private checkBasicIntegrity(
+    original: string,
+    processed: string,
+    tolerance: number
+  ): ValidationCheck {
+    const lengthChange =
+      original.length === 0 ? 0 : Math.abs(processed.length - original.length) / original.length;
     const passed = lengthChange <= tolerance;
 
     return {
@@ -183,7 +193,9 @@ export class ContentPreservationValidator {
       passed,
       severity: lengthChange > 0.5 ? 'critical' : lengthChange > 0.2 ? 'high' : 'medium',
       description: 'Checks for reasonable length changes',
-      details: passed ? 'Length change within tolerance' : `Length changed by ${(lengthChange * 100).toFixed(1)}%`,
+      details: passed
+        ? 'Length change within tolerance'
+        : `Length changed by ${(lengthChange * 100).toFixed(1)}%`,
       confidence: 0.9,
     };
   }
@@ -210,7 +222,9 @@ export class ContentPreservationValidator {
     const originalSentences = original.split(/[.!?]+/).filter(s => s.trim()).length;
     const processedSentences = processed.split(/[.!?]+/).filter(s => s.trim()).length;
     const structuralLoss =
-      originalSentences > 0 ? Math.abs(originalSentences - processedSentences) / originalSentences : 0;
+      originalSentences > 0
+        ? Math.abs(originalSentences - processedSentences) / originalSentences
+        : 0;
     const passed = structuralLoss <= 0.1;
 
     return {
@@ -228,7 +242,8 @@ export class ContentPreservationValidator {
   private checkUrlPreservation(original: string, processed: string): ValidationCheck {
     const originalUrls = original.match(/https?:\/\/[^\s<>]+/g) || [];
     const processedUrls = processed.match(/https?:\/\/[^\s<>]+/g) || [];
-    const preservationRate = originalUrls.length > 0 ? processedUrls.length / originalUrls.length : 1;
+    const preservationRate =
+      originalUrls.length > 0 ? processedUrls.length / originalUrls.length : 1;
     const passed = preservationRate >= 0.9;
 
     return {
@@ -297,7 +312,8 @@ export class ContentPreservationValidator {
   private checkSentenceStructure(original: string, processed: string): ValidationCheck {
     const originalSentenceEnds = original.match(/[.!?]/g)?.length || 0;
     const processedSentenceEnds = processed.match(/[.!?]/g)?.length || 0;
-    const preservationRate = originalSentenceEnds > 0 ? processedSentenceEnds / originalSentenceEnds : 1;
+    const preservationRate =
+      originalSentenceEnds > 0 ? processedSentenceEnds / originalSentenceEnds : 1;
     const passed = preservationRate >= 0.8;
 
     return {

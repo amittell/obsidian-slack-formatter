@@ -52,9 +52,7 @@ export default class SlackFormatPlugin extends Plugin {
     // Register commands using helper methods
     this.registerFormatCommand();
     this.registerContextMenu();
-
-    // Removed 'editor-paste' event listener registration
-    // Removed direct keydown event listener
+    this.registerPasteInterceptor();
   }
 
   /**
@@ -112,6 +110,28 @@ export default class SlackFormatPlugin extends Plugin {
   }
 
   // Removed local parseJsonMap method (now using utility)
+
+  /**
+   * Register a lightweight paste interceptor for the interceptCmdV mode.
+   * When the mode is disabled we let Obsidian handle paste normally.
+   */
+  private registerPasteInterceptor(): void {
+    this.registerEvent(
+      this.app.workspace.on('editor-paste', async (evt: ClipboardEvent, editor: Editor) => {
+        if (this.settings.hotkeyMode !== 'interceptCmdV') {
+          return;
+        }
+
+        const clipboardText = evt.clipboardData?.getData('text/plain') ?? '';
+        if (!clipboardText) {
+          return;
+        }
+
+        evt.preventDefault();
+        this.formatAndInsert(editor, clipboardText);
+      })
+    );
+  }
 
   // Removed handlePasteEvent method
 

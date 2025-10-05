@@ -39,7 +39,7 @@ const ENCODING_CORRECTIONS: Record<string, string> = {
   'Ã©': 'é',
   'Ã­': 'í',
   'Ã³': 'ó',
-  'Ãº': 'ú',
+  '\u00c3\u00ba': 'ú',
   'Ã±': 'ñ',
   'Ã¼': 'ü',
   'â„¢': '™',
@@ -220,9 +220,7 @@ export function hasEncodingCorruption(text: string): boolean {
 
 export function convertSmartQuotes(text: string): string {
   try {
-    return text
-      .replace(/[\u201C\u201D]/g, '"')
-      .replace(/[\u2018\u2019]/g, "'");
+    return text.replace(/[\u201C\u201D]/g, '"').replace(/[\u2018\u2019]/g, "'");
   } catch (error) {
     Logger.warn('text-encoding-utils', 'Error converting smart quotes', error);
     return text;

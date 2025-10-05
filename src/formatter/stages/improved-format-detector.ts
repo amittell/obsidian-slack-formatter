@@ -222,16 +222,15 @@ export class ImprovedFormatDetector {
 
     // Log final decision only in debug mode to improve performance
     if (Logger.isDebugEnabled()) {
-      const finalScores =
-        scoreData ?? {
-          standard: Number(score.standard.toFixed(2)),
-          bracket: Number(score.bracket.toFixed(2)),
-          mixed: Number(score.mixed.toFixed(2)),
-          dm: Number(score.dm.toFixed(2)),
-          thread: Number(score.thread.toFixed(2)),
-          channel: Number(score.channel.toFixed(2)),
-          confidence: Number(score.confidence.toFixed(2)),
-        };
+      const finalScores = scoreData ?? {
+        standard: Number(score.standard.toFixed(2)),
+        bracket: Number(score.bracket.toFixed(2)),
+        mixed: Number(score.mixed.toFixed(2)),
+        dm: Number(score.dm.toFixed(2)),
+        thread: Number(score.thread.toFixed(2)),
+        channel: Number(score.channel.toFixed(2)),
+        confidence: Number(score.confidence.toFixed(2)),
+      };
 
       Logger.debug('ImprovedFormatDetector', `Format detection completed: ${result}`, {
         scores: finalScores,

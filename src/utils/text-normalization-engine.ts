@@ -35,6 +35,8 @@ export interface TextNormalizationResult {
   };
 }
 
+// prettier-ignore
+// Keeping one per line for readability when scanning unicode entries
 const ZERO_WIDTH_CHARS = [
   '\u200B',
   '\u200C',
@@ -45,6 +47,8 @@ const ZERO_WIDTH_CHARS = [
   '\u180E',
 ];
 
+// prettier-ignore
+// Pattern list is easier to diff when each expression is on its own line
 const CODE_BLOCK_PATTERNS = [
   /```[\s\S]*?```/g,
   /`[^`\n]+`/g,
@@ -219,7 +223,8 @@ export class TextNormalizationEngine {
   } {
     try {
       const detection = detectTextEncoding(text);
-      const smartQuoteMatches = text.match(/[\u201C\u201D\u2018\u2019\u2013\u2014\u2026]/g)?.length || 0;
+      const smartQuoteMatches =
+        text.match(/[\u201C\u201D\u2018\u2019\u2013\u2014\u2026]/g)?.length || 0;
       const multipleSpaceMatches = text.match(/\s{2,}/g)?.length || 0;
 
       return {
@@ -229,7 +234,10 @@ export class TextNormalizationEngine {
         hasMultipleSpaces: multipleSpaceMatches > 0,
         hasCRLF: text.includes('\r'),
         estimatedChanges:
-          detection.issues.length + smartQuoteMatches + multipleSpaceMatches + (text.includes('\r') ? 1 : 0),
+          detection.issues.length +
+          smartQuoteMatches +
+          multipleSpaceMatches +
+          (text.includes('\r') ? 1 : 0),
       };
     } catch (error) {
       Logger.warn('TextNormalizationEngine', 'Error gathering stats', error);
