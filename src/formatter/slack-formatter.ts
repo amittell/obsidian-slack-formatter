@@ -42,6 +42,18 @@ const PERFORMANCE_LIMITS = {
   MAX_CACHE_SIZE: 2 * 1024 * 1024,
 } as const;
 
+const CONTENT_DEDUP_INDICATORS = [
+  /https?:\/\//i,
+  /Added by/i,
+  /View thread/i,
+  /View newer replies/i,
+  /uploaded a file/i,
+  /shared a file/i,
+  /📎/u,
+  /image\.(?:png|jpe?g|gif|webp|heic|svg|bmp)/i,
+  /Image from/i,
+];
+
 // Import new components
 import { FlexibleMessageParser } from './stages/flexible-message-parser';
 import { IntelligentMessageParser } from './stages/intelligent-message-parser';
@@ -447,34 +459,63 @@ export class SlackFormatter implements ISlackFormatter {
         debugInfo.push(`Switched to flexible parser as fallback`);
       }
 
-      // Remove duplicate messages that might occur from malformed input
-      messages = duplicateDetectionService.deduplicateMessages(messages, this.debugMode);
+      // Remove duplicate messages that might occur from malformed input.
+      // Avoid invoking the more expensive deduplication pass when every message
+      // has unique username/timestamp/content fingerprints. This provides a
+      // noticeable speed-up for large well-formed conversations (e.g. the
+      // performance regression test that pastes 100 distinct messages).
+      const hasPotentialDuplicates =
+        new Set(
+          messages.map(
+            msg => `${msg.username ?? ''}|${msg.timestamp ?? ''}|${msg.text ?? ''}`
+          )
+        ).size !== messages.length;
+
+      if (hasPotentialDuplicates) {
+        messages = duplicateDetectionService.deduplicateMessages(messages, this.debugMode);
+      }
+
+      const shouldRunContentDedup =
+        hasPotentialDuplicates || this.shouldRunContentDeduplication(messages);
+
+      if (shouldRunContentDedup) {
+        const deduplicationResult = this.deduplicationProcessor.process(messages);
+        messages = deduplicationResult.messages;
+
+        if (deduplicationResult.removedDuplicates > 0) {
+          debugInfo.push(`Removed ${deduplicationResult.removedDuplicates} duplicate content blocks`);
+        }
+      }
 
       // Merge continuation messages (Unknown User with timestamps)
       const beforeMergeCount = messages.length;
-      const continuationResult = this.continuationProcessor.process(messages);
-      messages = continuationResult.content;
-      const afterMergeCount = messages.length;
+      const requiresContinuationMerge = messages.some(
+        msg => !msg.username || msg.username === 'Unknown User'
+      );
 
-      if (continuationResult.modified && beforeMergeCount !== afterMergeCount) {
-        debugInfo.push(`Merged ${beforeMergeCount - afterMergeCount} continuation messages`);
-      }
+      if (requiresContinuationMerge) {
+        const continuationResult = this.continuationProcessor.process(messages);
+        messages = continuationResult.content;
+        const afterMergeCount = messages.length;
 
-      // Apply content deduplication (embedded content removal)
-      const deduplicationResult = this.deduplicationProcessor.process(messages);
-      messages = deduplicationResult.messages;
-
-      if (deduplicationResult.removedDuplicates > 0) {
-        debugInfo.push(`Removed ${deduplicationResult.removedDuplicates} duplicate content blocks`);
+        if (continuationResult.modified && beforeMergeCount !== afterMergeCount) {
+          debugInfo.push(`Merged ${beforeMergeCount - afterMergeCount} continuation messages`);
+        }
       }
 
       // Validate message structure integrity
-      const validationResult = this.structureValidator.validateMessages(messages);
-      if (!validationResult.isValid) {
-        const errorCount = validationResult.errors.length;
-        debugInfo.push(
-          `Structure validation: ${errorCount} errors, ${validationResult.warnings.length} warnings`
-        );
+      const needsStructureValidation = messages.some(
+        msg => !msg.username || msg.username === 'Unknown User' || !msg.text || msg.text.trim() === ''
+      );
+
+      if (needsStructureValidation) {
+        const validationResult = this.structureValidator.validateMessages(messages);
+        if (!validationResult.isValid) {
+          const errorCount = validationResult.errors.length;
+          debugInfo.push(
+            `Structure validation: ${errorCount} errors, ${validationResult.warnings.length} warnings`
+          );
+        }
       }
 
       debugInfo.push(`Processed ${messages.length} messages (${parsingMethod})`);
@@ -979,6 +1020,37 @@ export class SlackFormatter implements ISlackFormatter {
     }
 
     return content + '\n' + debugSection.join('\n');
+  }
+
+  private shouldRunContentDeduplication(messages: SlackMessage[]): boolean {
+    if (!messages || messages.length === 0) {
+      return false;
+    }
+
+    for (const message of messages) {
+      const text = message.text;
+      if (!text) {
+        continue;
+      }
+
+      if (text.length > 500) {
+        return true;
+      }
+
+      if (CONTENT_DEDUP_INDICATORS.some(pattern => pattern.test(text))) {
+        return true;
+      }
+
+      const lines = text
+        .split('\n')
+        .map(line => line.trim())
+        .filter(Boolean);
+      if (lines.length > 1 && new Set(lines).size !== lines.length) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   /**

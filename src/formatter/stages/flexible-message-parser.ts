@@ -62,6 +62,47 @@ interface ParserContext {
 }
 
 /**
+ * Optional configuration for FlexibleMessageParser behaviour.
+ */
+interface FlexibleMessageParserOptions {
+  /**
+   * Maximum line length before truncation logic is applied when running
+   * expensive username/timestamp heuristics.
+   */
+  longLineLengthThreshold?: number;
+
+  /**
+   * Number of characters to sample from the beginning of long lines when
+   * performing pattern detection.
+   */
+  longLineHeadSampleLength?: number;
+
+  /**
+   * Number of characters to sample from the end of long lines when running
+   * metadata heuristics.
+   */
+  longLineTailSampleLength?: number;
+
+  /**
+   * Maximum token length within a long line before collapsing the token
+   * to a shortened representation for pattern scoring.
+   */
+  longLineTokenLengthThreshold?: number;
+
+  /**
+   * Number of characters to preserve from the beginning of an oversized token
+   * when collapsing it for sampling.
+   */
+  longLineTokenHeadLength?: number;
+
+  /**
+   * Number of characters to preserve from the end of an oversized token when
+   * collapsing it for sampling.
+   */
+  longLineTokenTailLength?: number;
+}
+
+/**
  * Configuration constants for pattern matching and scoring thresholds
  */
 const TIMESTAMP_CONFIDENCE_THRESHOLD = 0.7;
@@ -69,6 +110,13 @@ const MESSAGE_FRAGMENTATION_THRESHOLD = 0.8;
 const CONTENT_PREVIEW_LENGTH = 100;
 const MIN_MESSAGE_CONTENT_LENGTH = 3;
 const LONG_LINE_LENGTH_THRESHOLD = 2000;
+const LONG_LINE_HEAD_SAMPLE_LENGTH = 512;
+const LONG_LINE_TAIL_SAMPLE_LENGTH = 256;
+const LONG_LINE_TOKEN_LENGTH_THRESHOLD = 256;
+const LONG_LINE_TOKEN_HEAD_LENGTH = 96;
+const LONG_LINE_TOKEN_TAIL_LENGTH = 32;
+const LONG_LINE_URL_HEAD_LENGTH = 128;
+const LONG_LINE_URL_TAIL_LENGTH = 64;
 
 /**
  * Centralized confidence thresholds configuration for pattern matching
@@ -126,6 +174,14 @@ const CONFIDENCE_THRESHOLDS = {
  * @since 1.0.0
  */
 export class FlexibleMessageParser {
+  private readonly longLineConfig: {
+    threshold: number;
+    headLength: number;
+    tailLength: number;
+    tokenThreshold: number;
+    tokenHeadLength: number;
+    tokenTailLength: number;
+  };
   // Remove instance logger - use static methods instead
 
   // Format type for context-aware parsing
@@ -206,6 +262,35 @@ export class FlexibleMessageParser {
       /^---\s*(.+?)\s*---$/,
     ],
   };
+
+  constructor(options: FlexibleMessageParserOptions = {}) {
+    const merged = {
+      threshold: options.longLineLengthThreshold ?? LONG_LINE_LENGTH_THRESHOLD,
+      headLength: options.longLineHeadSampleLength ?? LONG_LINE_HEAD_SAMPLE_LENGTH,
+      tailLength: options.longLineTailSampleLength ?? LONG_LINE_TAIL_SAMPLE_LENGTH,
+      tokenThreshold: options.longLineTokenLengthThreshold ?? LONG_LINE_TOKEN_LENGTH_THRESHOLD,
+      tokenHeadLength: options.longLineTokenHeadLength ?? LONG_LINE_TOKEN_HEAD_LENGTH,
+      tokenTailLength: options.longLineTokenTailLength ?? LONG_LINE_TOKEN_TAIL_LENGTH,
+    };
+
+    const normalizedThreshold = merged.threshold > 0 ? merged.threshold : LONG_LINE_LENGTH_THRESHOLD;
+    const normalizedHead = Math.max(0, Math.min(merged.headLength, normalizedThreshold));
+    const remaining = Math.max(0, normalizedThreshold - normalizedHead);
+    const normalizedTail = Math.max(0, Math.min(merged.tailLength, remaining));
+    const normalizedTokenThreshold = merged.tokenThreshold > 0 ? merged.tokenThreshold : LONG_LINE_TOKEN_LENGTH_THRESHOLD;
+    const normalizedTokenHead = Math.max(0, Math.min(merged.tokenHeadLength, normalizedTokenThreshold));
+    const tokenRemaining = Math.max(0, normalizedTokenThreshold - normalizedTokenHead);
+    const normalizedTokenTail = Math.max(0, Math.min(merged.tokenTailLength, tokenRemaining));
+
+    this.longLineConfig = {
+      threshold: normalizedThreshold,
+      headLength: normalizedHead,
+      tailLength: normalizedTail,
+      tokenThreshold: normalizedTokenThreshold,
+      tokenHeadLength: normalizedTokenHead,
+      tokenTailLength: normalizedTokenTail,
+    };
+  }
 
   /**
    * Main entry point for parsing Slack conversation text.
@@ -593,7 +678,7 @@ export class FlexibleMessageParser {
             // Combine the date and time
             const fullTimestamp = block.username + ' ' + nextLine;
             block.username = 'Unknown User'; // Reset username since it was actually part of timestamp
-            block.timestamp = fullTimestamp;
+            block.timestamp = this.cleanTimestampValue(fullTimestamp);
 
             // Remove the time line from content if it's there
             const timeLineInContent = block.content.findIndex(line => line.trim() === nextLine);
@@ -724,7 +809,7 @@ export class FlexibleMessageParser {
           const nextLine = context.lines[block.startLine + 1];
           // Check for indented timestamp (common Slack format)
           if (/^\s{2,}\d{1,2}:\d{2}\s*(?:AM|PM)?/i.test(nextLine)) {
-            block.timestamp = nextLine.trim();
+            block.timestamp = this.cleanTimestampValue(nextLine.trim());
             // Adjust content to skip the timestamp line
             if (block.content?.length > 0 && block.content?.[0]?.trim() === block.timestamp) {
               block.content.shift();
@@ -736,7 +821,7 @@ export class FlexibleMessageParser {
           const timestampScore = this.scoreTimestamp(firstContent);
 
           if (timestampScore > TIMESTAMP_CONFIDENCE_THRESHOLD) {
-            block.timestamp = firstContent;
+            block.timestamp = this.cleanTimestampValue(firstContent);
             block.content.shift();
             block.confidence += 0.2;
           }
@@ -933,28 +1018,30 @@ export class FlexibleMessageParser {
 
     if (!line) return score;
 
-    // Extremely long lines are almost certainly message content. Skipping
-    // the expensive pattern scoring logic for these protects the parser from
-    // catastrophic backtracking when the flexible parser is fed giant payloads
-    // (for example the "extremely large text" QA regression test).
-    if (line.length > LONG_LINE_LENGTH_THRESHOLD) {
+    if (line.length > this.longLineConfig.threshold * 2) {
       return score;
     }
 
+    const { tailSample, combinedSample } = this.extractLongLineSamples(line);
+    const scoringLine = combinedSample;
+
     // Check username patterns
-    score.isUsername = this.scoreUsername(line);
+    score.isUsername = this.scoreUsername(scoringLine);
 
     // Check timestamp patterns
-    score.isTimestamp = this.scoreTimestamp(line);
+    score.isTimestamp = this.scoreTimestamp(scoringLine);
 
     // Check combined patterns
-    score.hasUserAndTime = this.scoreUserAndTime(line);
+    score.hasUserAndTime = this.scoreUserAndTime(scoringLine);
 
     // Check date separator
-    score.isDateSeparator = this.scoreDateSeparator(line);
+    score.isDateSeparator = this.scoreDateSeparator(scoringLine);
 
     // Check metadata
-    score.isMetadata = this.scoreMetadata(line);
+    score.isMetadata = Math.max(
+      this.scoreMetadata(scoringLine),
+      tailSample ? this.scoreMetadata(tailSample) : 0
+    );
 
     // Calculate overall confidence
     const signals = [
@@ -975,6 +1062,37 @@ export class FlexibleMessageParser {
     }
 
     return score;
+  }
+
+  /**
+   * Extract samples from very long lines to keep regex heuristics performant
+   * while still considering both the beginning and end of a message header.
+   */
+  private extractLongLineSamples(
+    line: string
+  ): { headSample: string; tailSample?: string; combinedSample: string; sanitizedLine: string } {
+    if (line.length <= this.longLineConfig.threshold) {
+      return { headSample: line, combinedSample: line, sanitizedLine: line };
+    }
+
+    const sanitizedLine = this.collapseOversizedTokens(line);
+
+    if (sanitizedLine.length <= this.longLineConfig.threshold) {
+      return { headSample: sanitizedLine, combinedSample: sanitizedLine, sanitizedLine };
+    }
+
+    const headSample =
+      this.longLineConfig.headLength > 0
+        ? sanitizedLine.slice(0, this.longLineConfig.headLength)
+        : '';
+    const tailSample =
+      this.longLineConfig.tailLength > 0
+        ? sanitizedLine.slice(sanitizedLine.length - this.longLineConfig.tailLength)
+        : undefined;
+
+    const combinedSample = tailSample ? `${headSample}${tailSample}` : headSample;
+
+    return { headSample, tailSample, combinedSample, sanitizedLine };
   }
 
   /**
@@ -1228,22 +1346,25 @@ export class FlexibleMessageParser {
    * @returns {void}
    */
   private extractHeaderInfo(line: string, block: MessageBlock, context: ParserContext): void {
+    const { sanitizedLine } = this.extractLongLineSamples(line);
+    const workingLine = sanitizedLine;
+
     try {
       // Detect the message format first
-      const format = detectMessageFormat(line);
+      const format = detectMessageFormat(workingLine);
 
       // Apply format-aware extraction
       if (format === MessageFormat.THREAD) {
         // Thread format: "Username![:emoji:](url) [timestamp](url)"
-        const username = extractUsernameFromThreadFormat(line);
+        const username = extractUsernameFromThreadFormat(workingLine);
         if (username && username !== 'Unknown User') {
           block.username = username;
         }
 
         // Extract timestamp from thread format
-        const timestampMatch = line.match(/\[([^\]]+)\]\(https?:\/\/[^)]+\)$/);
+        const timestampMatch = workingLine.match(/\[([^\]]+)\]\(https?:\/\/[^)]+\)$/);
         if (timestampMatch && timestampMatch[1]) {
-          block.timestamp = timestampMatch[1];
+          block.timestamp = this.cleanTimestampValue(timestampMatch[1]);
         }
         return;
       } else if (format === MessageFormat.DM) {
@@ -1252,44 +1373,44 @@ export class FlexibleMessageParser {
         // Handle multi-person DM pattern: "UserNameUserName [timestamp](url)"
         const multiPersonDMPattern =
           /^([A-Za-z\s\u00C0-\u017F]+)\1\s+\[([^\]]+)\]\(https?:\/\/[^)]+\)$/;
-        const multiPersonMatch = line.match(multiPersonDMPattern);
+        const multiPersonMatch = workingLine.match(multiPersonDMPattern);
 
         if (multiPersonMatch && multiPersonMatch[1] && multiPersonMatch[2]) {
           // Extract doubled username and timestamp
           const username = extractUsernameFromDMFormat(multiPersonMatch[1].trim());
           block.username = username;
-          block.timestamp = multiPersonMatch[2];
+          block.timestamp = this.cleanTimestampValue(multiPersonMatch[2]);
           return;
         }
 
         // Handle split doubled pattern: "AmyAmy BritoBrito [timestamp]"
         const splitDoubledPattern = /^([A-Za-z]+)\1([A-Za-z\s]+)\2\s+\[([^\]]+)\]/;
-        const splitMatch = line.match(splitDoubledPattern);
+        const splitMatch = workingLine.match(splitDoubledPattern);
 
         if (splitMatch && splitMatch[1] && splitMatch[2] && splitMatch[3]) {
           // Reconstruct full name and extract timestamp
           const fullName = splitMatch[1] + splitMatch[2];
           const username = extractUsername(fullName, MessageFormat.DM);
           block.username = username;
-          block.timestamp = splitMatch[3];
+          block.timestamp = this.cleanTimestampValue(splitMatch[3]);
           return;
         }
 
         // Handle any username + timestamp pattern in DM format
         const usernameTimestampPattern = /^(.+?)\s+\[([^\]]+)\]/;
-        const usernameTimestampMatch = line.match(usernameTimestampPattern);
+        const usernameTimestampMatch = workingLine.match(usernameTimestampPattern);
 
         if (usernameTimestampMatch && usernameTimestampMatch[1] && usernameTimestampMatch[2]) {
           const username = extractUsernameFromDMFormat(usernameTimestampMatch[1]);
           block.username = username;
-          block.timestamp = usernameTimestampMatch[2];
+          block.timestamp = this.cleanTimestampValue(usernameTimestampMatch[2]);
           return;
         }
 
         // Fallback: standalone timestamp line (original logic)
-        const timestampMatch = line.match(/^\[([^\]]+)\]\(https?:\/\/[^)]+\)$/);
+        const timestampMatch = workingLine.match(/^\[([^\]]+)\]\(https?:\/\/[^)]+\)$/);
         if (timestampMatch && timestampMatch[1]) {
-          block.timestamp = timestampMatch[1];
+          block.timestamp = this.cleanTimestampValue(timestampMatch[1]);
         }
         return;
       }
@@ -1298,7 +1419,7 @@ export class FlexibleMessageParser {
       // Try combined patterns first
       for (let i = 0; i < this.patterns.userAndTime.length; i++) {
         const pattern = this.patterns.userAndTime?.[i];
-        const match = line.match(pattern);
+        const match = workingLine.match(pattern);
         if (match && match.length > 1) {
           // Handle different pattern matches with null safety
           if (i === 0 || i === 1) {
@@ -1307,27 +1428,35 @@ export class FlexibleMessageParser {
               match[1] && match[1] !== null ? match[1] : '',
               format
             );
-            block.timestamp = match[2] && match[2] !== null ? match[2] : '';
+            block.timestamp = this.cleanTimestampValue(
+              match[2] && match[2] !== null ? match[2] : ''
+            );
           } else if (i === 4) {
             // User + emoji + time pattern
             block.username = this.cleanUsername(
               match[1] && match[1] !== null ? match[1] : '',
               format
             );
-            block.timestamp = match[2] && match[2] !== null ? match[2] : '';
+            block.timestamp = this.cleanTimestampValue(
+              match[2] && match[2] !== null ? match[2] : ''
+            );
           } else if (i === 5) {
             // User emoji time (with space between emoji and time)
             block.username = this.cleanUsername(
               match[1] && match[1] !== null ? match[1] : '',
               format
             );
-            block.timestamp = match.length > 3 && match[3] && match[3] !== null ? match[3] : '';
+            block.timestamp = this.cleanTimestampValue(
+              match.length > 3 && match[3] && match[3] !== null ? match[3] : ''
+            );
           } else {
             block.username = this.cleanUsername(
               match[1] && match[1] !== null ? match[1] : '',
               format
             );
-            block.timestamp = match.length > 2 && match[2] && match[2] !== null ? match[2] : '';
+            block.timestamp = this.cleanTimestampValue(
+              match.length > 2 && match[2] && match[2] !== null ? match[2] : ''
+            );
           }
           return;
         }
@@ -1342,7 +1471,7 @@ export class FlexibleMessageParser {
     try {
       // Try username patterns
       for (const pattern of this.patterns.username) {
-        const match = line.match(pattern);
+        const match = workingLine.match(pattern);
         if (match && match[0]) {
           const usernameValue =
             match.length > 1 && match[1] && match[1] !== null ? match[1] : match[0];
@@ -1360,11 +1489,11 @@ export class FlexibleMessageParser {
     try {
       // Try timestamp patterns
       for (const pattern of this.patterns.timestamp) {
-        const match = line.match(pattern);
+        const match = workingLine.match(pattern);
         if (match && match[0]) {
           const timestampValue =
             match.length > 1 && match[1] && match[1] !== null ? match[1] : match[0];
-          block.timestamp = timestampValue || '';
+          block.timestamp = this.cleanTimestampValue(timestampValue || '');
           break;
         }
       }
@@ -1403,6 +1532,153 @@ export class FlexibleMessageParser {
     cleaned = cleaned.replace(/^!\[.*?\]\(.*?\)\s*/, '');
 
     return cleaned || 'Unknown User';
+  }
+
+  /**
+   * Normalize timestamp strings extracted from headers by removing trailing
+   * Slack archive URLs or other transport artifacts.
+   */
+  private cleanTimestampValue(timestamp: string | null | undefined): string {
+    if (!timestamp) {
+      return '';
+    }
+
+    let cleaned = timestamp.trim();
+
+    const trailingUrlPattern = /https?:\/\/[^\s)>\]]*$/i;
+    const urlMatch = trailingUrlPattern.exec(cleaned);
+    if (urlMatch && urlMatch.index !== undefined) {
+      cleaned = cleaned.slice(0, urlMatch.index);
+    }
+
+    cleaned = cleaned.replace(/[\[\]()<>]+\s*$/, '');
+
+    return cleaned.trim();
+  }
+
+  /**
+   * Collapse oversized tokens within a long line so that heuristic scoring can
+   * run without catastrophic backtracking from extremely large substrings.
+   */
+  private collapseOversizedTokens(line: string): string {
+    if (!line) {
+      return '';
+    }
+
+    if (line.length <= this.longLineConfig.threshold) {
+      return line;
+    }
+
+    const oversizedTokenPattern = new RegExp(`\\S{${this.longLineConfig.tokenThreshold + 1},}`);
+    if (!oversizedTokenPattern.test(line)) {
+      return line;
+    }
+
+    const segments = line.split(/(\s+)/);
+    let mutated = false;
+
+    const collapsedSegments = segments.map(segment => {
+      if (!segment || /^\s+$/.test(segment)) {
+        return segment;
+      }
+
+      const slackLinkMatch = segment.match(/^<([^>|]+)\|([^>]+)>$/);
+      if (slackLinkMatch) {
+        const truncatedUrl = this.truncateOversizedToken(slackLinkMatch[1], true);
+        if (truncatedUrl !== slackLinkMatch[1]) {
+          mutated = true;
+          return `<${truncatedUrl}|${slackLinkMatch[2]}>`;
+        }
+        return segment;
+      }
+
+      const markdownLinkMatch = segment.match(/^(!?\[[^\]]*\])\((https?:\/\/[^)]+)\)$/);
+      if (markdownLinkMatch) {
+        const truncatedUrl = this.truncateOversizedToken(markdownLinkMatch[2], true);
+        if (truncatedUrl !== markdownLinkMatch[2]) {
+          mutated = true;
+          return `${markdownLinkMatch[1]}(${truncatedUrl})`;
+        }
+        return segment;
+      }
+
+      const { prefix, core, suffix } = this.extractTokenComponents(segment);
+      if (!core) {
+        return segment;
+      }
+
+      const isUrlCandidate = /^https?:\/\//i.test(core);
+      const truncatedCore = this.truncateOversizedToken(core, isUrlCandidate);
+
+      if (truncatedCore !== core) {
+        mutated = true;
+        return `${prefix}${truncatedCore}${suffix}`;
+      }
+
+      // Collapse oversized base64 or similar tokens even without protocol hints.
+      if (core.length > this.longLineConfig.tokenThreshold && /^[A-Za-z0-9+/=]+$/.test(core)) {
+        const shortened = this.truncateOversizedToken(core, false);
+        if (shortened !== core) {
+          mutated = true;
+          return `${prefix}${shortened}${suffix}`;
+        }
+      }
+
+      return segment;
+    });
+
+    return mutated ? collapsedSegments.join('') : line;
+  }
+
+  private extractTokenComponents(token: string): { prefix: string; core: string; suffix: string } {
+    let start = 0;
+    let end = token.length;
+
+    while (start < end && /[([\{<"'`]/.test(token[start])) {
+      start++;
+    }
+
+    while (end > start && /[)\]\}>"'`,.:;!?]+/.test(token[end - 1])) {
+      end--;
+    }
+
+    const prefix = token.slice(0, start);
+    const suffix = token.slice(end);
+    const core = token.slice(start, end);
+
+    return { prefix, core, suffix };
+  }
+
+  private truncateOversizedToken(token: string, treatAsUrl = false): string {
+    if (!token) {
+      return token;
+    }
+
+    const threshold = this.longLineConfig.tokenThreshold;
+    if (token.length <= threshold) {
+      return token;
+    }
+
+    const headLength = treatAsUrl
+      ? Math.max(this.longLineConfig.tokenHeadLength, Math.min(LONG_LINE_URL_HEAD_LENGTH, token.length))
+      : this.longLineConfig.tokenHeadLength;
+    const tailLength = treatAsUrl
+      ? Math.max(this.longLineConfig.tokenTailLength, Math.min(LONG_LINE_URL_TAIL_LENGTH, token.length - headLength - 1))
+      : this.longLineConfig.tokenTailLength;
+
+    if (token.length <= headLength + tailLength + 1) {
+      return token;
+    }
+
+    const effectiveHead = Math.max(0, Math.min(headLength, token.length - 1));
+    const effectiveTail = Math.max(0, Math.min(tailLength, token.length - effectiveHead - 1));
+
+    if (effectiveHead === 0 || effectiveTail === 0) {
+      const sliceLength = Math.min(threshold, token.length);
+      return token.slice(0, sliceLength);
+    }
+
+    return `${token.slice(0, effectiveHead)}…${token.slice(token.length - effectiveTail)}`;
   }
 
   /**
