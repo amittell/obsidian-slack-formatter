@@ -94,7 +94,24 @@ else
     echo -e "${YELLOW}ℹ️  No ESLint config found${NC}"
 fi
 
-# Check 4: Fast unit tests (critical tests only)
+# Check 4: Build project (matches CI)
+echo -e "${BLUE}🏗️  Building project...${NC}"
+if [ -f "package.json" ] && command -v npm &> /dev/null; then
+    if npm run | grep -q "build"; then
+        npm run build || {
+            echo -e "${RED}❌ Build failed!${NC}"
+            echo -e "${YELLOW}💡 Fix build errors before committing${NC}"
+            exit 1
+        }
+        echo -e "${GREEN}✅ Build successful${NC}"
+    else
+        echo -e "${YELLOW}ℹ️  No build script found${NC}"
+    fi
+else
+    echo -e "${YELLOW}ℹ️  No package.json or npm not available${NC}"
+fi
+
+# Check 5: Fast unit tests (critical tests only)
 echo -e "${BLUE}🧪 Running critical unit tests...${NC}"
 if [ -f "package.json" ] && command -v npm &> /dev/null; then
     # Check if test:quick script exists
@@ -117,7 +134,7 @@ else
     echo -e "${YELLOW}ℹ️  No package.json or npm not available${NC}"
 fi
 
-# Check 5: Check for common issues
+# Check 6: Check for common issues
 echo -e "${BLUE}🔍 Checking for common issues...${NC}"
 
 # Check for console.log in TypeScript/JavaScript files
