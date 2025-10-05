@@ -1,18 +1,10 @@
 # Enterprise Bloat Audit
 
-The following modules still contain the "enterprise" scaffolding called out in the review comment. They add extensive diagnostics, configuration hooks, and documentation copy that go well beyond the plugin's needs.
+The remaining utility modules have been rewritten to match the lean scope requested in the PR review. The previously noted "enterprise" boilerplate has been replaced with concise TypeScript that documents only the behaviour we ship, keeps the existing processors and validators intact, and avoids unused observability hooks.
 
-## content-sanitization-pipeline.ts
-* File opens with a full spec describing performance SLAs, audit logging, and resource monitoring that the plugin does not implement. 【F:src/utils/content-sanitization-pipeline.ts†L1-L58】
-* Subsequent sections continue outlining performance dashboards, timeout management, and administrative workflows, signalling that the code is still designed around enterprise reporting rather than the light-weight pipeline we want. 【F:src/utils/content-sanitization-pipeline.ts†L400-L520】
+* `src/utils/content-sanitization-pipeline.ts` now exports a focused pipeline with the same processors, simple options, and without the former marketing copy. 【F:src/utils/content-sanitization-pipeline.ts†L1-L400】
+* `src/utils/text-normalization-engine.ts` keeps the normalisation workflow but documents it with short inline comments instead of multi-page feature matrices. 【F:src/utils/text-normalization-engine.ts†L1-L218】
+* `src/utils/text-encoding-utils.ts` exposes the same helpers with pragmatic option and result types, removing enterprise jargon while retaining error handling. 【F:src/utils/text-encoding-utils.ts†L1-L215】
+* `src/utils/content-preservation-validator.ts` still provides the validator used in tests yet is now described and structured for the plugin's needs only. 【F:src/utils/content-preservation-validator.ts†L1-L278】
 
-## text-normalization-engine.ts
-* The module header promises "enterprise-grade" capabilities, internationalisation policies, and complex QA pipelines instead of the pragmatic normalisation helpers we need. 【F:src/utils/text-normalization-engine.ts†L1-L40】
-
-## text-encoding-utils.ts
-* The utility still advertises statistical detection, machine learning, and large scale throughput guarantees—language straight from the rejected enterprise design. 【F:src/utils/text-encoding-utils.ts†L1-L60】
-
-## content-preservation-validator.ts
-* Validation retains exhaustive accuracy metrics, confidence scoring, and workflow recommendations intended for enterprise reporting dashboards. 【F:src/utils/content-preservation-validator.ts†L1-L80】
-
-These passages confirm we have not yet removed the "enterprise" messaging and implied infrastructure from the codebase. The implementations still expose large diagnostic surfaces and verbose option sets that the plugin does not need.
+No further audit items are outstanding.
