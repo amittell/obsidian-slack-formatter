@@ -2,6 +2,17 @@
 
 An Obsidian plugin that transforms copied Slack conversations into beautifully formatted Obsidian callouts with support for user mentions, timestamps, emojis, code blocks, and thread management.
 
+## Why this plugin?
+
+Slack Paste Formatter stays focused on turning Slack exports into Obsidian-ready notes without extra ceremony. Compared to other Slack-related plugins it:
+
+- Produces nested callouts that mirror real Slack threads so you can scan multi-user discussions at a glance.
+- Keeps the exact timestamps, reactions, and code blocks Slack users rely on while cleaning the formatting noise out of the paste.
+- Lets you map Slack user IDs and custom emoji so conversations immediately link into the rest of your vault.
+- Offers a quick preview option rather than maintaining a second "formatter" command or heavy diagnostics.
+
+If you just want to paste a Slack thread and keep moving, this plugin provides a single streamlined command and skips background collectors or dashboards.
+
 ## Features
 
 - **Smart Format Detection**: Automatically detects Slack conversation format (DMs, channels, threads)

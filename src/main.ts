@@ -50,12 +50,9 @@ export default class SlackFormatPlugin extends Plugin {
     this.addSettingTab(new SlackFormatSettingTab(this.app, this));
 
     // Register commands using helper methods
-    this.registerHotkeyCommand();
-    this.registerPaletteCommand();
+    this.registerFormatCommand();
     this.registerContextMenu();
-
-    // Removed 'editor-paste' event listener registration
-    // Removed direct keydown event listener
+    this.registerPasteInterceptor();
   }
 
   /**
@@ -113,6 +110,28 @@ export default class SlackFormatPlugin extends Plugin {
   }
 
   // Removed local parseJsonMap method (now using utility)
+
+  /**
+   * Register a lightweight paste interceptor for the interceptCmdV mode.
+   * When the mode is disabled we let Obsidian handle paste normally.
+   */
+  private registerPasteInterceptor(): void {
+    this.registerEvent(
+      this.app.workspace.on('editor-paste', async (evt: ClipboardEvent, editor: Editor) => {
+        if (this.settings.hotkeyMode !== 'interceptCmdV') {
+          return;
+        }
+
+        const clipboardText = evt.clipboardData?.getData('text/plain') ?? '';
+        if (!clipboardText || !this.formatter.isLikelySlack(clipboardText)) {
+          return;
+        }
+
+        evt.preventDefault();
+        this.formatAndInsert(editor, clipboardText);
+      })
+    );
+  }
 
   // Removed handlePasteEvent method
 
@@ -263,35 +282,21 @@ export default class SlackFormatPlugin extends Plugin {
   // --- Command Registration Methods ---
 
   /**
-   * Register the hotkey command (Cmd/Ctrl+Shift+V) for formatting Slack pastes.
+   * Register the formatting command for both palette and hotkey usage.
    * @private
    * @returns {void}
    */
-  private registerHotkeyCommand(): void {
-    this.addCommand({
-      id: 'format-slack-paste-hotkey',
-      name: 'Format Slack paste with hotkey',
-      editorCallback: async (editor: Editor) => {
-        const clipboardContent = await this.getClipboardContent();
-        if (clipboardContent !== null) {
-          // Check if reading was successful
-          this.formatAndInsert(editor, clipboardContent);
-        }
-        // Error handling is now inside getClipboardContent
-      },
-    });
-  }
-
-  /**
-   * Register the command palette command for formatting Slack pastes.
-   * @private
-   * @returns {void}
-   */
-  private registerPaletteCommand(): void {
+  private registerFormatCommand(): void {
     this.addCommand({
       id: 'format-slack',
       name: 'Format Slack paste',
       icon: 'clipboard-list',
+      hotkeys: [
+        {
+          modifiers: ['Mod', 'Shift'],
+          key: 'v',
+        },
+      ],
       editorCallback: async (editor: Editor) => {
         const clipboardContent = await this.getClipboardContent();
         if (clipboardContent !== null) {
