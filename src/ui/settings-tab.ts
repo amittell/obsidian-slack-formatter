@@ -40,14 +40,14 @@ export class SlackFormatSettingTab extends PluginSettingTab {
     new Setting(containerEl)
       .setName('Hotkey Behavior')
       .setDesc(
-        'Choose how the formatting is triggered: dedicated hotkey or intercepting standard paste.'
+        'Choose how formatting is triggered: assign your own hotkey or intercept the standard paste command.'
       )
       .addDropdown(dd => {
-        dd.addOption('cmdShiftV', 'Cmd/Ctrl+Shift+V (Dedicated Hotkey)');
+        dd.addOption('dedicatedHotkey', 'Dedicated hotkey (set via Obsidian Hotkeys)');
         dd.addOption('interceptCmdV', 'Intercept Cmd/Ctrl+V (Auto-detect)');
         dd.setValue(this.plugin.settings.hotkeyMode);
         dd.onChange(async val => {
-          this.plugin.settings.hotkeyMode = val as 'cmdShiftV' | 'interceptCmdV';
+          this.plugin.settings.hotkeyMode = val as 'dedicatedHotkey' | 'interceptCmdV';
           await this.plugin.saveSettings();
           // Removed notice about reloading, as event listeners might update dynamically or command registration handles it.
         });

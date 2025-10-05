@@ -68,6 +68,7 @@ const TIMESTAMP_CONFIDENCE_THRESHOLD = 0.7;
 const MESSAGE_FRAGMENTATION_THRESHOLD = 0.8;
 const CONTENT_PREVIEW_LENGTH = 100;
 const MIN_MESSAGE_CONTENT_LENGTH = 3;
+const LONG_LINE_LENGTH_THRESHOLD = 2000;
 
 /**
  * Centralized confidence thresholds configuration for pattern matching
@@ -931,6 +932,14 @@ export class FlexibleMessageParser {
     };
 
     if (!line) return score;
+
+    // Extremely long lines are almost certainly message content. Skipping
+    // the expensive pattern scoring logic for these protects the parser from
+    // catastrophic backtracking when the flexible parser is fed giant payloads
+    // (for example the "extremely large text" QA regression test).
+    if (line.length > LONG_LINE_LENGTH_THRESHOLD) {
+      return score;
+    }
 
     // Check username patterns
     score.isUsername = this.scoreUsername(line);

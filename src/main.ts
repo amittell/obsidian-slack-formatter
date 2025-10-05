@@ -154,7 +154,7 @@ export default class SlackFormatPlugin extends Plugin {
         return;
       }
 
-      // Proceed with formatting for cmdShiftV mode or if intercept checks passed
+      // Proceed with formatting for dedicated hotkey mode or if intercept checks passed
       this.performFormatting(editor, text);
     } catch (error) {
       Logger.error('SlackFormatPlugin', 'Error in formatAndInsert:', error);
@@ -243,7 +243,15 @@ export default class SlackFormatPlugin extends Plugin {
    */
   async loadSettings(): Promise<void> {
     try {
-      this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+      const loadedSettings = await this.loadData();
+      const mergedSettings = Object.assign({}, DEFAULT_SETTINGS, loadedSettings);
+
+      // Backwards compatibility: migrate legacy hotkey mode identifier
+      if ((mergedSettings as Partial<SlackFormatSettings>).hotkeyMode === 'cmdShiftV') {
+        mergedSettings.hotkeyMode = 'dedicatedHotkey';
+      }
+
+      this.settings = mergedSettings;
     } catch (error) {
       Logger.error('SlackFormatPlugin', 'Error loading settings:', error);
       this.settings = { ...DEFAULT_SETTINGS };
@@ -263,7 +271,12 @@ export default class SlackFormatPlugin extends Plugin {
   // --- Command Registration Methods ---
 
   /**
-   * Register the hotkey command (Cmd/Ctrl+Shift+V) for formatting Slack pastes.
+   * Register the hotkey command for formatting Slack pastes.
+   *
+   * The command ships without a default keybinding so new installs start with an
+   * unassigned shortcut. Users who prefer a dedicated hotkey can assign one via
+   * Obsidian's Hotkeys settings.
+   *
    * @private
    * @returns {void}
    */

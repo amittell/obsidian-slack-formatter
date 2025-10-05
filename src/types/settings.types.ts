@@ -38,8 +38,8 @@ export interface SlackFormatSettings {
 
   // UI options
 
-  /** Hotkey mode: 'cmdShiftV' for dedicated hotkey, 'interceptCmdV' for paste intercept */
-  hotkeyMode: 'cmdShiftV' | 'interceptCmdV';
+  /** Hotkey mode: 'dedicatedHotkey' for default shortcut, 'interceptCmdV' for paste intercept */
+  hotkeyMode: 'dedicatedHotkey' | 'interceptCmdV';
 
   /** Maximum number of lines to process (for performance) */
   maxLines: number;

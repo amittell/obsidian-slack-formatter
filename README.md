@@ -35,7 +35,7 @@ An Obsidian plugin that transforms copied Slack conversations into beautifully f
 
 1. Copy a Slack conversation to your clipboard
 2. In Obsidian, use one of these methods:
-   - Press `Cmd+Shift+V` (Mac) or `Ctrl+Shift+V` (Windows/Linux)
+   - Assign a custom hotkey for "Format Slack paste with hotkey" in Settings → Hotkeys, then use your shortcut
    - Open Command Palette and run "Format Slack paste"
    - Right-click in editor and select "Format as Slack conversation"
 3. The conversation will be formatted as Obsidian callouts
@@ -86,7 +86,7 @@ Access plugin settings through Settings → Community Plugins → Slack Formatte
 
 ### User Interface
 
-- **Hotkey Mode**: Choose between `Cmd+Shift+V` or intercept regular `Cmd+V`
+- **Hotkey Mode**: Choose between a user-assigned dedicated hotkey or intercept regular `Cmd/Ctrl+V`
 - **Preview Pane**: Show preview before inserting (default: enabled)
 - **Confirmation Dialog**: Ask before formatting when auto-detecting (default: enabled)
 - **Success Message**: Show notification after formatting (default: enabled)
