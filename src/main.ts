@@ -244,19 +244,7 @@ export default class SlackFormatPlugin extends Plugin {
   async loadSettings(): Promise<void> {
     try {
       const loadedSettings = await this.loadData();
-      const mergedSettings = Object.assign({}, DEFAULT_SETTINGS, loadedSettings);
-
-      // Backwards compatibility: migrate legacy hotkey mode identifier
-      const maybeLegacyHotkeyMode =
-        loadedSettings && typeof loadedSettings === 'object' && 'hotkeyMode' in loadedSettings
-          ? (loadedSettings as Record<string, unknown>).hotkeyMode
-          : undefined;
-
-      if (maybeLegacyHotkeyMode === 'cmdShiftV') {
-        mergedSettings.hotkeyMode = 'dedicatedHotkey';
-      }
-
-      this.settings = mergedSettings;
+      this.settings = Object.assign({}, DEFAULT_SETTINGS, loadedSettings);
     } catch (error) {
       Logger.error('SlackFormatPlugin', 'Error loading settings:', error);
       this.settings = { ...DEFAULT_SETTINGS };
