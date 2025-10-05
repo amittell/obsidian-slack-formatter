@@ -466,9 +466,7 @@ export class SlackFormatter implements ISlackFormatter {
       // performance regression test that pastes 100 distinct messages).
       const hasPotentialDuplicates =
         new Set(
-          messages.map(
-            msg => `${msg.username ?? ''}|${msg.timestamp ?? ''}|${msg.text ?? ''}`
-          )
+          messages.map(msg => `${msg.username ?? ''}|${msg.timestamp ?? ''}|${msg.text ?? ''}`)
         ).size !== messages.length;
 
       if (hasPotentialDuplicates) {
@@ -483,7 +481,9 @@ export class SlackFormatter implements ISlackFormatter {
         messages = deduplicationResult.messages;
 
         if (deduplicationResult.removedDuplicates > 0) {
-          debugInfo.push(`Removed ${deduplicationResult.removedDuplicates} duplicate content blocks`);
+          debugInfo.push(
+            `Removed ${deduplicationResult.removedDuplicates} duplicate content blocks`
+          );
         }
       }
 
@@ -505,7 +505,8 @@ export class SlackFormatter implements ISlackFormatter {
 
       // Validate message structure integrity
       const needsStructureValidation = messages.some(
-        msg => !msg.username || msg.username === 'Unknown User' || !msg.text || msg.text.trim() === ''
+        msg =>
+          !msg.username || msg.username === 'Unknown User' || !msg.text || msg.text.trim() === ''
       );
 
       if (needsStructureValidation) {

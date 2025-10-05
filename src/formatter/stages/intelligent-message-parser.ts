@@ -242,6 +242,22 @@ export class IntelligentMessageParser {
   }
 
   /**
+   * Determine whether verbose boundary diagnostics should be emitted.
+   *
+   * Combines the legacy debug toggle, global logger flags, and environment
+   * overrides so continuation traces appear whenever any supported switch is
+   * active (including parse(..., true) and DEBUG_BOUNDARY_DETECTION).
+   */
+  private isBoundaryDebugEnabled(): boolean {
+    return (
+      this.debugMode === true ||
+      Logger.isDebugEnabled() ||
+      Logger.isDiagnosticEnabled() ||
+      process.env.DEBUG_BOUNDARY_DETECTION === 'true'
+    );
+  }
+
+  /**
    * Parse Slack conversation using intelligent structural analysis.
    *
    * Main entry point for parsing Slack export content. Uses a three-phase
@@ -273,8 +289,11 @@ export class IntelligentMessageParser {
 
     const lines = text.split('\n');
 
-    // Use class debug mode or parameter override
-    const debugMode = isDebugEnabled !== undefined ? isDebugEnabled : this?.debugMode === true;
+    // Respect explicit override and align with global/environment toggles
+    if (isDebugEnabled !== undefined) {
+      this.debugMode = Boolean(isDebugEnabled);
+    }
+    const debugMode = this.isBoundaryDebugEnabled();
 
     // Step 1: Analyze the overall structure to identify patterns
     const structure = this.analyzeStructure(lines);
@@ -407,7 +426,7 @@ export class IntelligentMessageParser {
    * @since 1.0.0
    */
   private identifyPatterns(analysis: LineAnalysis[]): ConversationPatterns {
-    const debugEnabled = process.env.DEBUG_BOUNDARY_DETECTION === 'true';
+    const debugEnabled = this.isBoundaryDebugEnabled();
 
     if (debugEnabled) {
       Logger.debug(
@@ -564,7 +583,7 @@ export class IntelligentMessageParser {
     allLines: LineAnalysis[],
     index: number
   ): boolean {
-    const debugEnabled = process.env.DEBUG_BOUNDARY_DETECTION === 'true';
+    const debugEnabled = this.isBoundaryDebugEnabled();
 
     // Empty lines can't be message starts
     if (line.isEmpty) {
@@ -905,7 +924,7 @@ export class IntelligentMessageParser {
     lines: string[],
     structure: ConversationStructure
   ): MessageBoundary[] {
-    const debugEnabled = process.env.DEBUG_BOUNDARY_DETECTION === 'true';
+    const debugEnabled = this.isBoundaryDebugEnabled();
 
     if (debugEnabled) {
       Logger.debug(
@@ -1031,8 +1050,8 @@ export class IntelligentMessageParser {
     for (const boundary of boundaries) {
       let extendedEnd = boundary.end;
 
-      const legacyDebugEnabled = this?.debugMode === true;
-      if (debugEnabled) {
+      const boundaryDebugEnabled = this.isBoundaryDebugEnabled();
+      if (debugEnabled || boundaryDebugEnabled) {
         Logger.debug(
           'IntelligentMessageParser',
           `Extending boundary ${boundary.start}-${boundary.end}`
@@ -1046,13 +1065,13 @@ export class IntelligentMessageParser {
           // Found a continuation timestamp within the boundary
           // Extend to include all content after it
           const continuationEnd = this.findContinuationEnd(structure.lines, i);
-          if (debugEnabled) {
+          if (debugEnabled || boundaryDebugEnabled) {
             Logger.debug(
               'IntelligentMessageParser',
               `Found continuation within boundary at line ${i}: "${line.trimmed}"`
             );
           }
-          if (debugEnabled) {
+          if (debugEnabled || boundaryDebugEnabled) {
             Logger.debug(
               'IntelligentMessageParser',
               `Continuation extends from ${i} to ${continuationEnd}`
@@ -1123,8 +1142,7 @@ export class IntelligentMessageParser {
       }
     }
 
-    const legacyDebugEnabled = this?.debugMode === true;
-    if (legacyDebugEnabled) {
+    if (this.isBoundaryDebugEnabled()) {
       Logger.debug(
         'IntelligentMessageParser',
         `Boundaries before merging: ${boundaries.map(b => `${b.start}-${b.end}`).join(', ')}`
@@ -1169,8 +1187,8 @@ export class IntelligentMessageParser {
               // Check if the continuation's content would overlap with next boundary
               const contEnd = this.findContinuationEnd(structure.lines, k);
 
-              const legacyDebugEnabled = this?.debugMode === true;
-              if (debugEnabled) {
+              const boundaryDebugEnabled = this.isBoundaryDebugEnabled();
+              if (debugEnabled || boundaryDebugEnabled) {
                 Logger.debug(
                   'IntelligentMessageParser',
                   `Checking continuation at line ${k}, ends at ${contEnd}, next boundary starts at ${next.start}`
@@ -1329,7 +1347,7 @@ export class IntelligentMessageParser {
    * @returns Array of actual message start indices (grouped)
    */
   private groupMessageComponents(candidates: number[], structure: ConversationStructure): number[] {
-    const debugEnabled = process.env.DEBUG_BOUNDARY_DETECTION === 'true';
+    const debugEnabled = this.isBoundaryDebugEnabled();
 
     if (debugEnabled) {
       Logger.debug('IntelligentMessageParser', '\n=== GROUPING MESSAGE COMPONENTS ===');
@@ -1442,7 +1460,7 @@ export class IntelligentMessageParser {
       return false;
     }
 
-    const debugEnabled = process.env.DEBUG_BOUNDARY_DETECTION === 'true';
+    const debugEnabled = this.isBoundaryDebugEnabled();
 
     // Lines must be close to each other (within 2 lines)
     if (index2 - index1 > 2) {
@@ -1961,8 +1979,7 @@ export class IntelligentMessageParser {
 
     // Defensive check for this context
     try {
-      const isDebugEnabled = this?.debugMode === true;
-      if (isDebugEnabled && result) {
+      if (this.isBoundaryDebugEnabled() && result) {
         Logger.debug('IntelligentMessageParser', `Line looks like continuation: "${line.trimmed}"`);
       }
     } catch (e) {
@@ -1978,7 +1995,7 @@ export class IntelligentMessageParser {
   private findContinuationEnd(lines: LineAnalysis[], startIndex: number): number {
     let endIndex = startIndex;
 
-    const debugEnabled = this?.debugMode === true;
+    const debugEnabled = this.isBoundaryDebugEnabled();
     if (debugEnabled) {
       Logger.debug(
         'IntelligentMessageParser',
@@ -2090,7 +2107,7 @@ export class IntelligentMessageParser {
     boundaries: MessageBoundary[],
     structure: ConversationStructure
   ): SlackMessage[] {
-    const debugEnabled = process.env.DEBUG_BOUNDARY_DETECTION === 'true';
+    const debugEnabled = this.isBoundaryDebugEnabled();
 
     if (debugEnabled) {
       Logger.debug('IntelligentMessageParser', '\n=== BOUNDARY DETECTION: Extracting Messages ===');
@@ -2177,7 +2194,7 @@ export class IntelligentMessageParser {
     structure: ConversationStructure,
     previousMessages: SlackMessage[] = []
   ): SlackMessage | null {
-    const debugEnabled = process.env.DEBUG_BOUNDARY_DETECTION === 'true';
+    const debugEnabled = this.isBoundaryDebugEnabled();
 
     if (messageLines.length === 0) return null;
 
@@ -2350,7 +2367,7 @@ export class IntelligentMessageParser {
     const reactions: SlackReaction[] = [];
     let threadInfo: string | null = null;
 
-    const debugEnabled = this?.debugMode === true;
+    const debugEnabled = this.isBoundaryDebugEnabled();
     if (debugEnabled) {
       Logger.debug(
         'IntelligentMessageParser',

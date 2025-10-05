@@ -273,12 +273,17 @@ export class FlexibleMessageParser {
       tokenTailLength: options.longLineTokenTailLength ?? LONG_LINE_TOKEN_TAIL_LENGTH,
     };
 
-    const normalizedThreshold = merged.threshold > 0 ? merged.threshold : LONG_LINE_LENGTH_THRESHOLD;
+    const normalizedThreshold =
+      merged.threshold > 0 ? merged.threshold : LONG_LINE_LENGTH_THRESHOLD;
     const normalizedHead = Math.max(0, Math.min(merged.headLength, normalizedThreshold));
     const remaining = Math.max(0, normalizedThreshold - normalizedHead);
     const normalizedTail = Math.max(0, Math.min(merged.tailLength, remaining));
-    const normalizedTokenThreshold = merged.tokenThreshold > 0 ? merged.tokenThreshold : LONG_LINE_TOKEN_LENGTH_THRESHOLD;
-    const normalizedTokenHead = Math.max(0, Math.min(merged.tokenHeadLength, normalizedTokenThreshold));
+    const normalizedTokenThreshold =
+      merged.tokenThreshold > 0 ? merged.tokenThreshold : LONG_LINE_TOKEN_LENGTH_THRESHOLD;
+    const normalizedTokenHead = Math.max(
+      0,
+      Math.min(merged.tokenHeadLength, normalizedTokenThreshold)
+    );
     const tokenRemaining = Math.max(0, normalizedTokenThreshold - normalizedTokenHead);
     const normalizedTokenTail = Math.max(0, Math.min(merged.tokenTailLength, tokenRemaining));
 
@@ -1068,9 +1073,12 @@ export class FlexibleMessageParser {
    * Extract samples from very long lines to keep regex heuristics performant
    * while still considering both the beginning and end of a message header.
    */
-  private extractLongLineSamples(
-    line: string
-  ): { headSample: string; tailSample?: string; combinedSample: string; sanitizedLine: string } {
+  private extractLongLineSamples(line: string): {
+    headSample: string;
+    tailSample?: string;
+    combinedSample: string;
+    sanitizedLine: string;
+  } {
     if (line.length <= this.longLineConfig.threshold) {
       return { headSample: line, combinedSample: line, sanitizedLine: line };
     }
@@ -1660,10 +1668,16 @@ export class FlexibleMessageParser {
     }
 
     const headLength = treatAsUrl
-      ? Math.max(this.longLineConfig.tokenHeadLength, Math.min(LONG_LINE_URL_HEAD_LENGTH, token.length))
+      ? Math.max(
+          this.longLineConfig.tokenHeadLength,
+          Math.min(LONG_LINE_URL_HEAD_LENGTH, token.length)
+        )
       : this.longLineConfig.tokenHeadLength;
     const tailLength = treatAsUrl
-      ? Math.max(this.longLineConfig.tokenTailLength, Math.min(LONG_LINE_URL_TAIL_LENGTH, token.length - headLength - 1))
+      ? Math.max(
+          this.longLineConfig.tokenTailLength,
+          Math.min(LONG_LINE_URL_TAIL_LENGTH, token.length - headLength - 1)
+        )
       : this.longLineConfig.tokenTailLength;
 
     if (token.length <= headLength + tailLength + 1) {

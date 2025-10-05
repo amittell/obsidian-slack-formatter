@@ -247,7 +247,11 @@ export default class SlackFormatPlugin extends Plugin {
       const mergedSettings = Object.assign({}, DEFAULT_SETTINGS, loadedSettings);
 
       // Backwards compatibility: migrate legacy hotkey mode identifier
-      const maybeLegacyHotkeyMode = (mergedSettings as { hotkeyMode?: string }).hotkeyMode;
+      const maybeLegacyHotkeyMode =
+        loadedSettings && typeof loadedSettings === 'object' && 'hotkeyMode' in loadedSettings
+          ? (loadedSettings as Record<string, unknown>).hotkeyMode
+          : undefined;
+
       if (maybeLegacyHotkeyMode === 'cmdShiftV') {
         mergedSettings.hotkeyMode = 'dedicatedHotkey';
       }
