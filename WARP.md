@@ -119,7 +119,7 @@ npm test -- --testPathPattern=clay-conversation
 
 - **Plugin ID**: `slack-formatter`
 - **Commands**:
-  - Format hotkey: `Cmd+Shift+V` (Mac) / `Ctrl+Shift+V` (Windows/Linux)
+  - Format hotkey command: "Format Slack paste with hotkey" (no default binding; assign via Obsidian Hotkeys)
   - Command palette: "Format Slack paste"
   - Context menu: "Format as Slack conversation"
 - **Settings**:

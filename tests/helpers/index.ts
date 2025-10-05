@@ -127,7 +127,7 @@ export function createTestSettings(
     convertSlackLinks: true,
     userMapJson: '{}',
     emojiMapJson: '{}',
-    hotkeyMode: 'cmdShiftV' as const,
+    hotkeyMode: 'dedicatedHotkey' as const,
     maxLines: 5000,
     enablePreviewPane: true,
     enableConfirmationDialog: true,

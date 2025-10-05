@@ -177,15 +177,16 @@ export const DEFAULT_SETTINGS: SlackFormatSettings = {
    * Hotkey mode for triggering the formatter.
    *
    * Determines how the formatter is activated:
-   * - 'cmdShiftV': Dedicated hotkey (Cmd+Shift+V)
-   * - 'interceptCmdV': Intercepts normal paste operations (Cmd+V)
+   * - 'dedicatedHotkey': Enables the plugin's command for use with a
+   *   user-assigned hotkey (no default binding)
+   * - 'interceptCmdV': Intercepts normal paste operations (Cmd/Ctrl+V)
    *
-   * @type {'cmdShiftV' | 'interceptCmdV'}
-   * @default 'cmdShiftV'
+   * @type {'dedicatedHotkey' | 'interceptCmdV'}
+   * @default 'dedicatedHotkey'
    * @since 1.0.0
    * @constraint Must be one of the defined hotkey modes
    */
-  hotkeyMode: 'cmdShiftV',
+  hotkeyMode: 'dedicatedHotkey',
   /**
    * Maximum number of lines to process.
    *

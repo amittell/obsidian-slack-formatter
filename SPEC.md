@@ -75,7 +75,7 @@ interface SlackFormatSettings {
   convertSlackLinks: boolean; // Link processing
 
   // User Interface
-  hotkeyMode: 'cmdShiftV' | 'interceptCmdV'; // Hotkey behavior
+  hotkeyMode: 'dedicatedHotkey' | 'interceptCmdV'; // Hotkey behavior (dedicated command ships unbound)
   enablePreviewPane: boolean; // Preview modal
   enableConfirmationDialog: boolean; // Confirmation dialog
   showSuccessMessage: boolean; // Success notification

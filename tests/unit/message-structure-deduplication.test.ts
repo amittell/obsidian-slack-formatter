@@ -37,7 +37,7 @@ describe('Message Structure & Deduplication', () => {
       emojiMapJson: '{}',
 
       // UI options
-      hotkeyMode: 'cmdShiftV',
+      hotkeyMode: 'dedicatedHotkey',
       maxLines: 1000,
       enablePreviewPane: false,
       enableConfirmationDialog: false,

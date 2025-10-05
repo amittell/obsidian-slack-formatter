@@ -107,7 +107,7 @@ Plugin settings include JSON-based user and emoji mappings. Settings changes tri
 ## Obsidian Plugin Integration
 
 - Plugin ID: `slack-formatter`
-- Main commands: Format hotkey (Cmd+Shift+V), palette command, context menu
+- Main commands: Format hotkey command (user assigns keybinding), palette command, context menu
 - Settings tab for configuration
 - Modal dialogs for preview and confirmation
 - Context menu integration for selected text and clipboard content
