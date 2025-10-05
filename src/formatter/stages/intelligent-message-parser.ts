@@ -3,7 +3,7 @@ import type { SlackReaction } from '../../types/messages.types.js';
 import { SlackFormatSettings } from '../../types/settings.types.js';
 import { ParsedMaps } from '../../types/formatters.types.js';
 import { parseSlackTimestamp } from '../../utils/datetime-utils.js';
-import { Logger, DiagnosticContext } from '../../utils/logger.js';
+import { Logger } from '../../utils/logger.js';
 import { DEFAULT_SETTINGS } from '../../settings.js';
 import {
   extractUsername,
@@ -1750,7 +1750,7 @@ export class IntelligentMessageParser {
    * - Link previews: domain names, article titles
    * - Obviously message content (lowercase start, punctuation)
    *
-   * Algorithm uses pattern matching with diagnostic logging to track
+   * Algorithm uses pattern matching with debug logging to track
    * decision-making for debugging boundary detection issues.
    *
    * @param {LineAnalysis} line - Line to evaluate for continuation patterns
@@ -1762,31 +1762,10 @@ export class IntelligentMessageParser {
    * @since 1.0.0
    */
   private looksLikeContinuation(line: LineAnalysis, allLines: LineAnalysis[]): boolean {
-    const operationId = `continuation-${Date.now()}`;
-
     // Safety check for undefined line
     if (!line || !line.trimmed) {
       return false;
     }
-
-    // Start diagnostic logging for continuation detection
-    const diagnosticContext: DiagnosticContext = {
-      operationId,
-      text: line.content?.substring(0, 100) || line.trimmed?.substring(0, 100) || '',
-      matchedPatterns: [],
-      rejectedPatterns: [],
-      boundaryDecision: '',
-    };
-
-    Logger.diagnostic(
-      'IntelligentMessageParser',
-      'Evaluating continuation pattern',
-      diagnosticContext,
-      {
-        trimmed: line.trimmed?.substring(0, 50) || '',
-        isEmpty: line.isEmpty,
-      }
-    );
 
     // Enhanced continuation patterns including new Slack truncation indicators
     const continuationPatterns = [
@@ -1844,26 +1823,13 @@ export class IntelligentMessageParser {
 
     // Check for bracketed timestamps with URLs [time](url) - these are always continuations
     if (/^\[\d{1,2}:\d{2}(?:\s*(?:AM|PM))?\]\(https?:\/\/[^)]+\)$/i.test(trimmed)) {
-      diagnosticContext.boundaryDecision = 'DETECTED: Bracketed timestamp with URL is continuation';
-      diagnosticContext.matchedPatterns?.push('bracketed-timestamp-url');
-      Logger.diagnostic(
-        'IntelligentMessageParser',
-        'Continuation detection: FOUND (bracketed timestamp with URL)',
-        diagnosticContext
-      );
+      this.logContinuationDecision('bracketed timestamp with URL', trimmed, true);
       return true;
     }
 
     // Check for standalone bracketed timestamps [time] - these are always continuations
     if (/^\[\d{1,2}:\d{2}(?:\s*(?:AM|PM))?\]$/i.test(trimmed)) {
-      diagnosticContext.boundaryDecision =
-        'DETECTED: Standalone bracketed timestamp is continuation';
-      diagnosticContext.matchedPatterns?.push('standalone-bracketed-timestamp');
-      Logger.diagnostic(
-        'IntelligentMessageParser',
-        'Continuation detection: FOUND (standalone bracketed timestamp)',
-        diagnosticContext
-      );
+      this.logContinuationDecision('standalone bracketed timestamp', trimmed, true);
       return true;
     }
 
@@ -1876,25 +1842,12 @@ export class IntelligentMessageParser {
         if (prevLine && !prevLine.isEmpty) {
           // If previous line is a username, this is a Clay format timestamp (new message)
           if (this.looksLikeUsername(prevLine.trimmed)) {
-            diagnosticContext.boundaryDecision =
-              'NOT_DETECTED: Clay format timestamp (follows username)';
-            diagnosticContext.rejectedPatterns?.push('clay-format-timestamp');
-            Logger.diagnostic(
-              'IntelligentMessageParser',
-              'Continuation detection: NOT_FOUND (Clay format)',
-              diagnosticContext
-            );
+            this.logContinuationDecision('clay format timestamp', trimmed, false);
             return false;
           }
 
           // Otherwise, simple timestamps are usually continuations
-          diagnosticContext.boundaryDecision = 'DETECTED: Simple timestamp continuation';
-          diagnosticContext.matchedPatterns?.push('simple-timestamp-continuation');
-          Logger.diagnostic(
-            'IntelligentMessageParser',
-            'Continuation detection: FOUND (simple timestamp)',
-            diagnosticContext
-          );
+          this.logContinuationDecision('simple timestamp continuation', trimmed, true);
           return true;
         }
       }
@@ -1930,13 +1883,10 @@ export class IntelligentMessageParser {
             !nextLine.characteristics.hasTimestamp &&
             thirdLine.characteristics.hasTimestamp
           ) {
-            diagnosticContext.boundaryDecision =
-              'NOT_DETECTED: App message followed by standalone username with timestamp';
-            diagnosticContext.rejectedPatterns?.push('app-message-before-new-user');
-            Logger.diagnostic(
-              'IntelligentMessageParser',
-              'Continuation detection: NOT_FOUND (app message before new user)',
-              diagnosticContext
+            this.logContinuationDecision(
+              'app message followed by standalone username with timestamp',
+              trimmed,
+              false
             );
             return false;
           }
@@ -1944,32 +1894,29 @@ export class IntelligentMessageParser {
       }
     }
 
-    // Log the final decision
-    if (result && matchedPattern) {
-      diagnosticContext.boundaryDecision = 'DETECTED: Continuation pattern matched';
-      diagnosticContext.matchedPatterns?.push(`continuation-pattern: ${matchedPattern.toString()}`);
-    } else {
-      diagnosticContext.boundaryDecision = 'NOT_DETECTED: No continuation patterns matched';
-      diagnosticContext.rejectedPatterns?.push('no-continuation-patterns');
-    }
-
-    Logger.diagnostic(
-      'IntelligentMessageParser',
-      `Continuation detection: ${result ? 'FOUND' : 'NOT_FOUND'}`,
-      diagnosticContext
+    this.logContinuationDecision(
+      matchedPattern ? `pattern ${matchedPattern}` : 'no continuation patterns matched',
+      trimmed,
+      result
     );
 
-    // Defensive check for this context
-    try {
-      const isDebugEnabled = this?.debugMode === true;
-      if (isDebugEnabled && result) {
-        Logger.debug('IntelligentMessageParser', `Line looks like continuation: "${line.trimmed}"`);
-      }
-    } catch (e) {
-      // Silently ignore debug logging errors
+    if (this.debugMode && result) {
+      Logger.debug('IntelligentMessageParser', `Line looks like continuation: "${line.trimmed}"`);
     }
 
     return result;
+  }
+
+  private logContinuationDecision(reason: string, preview: string, matched: boolean): void {
+    if (!this.debugMode) {
+      return;
+    }
+    const status = matched ? 'matched' : 'skipped';
+    Logger.debug(
+      'IntelligentMessageParser',
+      `Continuation ${status}: ${reason}`,
+      preview.substring(0, 100)
+    );
   }
 
   /**

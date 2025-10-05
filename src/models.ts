@@ -300,7 +300,7 @@ export interface FormattedOutput {
   /**
    * Optional metadata about the formatting process.
    *
-   * Contains statistical and diagnostic information about the formatting
+   * Contains statistical and debug-oriented information about the formatting
    * operation, including performance metrics, message counts, and strategy
    * information. This metadata can be used for analytics, debugging, or
    * frontmatter generation.

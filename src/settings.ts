@@ -338,9 +338,9 @@ export const DEFAULT_SETTINGS: SlackFormatSettings = {
   /**
    * Enable debug mode for troubleshooting.
    *
-   * When enabled, the formatter outputs detailed diagnostic information
-   * to the console including parsing decisions, strategy selection,
-   * and processing steps. Useful for troubleshooting formatting issues
+   * When enabled, the formatter emits additional debug logging to the
+   * console including parsing decisions, strategy selection, and
+   * processing steps. Useful for troubleshooting formatting issues
    * but should be disabled in production for performance.
    *
    * @type {boolean | undefined}
