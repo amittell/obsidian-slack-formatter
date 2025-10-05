@@ -123,7 +123,7 @@ export default class SlackFormatPlugin extends Plugin {
         }
 
         const clipboardText = evt.clipboardData?.getData('text/plain') ?? '';
-        if (!clipboardText) {
+        if (!clipboardText || !this.formatter.isLikelySlack(clipboardText)) {
           return;
         }
 
