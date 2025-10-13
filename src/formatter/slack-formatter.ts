@@ -30,14 +30,6 @@ const PERFORMANCE_LIMITS = {
   WARN_SIZE_THRESHOLD: 1024 * 1024,
   /** Line count warning threshold */
   WARN_LINES_THRESHOLD: 10000,
-  /** Chunk size for processing large inputs (100KB) */
-  CHUNK_SIZE: 100 * 1024,
-  /** Maximum processing time per chunk (milliseconds) */
-  MAX_CHUNK_PROCESSING_TIME: 5000,
-  /** Minimum delay between chunks to prevent UI freezing (milliseconds) */
-  CHUNK_DELAY: 10,
-  /** Chunk count threshold for progress reporting */
-  PROGRESS_REPORTING_THRESHOLD: 10,
   /** Maximum cache size for input + output combined (2MB) */
   MAX_CACHE_SIZE: 2 * 1024 * 1024,
 } as const;
@@ -303,118 +295,7 @@ export class SlackFormatter implements ISlackFormatter {
   }
 
   /**
-   * FUTURE ENHANCEMENT: Processes large input text in chunks to prevent UI freezing.
-   *
-   * NOTE: This method is intentionally not called anywhere in the codebase.
-   * It serves as a framework for future implementation when async processing
-   * is needed throughout the formatting pipeline. Currently, the formatter
-   * operates synchronously, but this method demonstrates how chunked processing
-   * could be implemented to handle very large inputs without blocking the UI.
-   *
-   * Uses memory-efficient streaming approach to avoid storing all results in memory.
-   * @param {string} input - Large input text to process in chunks
-   * @returns {Promise<string>} Formatted content from all processed chunks
-   * @private
-   * @unused This is placeholder code for future enhancement
-   */
-  private async processInChunks(input: string): Promise<string> {
-    // NOTE: This is a conceptual framework for future implementation
-    // It would require async/await support throughout the formatting pipeline
-
-    try {
-      const chunks: string[] = [];
-
-      // Split input into manageable chunks by line boundaries
-      let currentChunk = '';
-      const lines = input.split('\n');
-
-      for (const line of lines) {
-        if (currentChunk.length + line.length > PERFORMANCE_LIMITS.CHUNK_SIZE) {
-          if (currentChunk) {
-            chunks.push(currentChunk);
-            currentChunk = '';
-          }
-        }
-        currentChunk += (currentChunk ? '\n' : '') + line;
-      }
-
-      if (currentChunk) {
-        chunks.push(currentChunk);
-      }
-
-      Logger.info('SlackFormatter', `Processing ${chunks.length} chunks for large input`, {
-        inputSize: input.length,
-        chunkCount: chunks.length,
-        avgChunkSize: Math.round(input.length / chunks.length),
-      });
-
-      // Memory-efficient streaming approach: process chunks one at a time
-      // and build result incrementally to avoid storing all chunks in memory
-      let result = '';
-
-      // Process each chunk with rate limiting
-      for (let i = 0; i < chunks.length; i++) {
-        const chunk = chunks[i];
-        const startTime = Date.now();
-
-        try {
-          // Process chunk using internal pipeline to avoid infinite recursion
-          const chunkResult = this.formatSlackContentInternal(chunk);
-
-          // Append to result immediately instead of storing in array
-          if (result) {
-            result += '\n\n---\n\n';
-          }
-          result += chunkResult;
-
-          const processingTime = Date.now() - startTime;
-
-          // Add delay if processing was too fast to prevent UI blocking
-          if (processingTime < PERFORMANCE_LIMITS.CHUNK_DELAY && i < chunks.length - 1) {
-            await new Promise(resolve => setTimeout(resolve, PERFORMANCE_LIMITS.CHUNK_DELAY));
-          }
-
-          // Report progress for large operations
-          if (chunks.length > PERFORMANCE_LIMITS.PROGRESS_REPORTING_THRESHOLD) {
-            Logger.debug(
-              'SlackFormatter',
-              `Processed chunk ${i + 1}/${chunks.length} (${processingTime}ms)`,
-              {
-                progress: Math.round(((i + 1) / chunks.length) * 100),
-              }
-            );
-          }
-        } catch (chunkError) {
-          Logger.error('SlackFormatter', `Error processing chunk ${i + 1}/${chunks.length}`, {
-            chunkIndex: i,
-            chunkSize: chunk.length,
-            error: chunkError instanceof Error ? chunkError.message : 'Unknown error',
-          });
-
-          // Add fallback result for failed chunk directly to result
-          if (result) {
-            result += '\n\n---\n\n';
-          }
-          result += `<!-- Chunk ${i + 1} failed to process: ${chunkError instanceof Error ? chunkError.message : 'Unknown error'} -->\n\n${chunk}`;
-        }
-      }
-
-      return result;
-    } catch (error) {
-      Logger.error('SlackFormatter', 'Critical error in processInChunks', {
-        inputSize: input.length,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
-
-      // Fallback to non-chunked processing
-      Logger.info('SlackFormatter', 'Falling back to non-chunked processing due to error');
-      return this.formatSlackContentInternal(input);
-    }
-  }
-
-  /**
    * Internal formatting method that processes content without input size validation or chunking.
-   * Used by processInChunks to avoid infinite recursion.
    * @param {string} input - Raw Slack conversation text (pre-validated)
    * @returns {string} Formatted Markdown content
    * @private

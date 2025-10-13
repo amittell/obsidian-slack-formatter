@@ -7,6 +7,7 @@ const isProd = process.argv.includes('production');
 
 const buildOptions = {
   entryPoints: ['src/main.ts'],
+  resolveExtensions: ['.ts', '.tsx', '.js', '.mjs', '.json'],
   bundle: true,
   format: 'cjs',
   platform: 'node', // Keep as node since Obsidian plugins run in a Node-like environment

@@ -1,4 +1,4 @@
-import { Logger } from './logger.js';
+import { Logger } from './logger';
 
 /**
  * Safe regex utilities with error handling and performance protection.
