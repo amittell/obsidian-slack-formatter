@@ -1,5 +1,5 @@
-import { SlackMessage } from '../../models.js';
-import { Logger } from '../../utils/logger.js';
+import { SlackMessage } from '../../models';
+import { Logger } from '../../utils/logger';
 
 /**
  * Configuration for embedded message detection patterns using regex patterns.

@@ -10,6 +10,7 @@ meta.json
 coverage/
 test.out
 *.log
+tests/integration/comprehensive-pipeline-output.md
 
 # OS files
 .DS_Store

@@ -1,7 +1,7 @@
-import { SlackMessage } from '../../models.js';
-import type { SlackReaction } from '../../types/messages.types.js';
-import { parseDate, parseSlackTimestamp } from '../../utils/datetime-utils.js';
-import { Logger } from '../../utils/logger.js';
+import { SlackMessage } from '../../models';
+import type { SlackReaction } from '../../types/messages.types';
+import { parseDate, parseSlackTimestamp } from '../../utils/datetime-utils';
+import { Logger } from '../../utils/logger';
 import {
   cleanupDoubledUsernames,
   MessageFormat,
@@ -9,8 +9,8 @@ import {
   extractUsernameFromThreadFormat,
   extractUsernameFromDMFormat,
   extractUsername,
-} from '../../utils/username-utils.js';
-import { duplicateDetectionService } from '../../utils/duplicate-detection-service.js';
+} from '../../utils/username-utils';
+import { duplicateDetectionService } from '../../utils/duplicate-detection-service';
 
 /**
  * Pattern scoring weights for identifying message boundaries.

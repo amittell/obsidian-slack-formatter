@@ -4,66 +4,156 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Development Commands
 
-- `npm run dev` - Development build with watch mode and inline sourcemaps
-- `npm run build` - Production build (minified, no sourcemaps, generates metafile)
-- `npm test` - Run Jest test suite
-- `npm run analyze` - Build optimization analysis using meta.json
+### Build Commands
+
+- **Development build**: `npm run dev` (watch mode with inline sourcemaps)
+- **Production build**: `npm run build` (minified, no sourcemaps, generates meta.json)
+- **Fast build**: `npm run build:fast` (production mode, optimized)
 
 ### Testing Commands
 
-- `npm test` - Run all tests
-- `npm test -- --testPathPattern=unit` - Run only unit tests
-- `npm test -- --testPathPattern=integration` - Run integration tests
-- `npm test -- --watch` - Run tests in watch mode
-- Run single test: `npm test -- tests/unit/specific-test.test.ts`
+- **All tests**: `npm test`
+- **Unit tests only**: `npm test -- --testPathPattern=unit`
+- **Integration tests only**: `npm test -- --testPathPattern=integration`
+- **Watch mode**: `npm test -- --watch`
+- **Single test file**: `npm test -- tests/unit/specific-test.test.ts`
+- **Quick test**: `npm run test:quick` (CI-optimized subset)
+- **Core tests**: `npm run test:core` (essential functionality)
+- **Coverage**: `npm run test:coverage`
+
+### Code Quality
+
+- **Format check**: `npm run format:check`
+- **Format fix**: `npm run format`
+- **Lint check**: `npm run lint`
+- **Lint fix**: `npm run lint:fix`
+- **Type check**: `npm run type-check`
+- **Quick CI validation**: `npm run ci:quick`
+- **Full CI**: `npm run ci`
+
+### Documentation
+
+- **Generate docs**: `npm run docs:generate`
+- **Validate docs**: `npm run docs:validate`
+- **Check docs**: `npm run docs:check`
+
+### Deploy
+
+- **Deploy script**: `./build-and-deploy.sh` (requires `OBSIDIAN_PLUGIN_DIR` environment variable)
+- **Git hooks setup**: `./setup-hooks.sh` (one-time setup)
 
 ## Architecture Overview
 
-This is an Obsidian plugin that formats Slack conversations into Obsidian callouts using a multi-stage processing pipeline.
+This is an Obsidian plugin that formats Slack conversations into Obsidian callouts using a comprehensive multi-stage processing pipeline.
 
-### Core Processing Pipeline
+### Processing Pipeline
 
-The formatter follows a staged processing approach:
+Raw Slack Text → PreProcessor → Parser → FormatDetector → UnifiedProcessor → Strategy → PostProcessor → Formatted Output
 
-1. **PreProcessor** (`src/formatter/stages/preprocessor.ts`) - Initial text normalization and preparation
-2. **IntelligentMessageParser** (`src/formatter/stages/intelligent-message-parser.ts`) - Parses raw Slack text into structured messages
-3. **ImprovedFormatDetector** (`src/formatter/stages/improved-format-detector.ts`) - Detects conversation format (DM, channel, thread)
-4. **UnifiedProcessor** (`src/formatter/processors/unified-processor.ts`) - Orchestrates specialized processors:
-   - AttachmentProcessor, CodeBlockProcessor, EmojiProcessor, etc.
-5. **PostProcessor** (`src/formatter/stages/postprocessor.ts`) - Final formatting and output generation
+**Pipeline Stages**:
+
+1. **PreProcessor** (`src/formatter/stages/preprocessor.ts`) - Text normalization and validation with performance limits
+2. **IntelligentMessageParser** (`src/formatter/stages/intelligent-message-parser.ts`) - Advanced structural analysis and message extraction
+3. **FlexibleMessageParser** (`src/formatter/stages/flexible-message-parser.ts`) - Fallback parser for unusual formats
+4. **ImprovedFormatDetector** (`src/formatter/stages/improved-format-detector.ts`) - Format detection with caching
+5. **UnifiedProcessor** (`src/formatter/processors/unified-processor.ts`) - Orchestrates specialized content processors
+6. **Content Processing** - Multiple specialized processors:
+   - AttachmentProcessor
+   - CodeBlockProcessor
+   - EmojiProcessor
+   - MessageContinuationProcessor
+   - ThreadLinkProcessor
+   - UrlProcessor
+   - UsernameProcessor
+   - ContentDeduplicationProcessor
+   - EmbeddedMessageDetector
+7. **Validation** (`src/formatter/validators/message-structure-validator.ts`) - Structure integrity validation
+8. **Strategic Formatting** (`src/formatter/strategies/`) - Format-specific output generation
+9. **PostProcessor** (`src/formatter/stages/postprocessor.ts`) - Final formatting and YAML frontmatter
 
 ### Formatting Strategies
 
-The system uses different strategies for different conversation types:
+The system uses different strategies based on detected conversation format:
 
 - **StandardFormatStrategy** - Default Obsidian callout format
 - **BracketFormatStrategy** - Alternative bracket-based format
-- **MixedFormatStrategy** - Combines multiple approaches
+- **MixedFormatStrategy** - Combines multiple approaches based on context
 
-### Key Components
+### Performance Limits
 
-- **SlackFormatter** (`src/formatter/slack-formatter.ts`) - Main orchestrator with performance limits and caching
-- **SlackMessage** (`src/models.ts`) - Core message data structure
-- **Settings** (`src/settings.ts`) - Plugin configuration with user/emoji mapping support
-- **UI Components** (`src/ui/`) - Settings tab and preview/confirmation modals
+- Hard caps: **5 MB** maximum input size and **50,000** line limit (requests above these bounds are rejected)
+- Warning thresholds at **1 MB** or **10,000** lines to surface potential slowdowns before processing
+- Result caching bounded to **2 MB** combined input/output to avoid excess memory growth
+- Synchronous processing with early validation/fallback formatting to keep the UI responsive without chunking
+- Logger-driven progress notes in debug mode to aid troubleshooting of large conversions
 
-### Message Processing Flow
+## Key Components
 
-1. Raw Slack text → PreProcessor → normalized text
-2. Normalized text → IntelligentMessageParser → SlackMessage[]
-3. Messages → FormatDetector → conversation metadata
-4. Messages + metadata → UnifiedProcessor → processed messages
-5. Processed messages → Strategy → formatted output
-6. Formatted output → PostProcessor → final Obsidian content
+- **SlackFormatter** (`src/formatter/slack-formatter.ts`) - Main orchestrator with comprehensive pipeline
+- **SlackFormatPlugin** (`src/main.ts`) - Obsidian plugin entry point, command registration, settings
+- **Settings** (`src/settings.ts`, `src/ui/settings-tab.ts`) - Plugin configuration with JSON mappings
+- **UI Components** (`src/ui/`) - Modal dialogs for preview, confirmation, and settings
+- **Type Definitions** (`src/types/`) - Comprehensive TypeScript interfaces
+- **Utilities** (`src/utils/`) - Logger, text processing, validation, and performance monitoring
 
-### Performance Considerations
+### Directory Structure
 
-The formatter includes built-in performance protections:
+```text
+src/
+├── main.ts                 # Plugin entry point
+├── interfaces.ts           # Core interfaces
+├── models.ts              # Data models (SlackMessage, etc.)
+├── settings.ts            # Default settings
+├── formatter/
+│   ├── slack-formatter.ts  # Main formatter orchestrator
+│   ├── stages/             # Pipeline stages
+│   │   ├── preprocessor.ts
+│   │   ├── intelligent-message-parser.ts
+│   │   ├── flexible-message-parser.ts
+│   │   ├── improved-format-detector.ts
+│   │   └── postprocessor.ts
+│   ├── processors/         # Content processors
+│   │   ├── unified-processor.ts
+│   │   ├── attachment-processor.ts
+│   │   ├── code-block-processor.ts
+│   │   ├── emoji-processor.ts
+│   │   ├── message-continuation-processor.ts
+│   │   ├── thread-link-processor.ts
+│   │   ├── url-processor.ts
+│   │   ├── username-processor.ts
+│   │   ├── content-deduplication-processor.ts
+│   │   └── embedded-message-detector.ts
+│   ├── strategies/         # Output formatting strategies
+│   │   ├── base-format-strategy.ts
+│   │   ├── standard-format-strategy.ts
+│   │   ├── bracket-format-strategy.ts
+│   │   ├── mixed-format-strategy.ts
+│   │   └── format-strategy-factory.ts
+│   ├── validators/         # Message validation
+│   │   └── message-structure-validator.ts
+│   └── standards/          # Output formatting standards
+│       └── output-formatting-standards.ts
+├── types/                  # TypeScript type definitions
+│   ├── index.ts
+│   ├── settings.types.ts
+│   ├── messages.types.ts
+│   └── formatters.types.ts
+├── utils/                  # Utility functions
+│   ├── logger.ts
+│   ├── text-utils.ts
+│   ├── validation-utils.ts
+│   └── [many other utilities]
+└── ui/                     # Obsidian UI components
+    ├── settings-tab.ts
+    ├── modals.ts
+    └── base-modal.ts
 
-- 5MB maximum input size
-- 50,000 line processing limit
-- Chunked processing for large inputs
-- Caching system with 2MB limit
+tests/
+├── unit/                   # Individual component tests
+├── integration/            # End-to-end pipeline tests
+├── manual/                 # Manual testing utilities
+└── helpers/                # Test utilities and fixtures
+```
 
 ## File Organization
 

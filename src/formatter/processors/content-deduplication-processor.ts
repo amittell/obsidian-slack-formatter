@@ -1,10 +1,10 @@
-import { SlackMessage } from '../../models.js';
+import { SlackMessage } from '../../models';
 import {
   EmbeddedMessageDetector,
   EmbeddedDetectionResult,
   EmbeddedContentType,
-} from './embedded-message-detector.js';
-import { Logger } from '../../utils/logger.js';
+} from './embedded-message-detector';
+import { Logger } from '../../utils/logger';
 
 /**
  * Configuration constants for the deduplication algorithm that control similarity thresholds

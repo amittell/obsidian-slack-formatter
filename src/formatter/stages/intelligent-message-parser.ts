@@ -1,10 +1,10 @@
-import { SlackMessage } from '../../models.js';
-import type { SlackReaction } from '../../types/messages.types.js';
-import { SlackFormatSettings } from '../../types/settings.types.js';
-import { ParsedMaps } from '../../types/formatters.types.js';
-import { parseSlackTimestamp } from '../../utils/datetime-utils.js';
-import { Logger, DiagnosticContext } from '../../utils/logger.js';
-import { DEFAULT_SETTINGS } from '../../settings.js';
+import { SlackMessage } from '../../models';
+import type { SlackReaction } from '../../types/messages.types';
+import { SlackFormatSettings } from '../../types/settings.types';
+import { ParsedMaps } from '../../types/formatters.types';
+import { parseSlackTimestamp } from '../../utils/datetime-utils';
+import { Logger, DiagnosticContext } from '../../utils/logger';
+import { DEFAULT_SETTINGS } from '../../settings';
 import {
   extractUsername,
   normalizeUsername,
@@ -12,8 +12,8 @@ import {
   isAppMessage,
   extractAppUsername,
   MessageFormat,
-} from '../../utils/username-utils.js';
-import { SafeRegexUtilities } from '../../utils/safe-regex-utilities.js';
+} from '../../utils/username-utils';
+import { SafeRegexUtilities } from '../../utils/safe-regex-utilities';
 
 /**
  * Configuration constants for intelligent message parsing

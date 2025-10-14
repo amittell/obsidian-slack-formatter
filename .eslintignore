@@ -1,0 +1,7 @@
+coverage/
+dist/
+node_modules/
+main.js
+meta.json
+scripts/**/*.js
+scripts/**/*.ts

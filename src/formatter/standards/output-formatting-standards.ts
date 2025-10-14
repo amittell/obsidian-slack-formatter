@@ -36,8 +36,8 @@
  * @author Obsidian Slack Formatter Team
  */
 
-import { SlackMessage } from '../../models.js';
-import { SlackFormatSettings } from '../../types/settings.types.js';
+import { SlackMessage } from '../../models';
+import { SlackFormatSettings } from '../../types/settings.types';
 
 /**
  * Standard formatting configurations for different output types and presentation needs.
