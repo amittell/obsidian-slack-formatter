@@ -28,8 +28,10 @@ export function quickSanitize(text: string): string {
       .replace(/\u2026/g, '...'); // Ellipsis
 
     // Normalize whitespace (but preserve intentional formatting)
-    // Preserve leading whitespace for indentation (2+ spaces, tabs)
-    // Only collapse multiple spaces in the middle of lines
+    // Preserve:
+    // - Leading whitespace for indentation (2+ spaces, tabs)
+    // - Trailing double spaces for markdown soft breaks
+    // - Internal spacing for tables and ASCII art
     const lines = result.split('\n');
     result = lines
       .map(line => {
@@ -37,8 +39,9 @@ export function quickSanitize(text: string): string {
         if (line.startsWith('  ') || line.startsWith('\t') || line.startsWith('```')) {
           return line;
         }
-        // For other lines, collapse multiple consecutive spaces to single space
-        return line.replace(/  +/g, ' ');
+        // Collapse only middle spaces (followed by non-whitespace)
+        // This preserves trailing spaces needed for markdown soft breaks
+        return line.replace(/  +(?=\S)/g, ' ');
       })
       .join('\n');
 
