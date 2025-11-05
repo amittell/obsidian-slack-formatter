@@ -50,7 +50,6 @@ export default class SlackFormatPlugin extends Plugin {
     this.addSettingTab(new SlackFormatSettingTab(this.app, this));
 
     // Register commands using helper methods
-    this.registerHotkeyCommand();
     this.registerPaletteCommand();
     this.registerContextMenu();
 
@@ -261,26 +260,6 @@ export default class SlackFormatPlugin extends Plugin {
   }
 
   // --- Command Registration Methods ---
-
-  /**
-   * Register the hotkey command (Cmd/Ctrl+Shift+V) for formatting Slack pastes.
-   * @private
-   * @returns {void}
-   */
-  private registerHotkeyCommand(): void {
-    this.addCommand({
-      id: 'format-slack-paste-hotkey',
-      name: 'Format Slack paste with hotkey',
-      editorCallback: async (editor: Editor) => {
-        const clipboardContent = await this.getClipboardContent();
-        if (clipboardContent !== null) {
-          // Check if reading was successful
-          this.formatAndInsert(editor, clipboardContent);
-        }
-        // Error handling is now inside getClipboardContent
-      },
-    });
-  }
 
   /**
    * Register the command palette command for formatting Slack pastes.

@@ -2318,6 +2318,7 @@ exports[`SlackFormatter Integration Tests (Snapshot) Sample: multi-person-dm-sam
 >
 > Google Docs
 >
+>
 > Guidewire--Stripe Connector: Consolidated Strategy & Decision Document
 
 > [!slack]+ Message from Google Doc
@@ -2411,6 +2412,7 @@ exports[`SlackFormatter Integration Tests (Snapshot) Sample: multi-person-dm-sam
 > Wanted to get your feedback on my update Guidewire doc here https://docs.google.com/document/d/1l0LcYAZxgSNDNCNTmZaOBvVuyTt4fosZu6Lr49PXxWs/edit?tab=t.0
 >
 > Google Docs
+>
 >
 > Guidewire--Stripe Connector: Consolidated Strategy & Decision Document
 
@@ -2506,6 +2508,7 @@ exports[`SlackFormatter Integration Tests (Snapshot) Sample: multi-person-dm-sam
 >
 > Google Docs
 >
+>
 > Guidewire--Stripe Connector: Consolidated Strategy & Decision Document
 
 > [!slack]+ Message from Google Doc
@@ -2599,6 +2602,7 @@ exports[`SlackFormatter Integration Tests (Snapshot) Sample: multi-person-dm-sam
 > Wanted to get your feedback on my update Guidewire doc here https://docs.google.com/document/d/1l0LcYAZxgSNDNCNTmZaOBvVuyTt4fosZu6Lr49PXxWs/edit?tab=t.0
 >
 > Google Docs
+>
 >
 > Guidewire--Stripe Connector: Consolidated Strategy & Decision Document
 
