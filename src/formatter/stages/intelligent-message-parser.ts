@@ -1108,7 +1108,7 @@ export class IntelligentMessageParser {
     }
 
     // Legacy debug removed
-    if (legacyDebugEnabled) {
+    if (debugEnabled) {
       Logger.debug(
         'IntelligentMessageParser',
         `Boundaries before merging: ${boundaries.map(b => `${b.start}-${b.end}`).join(', ')}`
