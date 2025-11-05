@@ -3,7 +3,7 @@
   "name": "Slack Paste Formatter",
   "version": "0.0.8",
   "minAppVersion": "1.2.0",
-  "description": "Format pasted Slack conversations into Obsidian callouts with proper markdown formatting.",
+  "description": "Format pasted Slack conversations into callouts with proper markdown formatting.",
   "author": "Alex Mittell",
   "authorUrl": "https://github.com/amittell",
   "isDesktopOnly": true
