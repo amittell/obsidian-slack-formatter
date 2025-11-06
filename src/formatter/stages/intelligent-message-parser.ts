@@ -3,7 +3,7 @@ import type { SlackReaction } from '../../types/messages.types.js';
 import { SlackFormatSettings } from '../../types/settings.types.js';
 import { ParsedMaps } from '../../types/formatters.types.js';
 import { parseSlackTimestamp } from '../../utils/datetime-utils.js';
-import { Logger, DiagnosticContext } from '../../utils/logger.js';
+import { Logger } from '../../utils/logger.js';
 import { DEFAULT_SETTINGS } from '../../settings.js';
 import {
   extractUsername,
@@ -98,9 +98,6 @@ export class IntelligentMessageParser {
   /** Parsed user and emoji mappings */
   private parsedMaps: ParsedMaps;
 
-  /** Debug mode flag */
-  private debugMode: boolean;
-
   /** Cached link preview patterns for performance optimization */
   private linkPreviewPatterns?: RegExp[];
 
@@ -132,7 +129,6 @@ export class IntelligentMessageParser {
     // Initialize all properties first to ensure they exist
     this.settings = DEFAULT_SETTINGS;
     this.parsedMaps = { userMap: {}, emojiMap: {} };
-    this.debugMode = false;
     this.regexUtils = new SafeRegexUtilities('IntelligentMessageParser');
 
     // Then validate and set actual values
@@ -141,7 +137,6 @@ export class IntelligentMessageParser {
     }
     if (settings) {
       this.settings = settings;
-      this.debugMode = Boolean(settings?.debug);
     }
 
     // Validate and set parsedMaps
@@ -200,7 +195,6 @@ export class IntelligentMessageParser {
 
     this.settings = settings;
     this.parsedMaps = parsedMaps;
-    this.debugMode = Boolean(settings?.debug);
   }
 
   /**
@@ -225,11 +219,6 @@ export class IntelligentMessageParser {
 
     if (!this.parsedMaps) {
       throw new Error('IntelligentMessageParser: parsedMaps is not initialized');
-    }
-
-    if (this.debugMode === undefined || this.debugMode === null) {
-      Logger.warn('IntelligentMessageParser', 'debugMode is undefined, setting to false');
-      this.debugMode = false;
     }
 
     // Ensure all bound methods are still functions
@@ -274,7 +263,7 @@ export class IntelligentMessageParser {
     const lines = text.split('\n');
 
     // Use class debug mode or parameter override
-    const debugMode = isDebugEnabled !== undefined ? isDebugEnabled : this?.debugMode === true;
+    const debugMode = isDebugEnabled !== undefined ? isDebugEnabled : Logger.isDebugEnabled();
 
     // Step 1: Analyze the overall structure to identify patterns
     const structure = this.analyzeStructure(lines);
@@ -407,7 +396,7 @@ export class IntelligentMessageParser {
    * @since 1.0.0
    */
   private identifyPatterns(analysis: LineAnalysis[]): ConversationPatterns {
-    const debugEnabled = process.env.DEBUG_BOUNDARY_DETECTION === 'true';
+    const debugEnabled = Logger.isDebugEnabled();
 
     if (debugEnabled) {
       Logger.debug(
@@ -564,7 +553,7 @@ export class IntelligentMessageParser {
     allLines: LineAnalysis[],
     index: number
   ): boolean {
-    const debugEnabled = process.env.DEBUG_BOUNDARY_DETECTION === 'true';
+    const debugEnabled = Logger.isDebugEnabled();
 
     // Empty lines can't be message starts
     if (line.isEmpty) {
@@ -905,7 +894,7 @@ export class IntelligentMessageParser {
     lines: string[],
     structure: ConversationStructure
   ): MessageBoundary[] {
-    const debugEnabled = process.env.DEBUG_BOUNDARY_DETECTION === 'true';
+    const debugEnabled = Logger.isDebugEnabled();
 
     if (debugEnabled) {
       Logger.debug(
@@ -1031,7 +1020,7 @@ export class IntelligentMessageParser {
     for (const boundary of boundaries) {
       let extendedEnd = boundary.end;
 
-      const legacyDebugEnabled = this?.debugMode === true;
+      // Legacy debugging removed
       if (debugEnabled) {
         Logger.debug(
           'IntelligentMessageParser',
@@ -1123,8 +1112,8 @@ export class IntelligentMessageParser {
       }
     }
 
-    const legacyDebugEnabled = this?.debugMode === true;
-    if (legacyDebugEnabled) {
+    // Legacy debugging removed
+    if (debugEnabled) {
       Logger.debug(
         'IntelligentMessageParser',
         `Boundaries before merging: ${boundaries.map(b => `${b.start}-${b.end}`).join(', ')}`
@@ -1169,7 +1158,7 @@ export class IntelligentMessageParser {
               // Check if the continuation's content would overlap with next boundary
               const contEnd = this.findContinuationEnd(structure.lines, k);
 
-              const legacyDebugEnabled = this?.debugMode === true;
+              // Legacy debugging removed
               if (debugEnabled) {
                 Logger.debug(
                   'IntelligentMessageParser',
@@ -1329,7 +1318,7 @@ export class IntelligentMessageParser {
    * @returns Array of actual message start indices (grouped)
    */
   private groupMessageComponents(candidates: number[], structure: ConversationStructure): number[] {
-    const debugEnabled = process.env.DEBUG_BOUNDARY_DETECTION === 'true';
+    const debugEnabled = Logger.isDebugEnabled();
 
     if (debugEnabled) {
       Logger.debug('IntelligentMessageParser', '\n=== GROUPING MESSAGE COMPONENTS ===');
@@ -1442,7 +1431,7 @@ export class IntelligentMessageParser {
       return false;
     }
 
-    const debugEnabled = process.env.DEBUG_BOUNDARY_DETECTION === 'true';
+    const debugEnabled = Logger.isDebugEnabled();
 
     // Lines must be close to each other (within 2 lines)
     if (index2 - index1 > 2) {
@@ -1770,23 +1759,6 @@ export class IntelligentMessageParser {
     }
 
     // Start diagnostic logging for continuation detection
-    const diagnosticContext: DiagnosticContext = {
-      operationId,
-      text: line.content?.substring(0, 100) || line.trimmed?.substring(0, 100) || '',
-      matchedPatterns: [],
-      rejectedPatterns: [],
-      boundaryDecision: '',
-    };
-
-    Logger.diagnostic(
-      'IntelligentMessageParser',
-      'Evaluating continuation pattern',
-      diagnosticContext,
-      {
-        trimmed: line.trimmed?.substring(0, 50) || '',
-        isEmpty: line.isEmpty,
-      }
-    );
 
     // Enhanced continuation patterns including new Slack truncation indicators
     const continuationPatterns = [
@@ -1844,26 +1816,11 @@ export class IntelligentMessageParser {
 
     // Check for bracketed timestamps with URLs [time](url) - these are always continuations
     if (/^\[\d{1,2}:\d{2}(?:\s*(?:AM|PM))?\]\(https?:\/\/[^)]+\)$/i.test(trimmed)) {
-      diagnosticContext.boundaryDecision = 'DETECTED: Bracketed timestamp with URL is continuation';
-      diagnosticContext.matchedPatterns?.push('bracketed-timestamp-url');
-      Logger.diagnostic(
-        'IntelligentMessageParser',
-        'Continuation detection: FOUND (bracketed timestamp with URL)',
-        diagnosticContext
-      );
       return true;
     }
 
     // Check for standalone bracketed timestamps [time] - these are always continuations
     if (/^\[\d{1,2}:\d{2}(?:\s*(?:AM|PM))?\]$/i.test(trimmed)) {
-      diagnosticContext.boundaryDecision =
-        'DETECTED: Standalone bracketed timestamp is continuation';
-      diagnosticContext.matchedPatterns?.push('standalone-bracketed-timestamp');
-      Logger.diagnostic(
-        'IntelligentMessageParser',
-        'Continuation detection: FOUND (standalone bracketed timestamp)',
-        diagnosticContext
-      );
       return true;
     }
 
@@ -1876,25 +1833,10 @@ export class IntelligentMessageParser {
         if (prevLine && !prevLine.isEmpty) {
           // If previous line is a username, this is a Clay format timestamp (new message)
           if (this.looksLikeUsername(prevLine.trimmed)) {
-            diagnosticContext.boundaryDecision =
-              'NOT_DETECTED: Clay format timestamp (follows username)';
-            diagnosticContext.rejectedPatterns?.push('clay-format-timestamp');
-            Logger.diagnostic(
-              'IntelligentMessageParser',
-              'Continuation detection: NOT_FOUND (Clay format)',
-              diagnosticContext
-            );
             return false;
           }
 
           // Otherwise, simple timestamps are usually continuations
-          diagnosticContext.boundaryDecision = 'DETECTED: Simple timestamp continuation';
-          diagnosticContext.matchedPatterns?.push('simple-timestamp-continuation');
-          Logger.diagnostic(
-            'IntelligentMessageParser',
-            'Continuation detection: FOUND (simple timestamp)',
-            diagnosticContext
-          );
           return true;
         }
       }
@@ -1930,14 +1872,6 @@ export class IntelligentMessageParser {
             !nextLine.characteristics.hasTimestamp &&
             thirdLine.characteristics.hasTimestamp
           ) {
-            diagnosticContext.boundaryDecision =
-              'NOT_DETECTED: App message followed by standalone username with timestamp';
-            diagnosticContext.rejectedPatterns?.push('app-message-before-new-user');
-            Logger.diagnostic(
-              'IntelligentMessageParser',
-              'Continuation detection: NOT_FOUND (app message before new user)',
-              diagnosticContext
-            );
             return false;
           }
         }
@@ -1946,22 +1880,12 @@ export class IntelligentMessageParser {
 
     // Log the final decision
     if (result && matchedPattern) {
-      diagnosticContext.boundaryDecision = 'DETECTED: Continuation pattern matched';
-      diagnosticContext.matchedPatterns?.push(`continuation-pattern: ${matchedPattern.toString()}`);
     } else {
-      diagnosticContext.boundaryDecision = 'NOT_DETECTED: No continuation patterns matched';
-      diagnosticContext.rejectedPatterns?.push('no-continuation-patterns');
     }
-
-    Logger.diagnostic(
-      'IntelligentMessageParser',
-      `Continuation detection: ${result ? 'FOUND' : 'NOT_FOUND'}`,
-      diagnosticContext
-    );
 
     // Defensive check for this context
     try {
-      const isDebugEnabled = this?.debugMode === true;
+      const isDebugEnabled = Logger.isDebugEnabled();
       if (isDebugEnabled && result) {
         Logger.debug('IntelligentMessageParser', `Line looks like continuation: "${line.trimmed}"`);
       }
@@ -1978,7 +1902,7 @@ export class IntelligentMessageParser {
   private findContinuationEnd(lines: LineAnalysis[], startIndex: number): number {
     let endIndex = startIndex;
 
-    const debugEnabled = this?.debugMode === true;
+    const debugEnabled = Logger.isDebugEnabled();
     if (debugEnabled) {
       Logger.debug(
         'IntelligentMessageParser',
@@ -2090,7 +2014,7 @@ export class IntelligentMessageParser {
     boundaries: MessageBoundary[],
     structure: ConversationStructure
   ): SlackMessage[] {
-    const debugEnabled = process.env.DEBUG_BOUNDARY_DETECTION === 'true';
+    const debugEnabled = Logger.isDebugEnabled();
 
     if (debugEnabled) {
       Logger.debug('IntelligentMessageParser', '\n=== BOUNDARY DETECTION: Extracting Messages ===');
@@ -2177,7 +2101,7 @@ export class IntelligentMessageParser {
     structure: ConversationStructure,
     previousMessages: SlackMessage[] = []
   ): SlackMessage | null {
-    const debugEnabled = process.env.DEBUG_BOUNDARY_DETECTION === 'true';
+    const debugEnabled = Logger.isDebugEnabled();
 
     if (messageLines.length === 0) return null;
 
@@ -2350,7 +2274,7 @@ export class IntelligentMessageParser {
     const reactions: SlackReaction[] = [];
     let threadInfo: string | null = null;
 
-    const debugEnabled = this?.debugMode === true;
+    const debugEnabled = Logger.isDebugEnabled();
     if (debugEnabled) {
       Logger.debug(
         'IntelligentMessageParser',
@@ -3070,7 +2994,7 @@ export class IntelligentMessageParser {
     structure?: ConversationStructure
   ): { username?: string; timestamp?: string } {
     try {
-      const debugEnabled = process.env.DEBUG_USERNAME_EXTRACTION === 'true' || false;
+      const debugEnabled = Logger.isDebugEnabled();
 
       if (debugEnabled) {
         this.debugExtractionProcess(line);
