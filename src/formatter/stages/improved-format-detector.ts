@@ -199,7 +199,6 @@ export class ImprovedFormatDetector {
           result = 'channel';
         } else {
           result = 'standard';
-          ('STANDARD: Thread score high but no explicit indicators');
         }
       } else if (score.dm > 0.4 && score.dm > score.channel) {
         // DM wins if it has stronger indicators than channel

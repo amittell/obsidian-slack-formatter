@@ -1819,7 +1819,6 @@ export class IntelligentMessageParser {
 
     // Check for standalone bracketed timestamps [time] - these are always continuations
     if (/^\[\d{1,2}:\d{2}(?:\s*(?:AM|PM))?\]$/i.test(trimmed)) {
-      ('DETECTED: Standalone bracketed timestamp is continuation');
       return true;
     }
 
@@ -1832,7 +1831,6 @@ export class IntelligentMessageParser {
         if (prevLine && !prevLine.isEmpty) {
           // If previous line is a username, this is a Clay format timestamp (new message)
           if (this.looksLikeUsername(prevLine.trimmed)) {
-            ('NOT_DETECTED: Clay format timestamp (follows username)');
             return false;
           }
 
@@ -1872,7 +1870,6 @@ export class IntelligentMessageParser {
             !nextLine.characteristics.hasTimestamp &&
             thirdLine.characteristics.hasTimestamp
           ) {
-            ('NOT_DETECTED: App message followed by standalone username with timestamp');
             return false;
           }
         }
