@@ -1112,7 +1112,7 @@ export class IntelligentMessageParser {
       }
     }
 
-    // Legacy debug removed
+    // Legacy debugging removed
     if (debugEnabled) {
       Logger.debug(
         'IntelligentMessageParser',
