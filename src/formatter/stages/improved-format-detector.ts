@@ -147,7 +147,6 @@ export class ImprovedFormatDetector {
 
     // Start diagnostic logging for format detection
 
-
     if (!content || typeof content !== 'string') {
       Logger.warn('ImprovedFormatDetector', 'Invalid content for format detection');
       return 'standard';
@@ -183,12 +182,10 @@ export class ImprovedFormatDetector {
 
     // Optimized format detection with improved precedence logic
     if (score.confidence > 0.3) {
-
       // Check for specific indicators in order of specificity (most specific first)
 
       // Thread indicators are very specific and should trump other patterns
       if (score.thread > 0.3) {
-
         // Check for explicit thread indicators in content to avoid false positives
         const hasThreadIndicators =
           content.includes('thread_ts=') ||
@@ -202,7 +199,7 @@ export class ImprovedFormatDetector {
           result = 'channel';
         } else {
           result = 'standard';
-            'STANDARD: Thread score high but no explicit indicators';
+          ('STANDARD: Thread score high but no explicit indicators');
         }
       } else if (score.dm > 0.4 && score.dm > score.channel) {
         // DM wins if it has stronger indicators than channel
@@ -234,7 +231,6 @@ export class ImprovedFormatDetector {
         channel: Number(score.channel.toFixed(2)),
         confidence: Number(score.confidence.toFixed(2)),
       };
-
     }
 
     // Cache the result for future calls

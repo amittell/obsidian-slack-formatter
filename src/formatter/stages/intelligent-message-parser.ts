@@ -96,7 +96,7 @@ export class IntelligentMessageParser {
   private settings: SlackFormatSettings;
 
   /** Parsed user and emoji mappings */
-  private parsedMaps: ParsedMaps;  /** Cached link preview patterns for performance optimization */
+  private parsedMaps: ParsedMaps; /** Cached link preview patterns for performance optimization */
   private linkPreviewPatterns?: RegExp[];
 
   /** Cached content patterns for performance optimization */
@@ -126,14 +126,16 @@ export class IntelligentMessageParser {
   constructor(settings?: SlackFormatSettings, parsedMaps?: ParsedMaps) {
     // Initialize all properties first to ensure they exist
     this.settings = DEFAULT_SETTINGS;
-    this.parsedMaps = { userMap: {}, emojiMap: {} };    this.regexUtils = new SafeRegexUtilities('IntelligentMessageParser');
+    this.parsedMaps = { userMap: {}, emojiMap: {} };
+    this.regexUtils = new SafeRegexUtilities('IntelligentMessageParser');
 
     // Then validate and set actual values
     if (settings && typeof settings !== 'object') {
       throw new Error('IntelligentMessageParser: settings must be an object or undefined');
     }
     if (settings) {
-      this.settings = settings;    }
+      this.settings = settings;
+    }
 
     // Validate and set parsedMaps
     if (parsedMaps && (typeof parsedMaps !== 'object' || parsedMaps === null)) {
@@ -190,7 +192,8 @@ export class IntelligentMessageParser {
     }
 
     this.settings = settings;
-    this.parsedMaps = parsedMaps;  }
+    this.parsedMaps = parsedMaps;
+  }
 
   /**
    * Validate parser state before processing
@@ -1755,7 +1758,6 @@ export class IntelligentMessageParser {
 
     // Start diagnostic logging for continuation detection
 
-
     // Enhanced continuation patterns including new Slack truncation indicators
     const continuationPatterns = [
       // Standalone timestamp patterns
@@ -1817,7 +1819,7 @@ export class IntelligentMessageParser {
 
     // Check for standalone bracketed timestamps [time] - these are always continuations
     if (/^\[\d{1,2}:\d{2}(?:\s*(?:AM|PM))?\]$/i.test(trimmed)) {
-        'DETECTED: Standalone bracketed timestamp is continuation';
+      ('DETECTED: Standalone bracketed timestamp is continuation');
       return true;
     }
 
@@ -1830,7 +1832,7 @@ export class IntelligentMessageParser {
         if (prevLine && !prevLine.isEmpty) {
           // If previous line is a username, this is a Clay format timestamp (new message)
           if (this.looksLikeUsername(prevLine.trimmed)) {
-              'NOT_DETECTED: Clay format timestamp (follows username)';
+            ('NOT_DETECTED: Clay format timestamp (follows username)');
             return false;
           }
 
@@ -1870,7 +1872,7 @@ export class IntelligentMessageParser {
             !nextLine.characteristics.hasTimestamp &&
             thirdLine.characteristics.hasTimestamp
           ) {
-              'NOT_DETECTED: App message followed by standalone username with timestamp';
+            ('NOT_DETECTED: App message followed by standalone username with timestamp');
             return false;
           }
         }
@@ -1881,7 +1883,6 @@ export class IntelligentMessageParser {
     if (result && matchedPattern) {
     } else {
     }
-
 
     // Defensive check for this context
     try {
