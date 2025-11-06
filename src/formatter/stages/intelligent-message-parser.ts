@@ -96,7 +96,9 @@ export class IntelligentMessageParser {
   private settings: SlackFormatSettings;
 
   /** Parsed user and emoji mappings */
-  private parsedMaps: ParsedMaps; /** Cached link preview patterns for performance optimization */
+  private parsedMaps: ParsedMaps;
+
+  /** Cached link preview patterns for performance optimization */
   private linkPreviewPatterns?: RegExp[];
 
   /** Cached content patterns for performance optimization */
@@ -1018,7 +1020,7 @@ export class IntelligentMessageParser {
     for (const boundary of boundaries) {
       let extendedEnd = boundary.end;
 
-      // Legacy debug removed
+      // Legacy debugging removed
       if (debugEnabled) {
         Logger.debug(
           'IntelligentMessageParser',
@@ -1156,7 +1158,7 @@ export class IntelligentMessageParser {
               // Check if the continuation's content would overlap with next boundary
               const contEnd = this.findContinuationEnd(structure.lines, k);
 
-              // Legacy debug removed
+              // Legacy debugging removed
               if (debugEnabled) {
                 Logger.debug(
                   'IntelligentMessageParser',
